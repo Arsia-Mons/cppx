@@ -1,0 +1,78 @@
+cmake_minimum_required(VERSION 3.28)
+
+project(sdl3_clay_reference LANGUAGES C CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+include(FetchContent)
+
+find_package(SDL3 CONFIG QUIET)
+if(NOT SDL3_FOUND)
+  set(SDL_SHARED ON CACHE BOOL "Build SDL shared library" FORCE)
+  set(SDL_STATIC OFF CACHE BOOL "Build SDL static library" FORCE)
+  set(SDL_TEST_LIBRARY OFF CACHE BOOL "Build SDL test library" FORCE)
+  set(SDL_EXAMPLES OFF CACHE BOOL "Build SDL examples" FORCE)
+  set(SDL_TESTS OFF CACHE BOOL "Build SDL tests" FORCE)
+  FetchContent_Declare(
+    SDL3
+    GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
+    GIT_TAG release-3.2.30
+    GIT_SHALLOW TRUE
+  )
+  FetchContent_MakeAvailable(SDL3)
+endif()
+
+find_package(SDL3_ttf CONFIG QUIET)
+
+if(NOT SDL3_ttf_FOUND)
+  set(SDLTTF_VENDORED ON CACHE BOOL "Use vendored dependencies for SDL_ttf" FORCE)
+  set(SDLTTF_SAMPLES OFF CACHE BOOL "Build SDL_ttf samples" FORCE)
+  set(SDLTTF_INSTALL OFF CACHE BOOL "Install SDL_ttf" FORCE)
+  FetchContent_Declare(
+    SDL3_ttf
+    GIT_REPOSITORY https://github.com/libsdl-org/SDL_ttf.git
+    GIT_TAG release-3.2.2
+    GIT_SHALLOW TRUE
+  )
+  FetchContent_MakeAvailable(SDL3_ttf)
+endif()
+
+add_executable(sdl3_clay_reference
+  src/main.cpp
+  src/app/App.cpp
+  src/rendering/SdlClayRenderer.cpp
+  src/ui/core/ClayService.cpp
+  src/ui/core/Primitives.cpp
+  src/ui/screens/ConnectScreen.cpp
+  src/ui/screens/GameScreen.cpp
+  src/ui/screens/LobbyScreen.cpp
+  src/ui/screens/MainMenuScreen.cpp
+  src/ui/screens/OptionsScreen.cpp
+  third_party/clay/clay_renderer_SDL3.c
+  third_party/clay_impl.cpp
+)
+
+target_include_directories(sdl3_clay_reference PRIVATE
+  src
+  third_party/clay
+)
+
+set_source_files_properties(third_party/clay/clay_renderer_SDL3.c PROPERTIES LANGUAGE CXX)
+
+target_compile_options(sdl3_clay_reference PRIVATE
+  $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall -Wextra -Wpedantic -Wno-missing-field-initializers>
+)
+
+target_link_libraries(sdl3_clay_reference PRIVATE
+  SDL3::SDL3
+  SDL3_ttf::SDL3_ttf
+)
+
+if(APPLE)
+  set_target_properties(sdl3_clay_reference PROPERTIES
+    MACOSX_BUNDLE FALSE
+  )
+endif()
