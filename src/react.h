@@ -49,13 +49,14 @@ int  react_error_count(void);
 void react_enter(uint32_t fiber_id);
 void react_leave(void);
 uint32_t react_next_child_index(void);
+Clay_ElementId react_make_instance_id(Clay_String name, uint32_t index, bool keyed);
 
 #define REACT_INSTANCE_ID(name_literal)                                           \
-    CLAY_IDI_LOCAL(name_literal, react_next_child_index())
+    react_make_instance_id(CLAY_STRING(name_literal), react_next_child_index(), false)
 
 #define REACT_INSTANCE_ID_KEY(name_literal, key_index)                            \
-    CLAY_IDI_LOCAL(name_literal,                                                  \
-        ((void)react_next_child_index(), ((uint32_t)(key_index) ^ 0x80000000u)))
+    react_make_instance_id(CLAY_STRING(name_literal),                             \
+        ((void)react_next_child_index(), (uint32_t)(key_index)), true)
 
 #define REACT_COMPONENT_BEGIN(name_literal)                                       \
     {                                                                             \

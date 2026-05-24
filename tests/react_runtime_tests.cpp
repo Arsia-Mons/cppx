@@ -116,6 +116,7 @@ static bool keyed_siblings_keep_state_across_reorder(void) {
 }
 
 static int g_provider_values[2] = {};
+static int g_provider_child_values[2] = {};
 
 static void PositionalProviderProbe(int slot, int initial, int write_value) {
     REACT_PROVIDER_ENTER("ProviderProbe");
@@ -134,6 +135,22 @@ static void KeyedProviderProbe(int key, int initial, int write_value) {
         *value = write_value;
     }
     g_provider_values[key] = *value;
+    REACT_PROVIDER_EXIT();
+}
+
+static void ProviderChildProbe(int provider_slot, int initial, int write_value) {
+    REACT_COMPONENT_BEGIN("ProviderChildProbe") {
+        int *value = use_state_int(initial);
+        if (write_value >= 0) {
+            *value = write_value;
+        }
+        g_provider_child_values[provider_slot] = *value;
+    } REACT_COMPONENT_END();
+}
+
+static void ProviderWithChildProbe(int slot, int initial, int write_value) {
+    REACT_PROVIDER_ENTER("ProviderWithChildProbe");
+    ProviderChildProbe(slot, initial, write_value);
     REACT_PROVIDER_EXIT();
 }
 
@@ -177,6 +194,26 @@ static bool transparent_providers_use_instance_identity(void) {
     CHECK(react_error_count() == 0);
     CHECK(g_provider_values[0] == 10);
     CHECK(g_provider_values[1] == 20);
+
+    react_init(g_clay);
+    g_provider_child_values[0] = 0;
+    g_provider_child_values[1] = 0;
+
+    run_frame([] {
+        ProviderWithChildProbe(0, 1, 10);
+        ProviderWithChildProbe(1, 2, 20);
+    });
+    CHECK(react_error_count() == 0);
+    CHECK(g_provider_child_values[0] == 10);
+    CHECK(g_provider_child_values[1] == 20);
+
+    run_frame([] {
+        ProviderWithChildProbe(0, 99, -1);
+        ProviderWithChildProbe(1, 99, -1);
+    });
+    CHECK(react_error_count() == 0);
+    CHECK(g_provider_child_values[0] == 10);
+    CHECK(g_provider_child_values[1] == 20);
     return true;
 }
 

@@ -215,6 +215,12 @@ uint32_t react_next_child_index(void) {
     return G.current->next_child_index++;
 }
 
+Clay_ElementId react_make_instance_id(Clay_String name, uint32_t index, bool keyed) {
+    uint32_t parent_id = G.current ? G.current->id : 0x811C9DC5u;
+    uint32_t seed = parent_id ^ (keyed ? 0x9E3779B9u : 0x85EBCA6Bu);
+    return Clay__HashString(name, index, seed);
+}
+
 void react_leave(void) {
     if (G.render_stack_count <= 0) {
         react_report_error("react: leave without matching enter\n");
