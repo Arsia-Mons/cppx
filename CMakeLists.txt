@@ -47,6 +47,7 @@ add_executable(hello
   src/ui/components/app.cpp
   src/ui/components/counter.cpp
   src/ui/components/image.cpp
+  src/ui/providers/input_provider.cpp
   src/ui/providers/theme_provider.cpp
   third_party/clay_impl.cpp
   third_party/clay/clay_renderer_SDL3.c

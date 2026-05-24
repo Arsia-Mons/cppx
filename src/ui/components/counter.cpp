@@ -6,8 +6,7 @@
 #include "../../input.h"
 #include "../../react.h"
 
-#include "app.h"
-
+#include "../providers/input_provider.h"
 #include "../providers/theme_provider.h"
 
 #include <SDL3/SDL.h>

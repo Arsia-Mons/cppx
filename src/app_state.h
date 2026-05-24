@@ -21,7 +21,6 @@ struct Theme {
     Clay_Color  panel;
 };
 
-extern bool          g_show_counter;
 extern SDL_Renderer *g_sdl;
 
 // ----------------------------------------------------------------------------

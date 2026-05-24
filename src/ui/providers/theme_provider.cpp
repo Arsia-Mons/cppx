@@ -6,7 +6,7 @@
 #include "../../input.h"
 #include "../../react.h"
 
-#include "../components/app.h"
+#include "input_provider.h"
 
 ReactContext ThemeContext = {};
 

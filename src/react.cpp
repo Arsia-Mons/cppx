@@ -54,7 +54,8 @@ struct Fiber {
     int32_t  next_index;    // hash collision chain
     uint32_t generation;    // last frame seen (Clay's generation)
     HookSlot slots[REACT_HOOKS_PER_FIBER];
-    int32_t  slot_count;    // highest hook index touched this render
+    int32_t  slot_count;    // hook count from the previous render; -1 on mount
+    int32_t  render_slot_count;
 };
 
 struct EffectQueueEntry {
@@ -108,6 +109,7 @@ static Fiber *fiber_create(uint32_t id) {
     *f = {};
     f->id = id;
     f->next_index = -1;
+    f->slot_count = -1;
 
     uint32_t bucket = id % REACT_MAX_FIBERS;
     int32_t head = G.buckets[bucket];
@@ -143,7 +145,7 @@ void react_enter(uint32_t fiber_id) {
     if (!f) f = fiber_create(fiber_id);
     if (!f) { G.current = nullptr; G.hook_index = 0; return; }
     f->generation = G.frame;
-    f->slot_count = 0;
+    f->render_slot_count = 0;
     G.current = f;
     G.hook_index = 0;
 }
@@ -156,28 +158,55 @@ void react_leave(void) {
         return;
     }
 
+    Fiber *leaving = G.current;
+    if (leaving) {
+        if (leaving->slot_count >= 0 && leaving->slot_count != leaving->render_slot_count) {
+            fprintf(stderr,
+                    "react: hook count changed on fiber %u (was=%d now=%d)\n",
+                    leaving->id, leaving->slot_count, leaving->render_slot_count);
+        }
+        leaving->slot_count = leaving->render_slot_count;
+    }
+
     RenderFrame previous = G.render_stack[--G.render_stack_count];
     G.current = previous.current;
     G.hook_index = previous.hook_index;
 }
 
-static HookSlot *take_slot(int32_t *index_out) {
+static const char *hook_kind_name(HookKind kind) {
+    switch (kind) {
+        case HOOK_NONE:   return "none";
+        case HOOK_STATE:  return "state";
+        case HOOK_EFFECT: return "effect";
+        case HOOK_REF:    return "ref";
+    }
+    return "unknown";
+}
+
+static HookSlot *take_slot(HookKind expected, int32_t *index_out) {
     if (!G.current) return nullptr;
     int i = G.hook_index++;
+    if (i + 1 > G.current->render_slot_count) G.current->render_slot_count = i + 1;
     if (i >= REACT_HOOKS_PER_FIBER) {
         fprintf(stderr, "react: hook overflow on fiber %u (max=%d)\n",
                 G.current->id, REACT_HOOKS_PER_FIBER);
         return nullptr;
     }
-    if (i + 1 > G.current->slot_count) G.current->slot_count = i + 1;
     if (index_out) *index_out = i;
-    return &G.current->slots[i];
+    HookSlot *slot = &G.current->slots[i];
+    if (slot->kind != HOOK_NONE && slot->kind != expected) {
+        fprintf(stderr,
+                "react: hook kind changed on fiber %u slot %d (was=%s now=%s)\n",
+                G.current->id, i, hook_kind_name(slot->kind), hook_kind_name(expected));
+        return nullptr;
+    }
+    return slot;
 }
 
 // --- Hooks ---
 
 int *use_state_int(int initial) {
-    HookSlot *s = take_slot(nullptr);
+    HookSlot *s = take_slot(HOOK_STATE, nullptr);
     if (!s) { static int sink = 0; sink = initial; return &sink; }
     if (s->kind == HOOK_NONE) {
         s->kind = HOOK_STATE;
@@ -188,7 +217,7 @@ int *use_state_int(int initial) {
 
 void use_effect(ReactEffectFn fn, ReactCleanupFn cleanup, void *user, uint64_t deps_hash) {
     int32_t idx;
-    HookSlot *s = take_slot(&idx);
+    HookSlot *s = take_slot(HOOK_EFFECT, &idx);
     if (!s) return;
 
     bool first = (s->kind == HOOK_NONE);
@@ -214,7 +243,7 @@ void use_effect(ReactEffectFn fn, ReactCleanupFn cleanup, void *user, uint64_t d
 }
 
 void **use_ref(void *initial) {
-    HookSlot *s = take_slot(nullptr);
+    HookSlot *s = take_slot(HOOK_REF, nullptr);
     if (!s) { static void *sink = nullptr; sink = initial; return &sink; }
     if (s->kind == HOOK_NONE) {
         s->kind = HOOK_REF;

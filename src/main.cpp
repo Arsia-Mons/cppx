@@ -32,7 +32,6 @@
 // Definitions for the shared globals declared in app_state.h.
 // ----------------------------------------------------------------------------
 
-bool          g_show_counter = true;
 SDL_Renderer *g_sdl         = nullptr;
 
 // ----------------------------------------------------------------------------

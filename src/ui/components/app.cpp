@@ -9,20 +9,19 @@
 #include "counter.h"
 #include "image.h"
 
+#include "../providers/input_provider.h"
 #include "../providers/theme_provider.h"
 
 #include <stdio.h>
 
-// App owns InputContext; ThemeProvider owns ThemeContext (see theme_provider.cpp).
-ReactContext InputContext = {};
-
 void App(const InputState *input) {
     REACT_COMPONENT_BEGIN("App") {
-        PROVIDE(&InputContext, (void *)input) {
+        int *show_counter = use_state_int(1);
+        if (input && input->toggle_counter) *show_counter = !*show_counter;
+
+        INPUT_PROVIDER(input) {
             THEME_PROVIDER {
                 Theme *theme = (Theme *)use_context(&ThemeContext);
-
-                if (input && input->toggle_counter) g_show_counter = !g_show_counter;
 
                 static char hint_buf[128];
                 snprintf(hint_buf, sizeof(hint_buf),
@@ -52,7 +51,7 @@ void App(const InputState *input) {
                             .layoutDirection = CLAY_LEFT_TO_RIGHT,
                         },
                     }) {
-                        if (g_show_counter) {
+                        if (*show_counter) {
                             Counter();
                         }
                         Image();
