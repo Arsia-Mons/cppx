@@ -7,6 +7,7 @@
 //
 // Controls:
 //   UP / DOWN : increment / decrement the counter
+//   T         : cycle theme (App owns the index via useState, propagated via Provider)
 //   M         : mount/unmount the Counter component (triggers effect cleanup)
 //   ESC       : quit
 
@@ -35,6 +36,7 @@ static struct {
     bool up;
     bool down;
     bool m;
+    bool t;
 } g_edges;  // single-frame "just pressed" edges
 
 static bool g_show_counter = true;
@@ -83,10 +85,18 @@ static void on_clay_error(Clay_ErrorData err) {
 // ----------------------------------------------------------------------------
 
 struct Theme {
-    Clay_Color fg;
-    Clay_Color bg;
-    Clay_Color panel;
+    const char *name;
+    Clay_Color  fg;
+    Clay_Color  bg;
+    Clay_Color  panel;
 };
+
+static Theme g_themes[] = {
+    { "Dark",    {220, 230, 255, 255}, { 12,  14,  22, 255}, { 28,  32,  48, 255} },
+    { "Light",   { 30,  30,  40, 255}, {245, 245, 250, 255}, {220, 225, 235, 255} },
+    { "Sunset",  {255, 240, 210, 255}, { 30,  15,  40, 255}, { 80,  30,  60, 255} },
+};
+static const int g_theme_count = sizeof(g_themes) / sizeof(g_themes[0]);
 
 static ReactContext ThemeContext = {};
 
@@ -140,16 +150,20 @@ static void Counter(void) {
 
 static void App(void) {
     REACT_COMPONENT_BEGIN("App") {
-        // Toggle counter visibility on M edge.
+        // --- hooks ---
+        int *theme_idx = use_state_int(0);
+
+        // --- input → state ---
         if (g_edges.m) g_show_counter = !g_show_counter;
+        if (g_edges.t) *theme_idx = (*theme_idx + 1) % g_theme_count;
 
-        static Theme dark = {
-            /*fg*/    Clay_Color{220, 230, 255, 255},
-            /*bg*/    Clay_Color{ 12,  14,  22, 255},
-            /*panel*/ Clay_Color{ 28,  32,  48, 255},
-        };
+        Theme *theme = &g_themes[*theme_idx];
 
-        PROVIDE(&ThemeContext, &dark) {
+        static char hint_buf[96];
+        snprintf(hint_buf, sizeof(hint_buf),
+                 "T: theme (%s)   M: toggle Counter   ESC: quit", theme->name);
+
+        PROVIDE(&ThemeContext, theme) {
             CLAY({
                 .id = CLAY_ID_LOCAL("Root"),
                 .layout = {
@@ -158,12 +172,12 @@ static void App(void) {
                     .childGap = 16,
                     .layoutDirection = CLAY_TOP_TO_BOTTOM,
                 },
-                .backgroundColor = dark.bg,
+                .backgroundColor = theme->bg,
             }) {
                 CLAY_TEXT(cs("Hello, World!"),
-                    CLAY_TEXT_CONFIG({ .textColor = dark.fg, .fontSize = 40 }));
-                CLAY_TEXT(cs("M: toggle Counter   ESC: quit"),
-                    CLAY_TEXT_CONFIG({ .textColor = dark.fg, .fontSize = 14 }));
+                    CLAY_TEXT_CONFIG({ .textColor = theme->fg, .fontSize = 40 }));
+                CLAY_TEXT(cs(hint_buf),
+                    CLAY_TEXT_CONFIG({ .textColor = theme->fg, .fontSize = 14 }));
 
                 if (g_show_counter) {
                     Counter();
@@ -236,6 +250,7 @@ int main(int, char **) {
                         case SDLK_UP:     g_edges.up   = true; break;
                         case SDLK_DOWN:   g_edges.down = true; break;
                         case SDLK_M:      g_edges.m    = true; break;
+                        case SDLK_T:      g_edges.t    = true; break;
                         default: break;
                     }
                     break;
