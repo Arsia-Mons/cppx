@@ -95,6 +95,13 @@ The planned ownership model is:
   `PerfStatsSource{PerfPanelId}`, `PauseMenuActions{ScreenEntryId}`, and
   `UpgradeOfferActions{OfferId, Handle<Player>, ScreenEntryId}`.
 
+All source IDs, screen entry IDs, offer IDs, debug panel IDs, run IDs, and
+action objects are owner-issued capability tokens with private construction.
+UI can receive them through typed props or scoped hooks, but ordinary UI cannot
+fabricate them, reinterpret one token as another, or request a token for an
+unrelated actor/subsystem/screen. A hook that accepts an ID must also validate
+the token's owner, generation, focus/phase where relevant, and run/session.
+
 Read hooks must be shaped around those sources, not around a generic world
 value or a renamed grab bag. Acceptable forms include narrow hooks such as
 `use_actor_value<Player>(player_handle, [](const PlayerHudSource &p) { return p.hp(); })`
@@ -121,6 +128,12 @@ as `TitleActions{ScreenEntryId}`, `PauseMenuActions{ScreenEntryId}`,
 ScreenEntryId}`. They cannot enumerate the whole stack, push arbitrary screen
 IDs, pop entries they do not own, or attach arbitrary payload types.
 
+Screen props are data-only field-list structs. They may contain primitive/copy
+data, owner-issued IDs, and explicitly named narrow sources/actions passed as
+separate fields. They must not contain `ClientState`, `EngineState`, raw stack
+snapshots, service bags, source/action registries, platform handles, `std::any`,
+unfiltered variants, or unrelated source/action capabilities.
+
 Every phase that touches these boundaries must include compile-fail or
 boundary-test artifacts proving that UI/client read-lane code cannot include
 mutable simulation internals, cannot call pool `resolve` helpers, cannot acquire
@@ -129,6 +142,9 @@ work through a gameplay-only action capability. Those artifacts must also prove
 that read sources and action capabilities cannot grow into grab bags by exposing
 unrelated actor pools, unrelated subsystems, arbitrary actor enumeration, or
 dependencies broader than their declared source IDs.
+They must also prove ordinary UI cannot fabricate owner-issued tokens or call
+scoped hooks with stale, unrelated, unfocused, wrong-generation, or wrong-run
+tokens.
 
 ### Phase exit evidence
 
@@ -178,6 +194,10 @@ test that would fail if the implementation took the easiest visible shortcut:
   comparison mode. Source-side negative tests fail on missing sources,
   destroyed/reused actor handles, selected-source changes, and selectors that
   reach through to unrelated pools.
+- **Capability tokens:** compile-fail tests prove UI cannot fabricate
+  `SourceId`, `DebugPanelId`, `ScreenEntryId`, `OfferId`, `RunId`, or scoped
+  action objects; runtime tests prove stale generation/focus/run tokens are
+  rejected without mutating state.
 - **Screen stack:** an inspection test proves `ClientState` / navigation state
   is the owner and UI only renders it; a tick-gating transcript proves gameplay
   systems do not run or mutate gameplay pools while Pause / Title is on top; a
@@ -360,9 +380,13 @@ primitive.
       For now: WASD updates player position directly inside tick (commands
       come in phase 4).
 - [ ] Wire `engine_tick` into `main.cpp` immediately before
-      the UI frame. Build a read-only frame snapshot after tick completion and
-      pass that snapshot/read capability to `App()`; do not pass a mutable or
-      const world pointer to UI.
+      the UI frame. After tick completion, build a renderer-only
+      `WorldSceneSnapshot` for the direct-SDL scene pass and separate UI-only
+      `UiReadInputs` containing only explicit owner-issued sources such as
+      `PlayerHudSource{Handle<Player>}`. `App()` and screens must receive
+      `UiReadInputs` / explicit sources only; they must not receive the full
+      frame snapshot, actor-pool arrays, broad dependency registries, or a
+      mutable/const world pointer.
 - [ ] HUD: render `HP: %d` reading through a narrow
       `PlayerHudSource{Handle<Player>}` provider. Do not add `WorldContext` or
       a player/combat grab bag.
@@ -381,6 +405,9 @@ primitive.
   finishes before `react_begin_frame`, a stable-ID inspection for the HUD, and
   a boundary artifact proving UI code cannot include mutable simulation/pool
   internals or obtain a generic world pointer.
+- Phase evidence includes negative tests proving UI cannot receive
+  `WorldSceneSnapshot`, a full `FrameSnapshot`, actor-pool arrays, or broad
+  dependency registries.
 
 ---
 
@@ -397,6 +424,10 @@ simulation state.
       `use_subsystem_value<TSource, TValue>(SourceId, selector)`. Do not add a
       hook that passes `World&`, `SimulationWorld&`, `auto&` world-shaped
       objects, or broad player/combat grab bags to selectors.
+- [ ] Source IDs are owner-issued capability tokens with private construction.
+      UI may use only tokens injected through typed props/sources. It cannot
+      construct arbitrary `Handle<TActor>`, `SourceId`, or subsystem IDs and pass
+      them into read hooks.
 - [ ] Selectors receive only the target-bound or subsystem-bound source they
       subscribe to (`const PlayerHudSource&`, `const EnemyReadSource&`,
       `const InventorySource&`, etc.) and return a value (POD or small).
@@ -422,6 +453,9 @@ simulation state.
   selectors cannot accept `World&` / `SimulationWorld&`, cannot call `world()`,
   cannot subscribe to every pool by default, and cannot receive a read source
   that exposes fields or dependency stamps outside its declared target/subsystem.
+- Phase evidence includes compile-fail tests proving ordinary UI cannot
+  fabricate source IDs, debug panel IDs, screen entry IDs, offer IDs, run IDs,
+  or read/action tokens.
 
 ---
 
@@ -470,6 +504,9 @@ simulation state.
       `use_debug_spawn_actions(DebugPanelId)` for debug spawn/damage controls.
       Do not add `use_game_commands()`, `use_navigation_commands()`, a raw
       dispatcher, or a global `use_dispatch()` equivalent to UI-facing code.
+- [ ] Action hooks accept only owner-issued tokens injected into the current
+      screen/panel context. The actions they return are focus/phase-scoped,
+      generation-checked, and run/session-checked where relevant.
 - [ ] Replace direct mutations from the input path: input handler dispatches
       commands; engine applies them inside the tick.
 - [ ] Add a compile-time mutation boundary: UI-facing code receives only a
@@ -489,6 +526,8 @@ simulation state.
 - Phase evidence includes compile-fail tests proving ordinary UI cannot include
   or call the dispatcher/queue and cannot construct command variants outside
   its scoped action object.
+- Phase evidence includes runtime tests proving stale, blurred, wrong-generation,
+  or wrong-run action tokens reject commands without mutating simulation state.
 
 ---
 
@@ -544,6 +583,11 @@ the React component that owns them.
       identities must be opaque stable IDs / handles, never raw UI pointers,
       component addresses, actor pointers, or lifetime-dependent Clay internals
       pointers.
+- [ ] Binding source/target IDs are owner-issued capability tokens with private
+      construction. A component can bind only sources and targets injected into
+      its current props/context; it cannot fabricate another actor's source,
+      bind to a debug/subsystem source it was not issued, or keep using a source
+      after focus/phase/run/generation invalidation.
 - [ ] Implement binding application: after `react_end_frame()` and before
       `SDL_RenderPresent()`, walk active source→target bindings, resolve the
       source by its stable handle/key and generation, and apply the latest
@@ -573,6 +617,9 @@ the React component that owns them.
 - Phase evidence includes source-side negative tests for destroyed/reused actor
   handles, missing damage-number sources, selected enemy changes, and selectors
   that try to read unrelated pools through a broad source.
+- Phase evidence includes compile-fail tests proving UI cannot fabricate
+  binding source/target tokens or call bind hooks outside its injected source
+  scope.
 
 ---
 
@@ -600,13 +647,19 @@ the React component that owns them.
       props such as `TitleProps`, `PauseProps`, `GameplayProps`,
       `UpgradeOfferProps`, `GameOverProps`, and `SettingsProps`. Individual
       screen components receive only their typed props, `ScreenEntryId`, and
-      entry-scoped view/actions.
+      entry-scoped view/actions. Props are data-only field-list structs; narrow
+      sources/actions are passed as named fields, not hidden registries or bags.
 - [ ] Implement `Title`, `Gameplay`, `Pause` screen components. Title has a
       Play button through `TitleActions{ScreenEntryId}`. Pause has Resume and
       Quit through `PauseMenuActions{ScreenEntryId}`.
 - [ ] ESC during Gameplay asks the frame/navigation router to push Pause through
       a gameplay-screen action for the current `ScreenEntryId`; gameplay UI does
       not receive raw push/pop/replace.
+- [ ] Entry-scoped actions are active only for focused/entered entries unless a
+      phase explicitly grants a background read-only capability. Lower mounted
+      entries behind Pause render from snapshots/sources but cannot dispatch
+      movement/navigation/reset/debug commands while blurred, exiting, exited,
+      stale, or replaced.
 
 **Acceptance:**
 - ESC pushes Pause; gameplay tick is frozen but the last gameplay scene remains
@@ -625,6 +678,12 @@ the React component that owns them.
 - Phase evidence includes negative tests proving ordinary screens cannot receive
   raw stack snapshots, `std::any`, unfiltered payload variants, or payload fields
   for other screen types.
+- Phase evidence includes negative tests proving typed props cannot carry
+  `ClientState`, `EngineState`, platform handles, service bags, source/action
+  registries, or unrelated capabilities.
+- Phase evidence includes negative tests proving background/stale entries cannot
+  move, push/pop, resume, reset, or queue commands after blur, pop, replacement,
+  wrong generation, or wrong run.
 
 ---
 
