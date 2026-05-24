@@ -1,9 +1,9 @@
 // Hello-world demo: Clay UI + a minimal React-style runtime.
 //
 // What this shows:
-//   - useState        : Counter's `count` survives across frames.
+//   - useState        : Counter/theme state survives across frames.
 //   - useEffect       : "Counter mounted/unmounted" logged on lifecycle.
-//   - PROVIDE/useContext : App provides a Theme; Counter reads it for color.
+//   - PROVIDE/useContext : App provides input; ThemeProvider provides theme.
 //
 // Controls:
 //   UP / DOWN : increment / decrement the counter
@@ -19,9 +19,10 @@
 #include <clay_renderer_SDL3.h>
 
 #include "app_state.h"
+#include "input.h"
 #include "react.h"
 
-#include "components/app.h"
+#include "ui/components/app.h"
 
 #include <curl/curl.h>
 
@@ -31,15 +32,6 @@
 // Definitions for the shared globals declared in app_state.h.
 // ----------------------------------------------------------------------------
 
-Theme g_themes[] = {
-    { "Dark",    {220, 230, 255, 255}, { 12,  14,  22, 255}, { 28,  32,  48, 255} },
-    { "Light",   { 30,  30,  40, 255}, {245, 245, 250, 255}, {220, 225, 235, 255} },
-    { "Sunset",  {255, 240, 210, 255}, { 30,  15,  40, 255}, { 80,  30,  60, 255} },
-};
-const int     g_theme_count = sizeof(g_themes) / sizeof(g_themes[0]);
-ReactContext  ThemeContext  = {};
-
-InputEdges    g_edges       = {};
 bool          g_show_counter = true;
 SDL_Renderer *g_sdl         = nullptr;
 
@@ -140,8 +132,7 @@ int main(int, char **) {
     // --- main loop ---
     bool running = true;
     while (running) {
-        // Reset per-frame input edges.
-        g_edges = {};
+        InputState input = {};
 
         SDL_Event ev;
         while (SDL_PollEvent(&ev)) {
@@ -152,11 +143,11 @@ int main(int, char **) {
                     if (ev.key.repeat) break;
                     switch (ev.key.key) {
                         case SDLK_ESCAPE: running = false; break;
-                        case SDLK_UP:     g_edges.up   = true; break;
-                        case SDLK_DOWN:   g_edges.down = true; break;
-                        case SDLK_M:      g_edges.m    = true; break;
-                        case SDLK_T:      g_edges.t    = true; break;
-                        case SDLK_I:      g_edges.i    = true; break;
+                        case SDLK_UP:   input.increment_counter = true; break;
+                        case SDLK_DOWN: input.decrement_counter = true; break;
+                        case SDLK_M:    input.toggle_counter = true; break;
+                        case SDLK_T:    input.cycle_theme = true; break;
+                        case SDLK_I:    input.fetch_image = true; break;
                         default: break;
                     }
                     break;
@@ -176,7 +167,7 @@ int main(int, char **) {
         // --- build the UI tree (React render phase) ---
         react_begin_frame();
         Clay_BeginLayout();
-        App(REACT_NO_PROPS);
+        App(&input);
         Clay_RenderCommandArray cmds = Clay_EndLayout();  // commit
         react_end_frame();                                // run effects, sweep unmounts
 

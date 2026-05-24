@@ -2,10 +2,13 @@
 
 #include <clay.h>
 
-#include "../app_state.h"
-#include "../react.h"
+#include "../../app_state.h"
+#include "../../input.h"
+#include "../../react.h"
 
-#include "panel.h"
+#include "app.h"
+
+#include "../providers/theme_provider.h"
 
 #include <SDL3/SDL.h>
 #include <curl/curl.h>
@@ -124,17 +127,17 @@ static void cancel_fetch(void *user) {
     cell_release(c);
 }
 
-void Image(const ReactNoProps &props) {
-    (void)props;
+void Image(void) {
     REACT_COMPONENT_BEGIN("Image") {
-        Theme    *theme    = (Theme *)use_context(&ThemeContext);
-        int      *seq      = use_state_int(0);
-        void    **cell_ref = use_ref(nullptr);
+        Theme            *theme    = (Theme *)use_context(&ThemeContext);
+        const InputState *input    = (const InputState *)use_context(&InputContext);
+        int              *seq      = use_state_int(0);
+        void            **cell_ref = use_ref(nullptr);
 
         // 'I' edge: bump seq and create a new cell. The deps change will cause
         // use_effect's cleanup to fire on the OLD cell (cancel + release),
         // then start_fetch on the NEW one.
-        if (g_edges.i) {
+        if (input && input->fetch_image) {
             *seq += 1;
             FetchCell *nc = new FetchCell();
             nc->ref.store(1, std::memory_order_relaxed); // component's ref
@@ -165,17 +168,18 @@ void Image(const ReactNoProps &props) {
           : cell->cancelled.load()       ? "cancelled"
                                          : "loading...";
 
-        PanelProps panel = {
+        CLAY({
             .id = CLAY_ID_LOCAL("ImagePanel"),
-            .sizing = { CLAY_SIZING_FIXED(220), CLAY_SIZING_FIT(0) },
-            .padding = CLAY_PADDING_ALL(10),
-            .child_gap = 6,
-            .child_alignment = { CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER },
-            .direction = CLAY_TOP_TO_BOTTOM,
-            .background = theme->panel,
-            .radius = CLAY_CORNER_RADIUS(8),
-        };
-        Panel(panel, [&] {
+            .layout = {
+                .sizing = { CLAY_SIZING_FIXED(220), CLAY_SIZING_FIT(0) },
+                .padding = CLAY_PADDING_ALL(10),
+                .childGap = 6,
+                .childAlignment = { CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER },
+                .layoutDirection = CLAY_TOP_TO_BOTTOM,
+            },
+            .backgroundColor = theme->panel,
+            .cornerRadius = CLAY_CORNER_RADIUS(8),
+        }) {
             if (cell && cell->texture) {
                 CLAY({
                     .id = CLAY_ID_LOCAL("ImageContent"),
@@ -198,6 +202,6 @@ void Image(const ReactNoProps &props) {
             }
             CLAY_TEXT(cs("(I to fetch)"),
                 CLAY_TEXT_CONFIG({ .textColor = theme->fg, .fontSize = 12 }));
-        });
+        }
     } REACT_COMPONENT_END();
 }

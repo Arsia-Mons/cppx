@@ -8,8 +8,6 @@
 #include <SDL3/SDL.h>
 #include <clay.h>
 
-#include "react.h"
-
 #include <stdint.h>
 #include <string.h>
 
@@ -22,26 +20,6 @@ struct Theme {
     Clay_Color  bg;
     Clay_Color  panel;
 };
-
-extern Theme        g_themes[];
-extern const int    g_theme_count;
-extern ReactContext ThemeContext;
-
-// ----------------------------------------------------------------------------
-// Per-frame input edges ("just pressed" this frame)
-
-struct InputEdges {
-    bool up;
-    bool down;
-    bool m;
-    bool t;
-    bool i;
-};
-
-extern InputEdges g_edges;
-
-// ----------------------------------------------------------------------------
-// Other shared state
 
 extern bool          g_show_counter;
 extern SDL_Renderer *g_sdl;

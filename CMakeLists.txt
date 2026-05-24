@@ -44,9 +44,10 @@ find_package(CURL REQUIRED)
 add_executable(hello
   src/main.cpp
   src/react.cpp
-  src/components/app.cpp
-  src/components/counter.cpp
-  src/components/image.cpp
+  src/ui/components/app.cpp
+  src/ui/components/counter.cpp
+  src/ui/components/image.cpp
+  src/ui/providers/theme_provider.cpp
   third_party/clay_impl.cpp
   third_party/clay/clay_renderer_SDL3.c
   third_party/stb_image_impl.cpp
