@@ -176,7 +176,7 @@ int main(int, char **) {
         // --- build the UI tree (React render phase) ---
         react_begin_frame();
         Clay_BeginLayout();
-        App();
+        App(REACT_NO_PROPS);
         Clay_RenderCommandArray cmds = Clay_EndLayout();  // commit
         react_end_frame();                                // run effects, sweep unmounts
 

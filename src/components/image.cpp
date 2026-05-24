@@ -5,6 +5,8 @@
 #include "../app_state.h"
 #include "../react.h"
 
+#include "panel.h"
+
 #include <SDL3/SDL.h>
 #include <curl/curl.h>
 
@@ -122,7 +124,8 @@ static void cancel_fetch(void *user) {
     cell_release(c);
 }
 
-void Image(void) {
+void Image(const ReactNoProps &props) {
+    (void)props;
     REACT_COMPONENT_BEGIN("Image") {
         Theme    *theme    = (Theme *)use_context(&ThemeContext);
         int      *seq      = use_state_int(0);
@@ -162,18 +165,17 @@ void Image(void) {
           : cell->cancelled.load()       ? "cancelled"
                                          : "loading...";
 
-        CLAY({
+        PanelProps panel = {
             .id = CLAY_ID_LOCAL("ImagePanel"),
-            .layout = {
-                .sizing = { CLAY_SIZING_FIXED(220), CLAY_SIZING_FIT(0) },
-                .padding = CLAY_PADDING_ALL(10),
-                .childGap = 6,
-                .childAlignment = { CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER },
-                .layoutDirection = CLAY_TOP_TO_BOTTOM,
-            },
-            .backgroundColor = theme->panel,
-            .cornerRadius = CLAY_CORNER_RADIUS(8),
-        }) {
+            .sizing = { CLAY_SIZING_FIXED(220), CLAY_SIZING_FIT(0) },
+            .padding = CLAY_PADDING_ALL(10),
+            .child_gap = 6,
+            .child_alignment = { CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER },
+            .direction = CLAY_TOP_TO_BOTTOM,
+            .background = theme->panel,
+            .radius = CLAY_CORNER_RADIUS(8),
+        };
+        Panel(panel, [&] {
             if (cell && cell->texture) {
                 CLAY({
                     .id = CLAY_ID_LOCAL("ImageContent"),
@@ -196,6 +198,6 @@ void Image(void) {
             }
             CLAY_TEXT(cs("(I to fetch)"),
                 CLAY_TEXT_CONFIG({ .textColor = theme->fg, .fontSize = 12 }));
-        }
+        });
     } REACT_COMPONENT_END();
 }

@@ -1,3 +1,5 @@
 #pragma once
 
-void Counter(void);
+#include "../react.h"
+
+void Counter(const ReactNoProps &props);

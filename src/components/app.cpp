@@ -10,7 +10,8 @@
 
 #include <stdio.h>
 
-void App(void) {
+void App(const ReactNoProps &props) {
+    (void)props;
     REACT_COMPONENT_BEGIN("App") {
         // --- hooks ---
         int *theme_idx = use_state_int(0);
@@ -51,9 +52,9 @@ void App(void) {
                     },
                 }) {
                     if (g_show_counter) {
-                        Counter();
+                        Counter(REACT_NO_PROPS);
                     }
-                    Image();
+                    Image(REACT_NO_PROPS);
                 }
             }
         }

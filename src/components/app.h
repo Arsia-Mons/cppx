@@ -1,3 +1,5 @@
 #pragma once
 
-void App(void);
+#include "../react.h"
+
+void App(const ReactNoProps &props);

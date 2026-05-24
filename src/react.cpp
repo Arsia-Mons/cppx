@@ -7,6 +7,7 @@
 #define REACT_MAX_FIBERS        128
 #define REACT_HOOKS_PER_FIBER     8
 #define REACT_MAX_EFFECT_QUEUE   64
+#define REACT_MAX_RENDER_DEPTH  128
 
 enum HookKind : uint8_t {
     HOOK_NONE   = 0,
@@ -61,12 +62,19 @@ struct EffectQueueEntry {
     int32_t  slot_index;
 };
 
+struct RenderFrame {
+    Fiber   *current;
+    int32_t  hook_index;
+};
+
 static struct {
     Fiber             fibers[REACT_MAX_FIBERS];
     int32_t           fiber_count;
     int32_t           buckets[REACT_MAX_FIBERS]; // hash%cap -> fiber index, or -1
     EffectQueueEntry  effect_queue[REACT_MAX_EFFECT_QUEUE];
     int32_t           effect_queue_count;
+    RenderFrame       render_stack[REACT_MAX_RENDER_DEPTH];
+    int32_t           render_stack_count;
 
     Fiber            *current;
     int32_t           hook_index;
@@ -115,6 +123,22 @@ static Fiber *fiber_create(uint32_t id) {
 }
 
 void react_enter(uint32_t fiber_id) {
+    if (G.render_stack_count >= REACT_MAX_RENDER_DEPTH) {
+        fprintf(stderr, "react: render stack overflow (max=%d)\n", REACT_MAX_RENDER_DEPTH);
+        G.current = nullptr;
+        G.hook_index = 0;
+        return;
+    }
+
+    G.render_stack[G.render_stack_count++] = { G.current, G.hook_index };
+
+    if (fiber_id == 0) {
+        fprintf(stderr, "react: component entered with id=0; add a Clay .id\n");
+        G.current = nullptr;
+        G.hook_index = 0;
+        return;
+    }
+
     Fiber *f = fiber_lookup(fiber_id);
     if (!f) f = fiber_create(fiber_id);
     if (!f) { G.current = nullptr; G.hook_index = 0; return; }
@@ -125,8 +149,16 @@ void react_enter(uint32_t fiber_id) {
 }
 
 void react_leave(void) {
-    G.current = nullptr;
-    G.hook_index = 0;
+    if (G.render_stack_count <= 0) {
+        fprintf(stderr, "react: leave without matching enter\n");
+        G.current = nullptr;
+        G.hook_index = 0;
+        return;
+    }
+
+    RenderFrame previous = G.render_stack[--G.render_stack_count];
+    G.current = previous.current;
+    G.hook_index = previous.hook_index;
 }
 
 static HookSlot *take_slot(int32_t *index_out) {
@@ -219,6 +251,9 @@ void *use_context(ReactContext *ctx) {
 void react_begin_frame(void) {
     G.frame++;
     G.effect_queue_count = 0;
+    G.render_stack_count = 0;
+    G.current = nullptr;
+    G.hook_index = 0;
 }
 
 static void run_active_cleanup(HookSlot *s) {
