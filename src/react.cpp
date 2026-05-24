@@ -12,6 +12,7 @@ enum HookKind : uint8_t {
     HOOK_NONE   = 0,
     HOOK_STATE  = 1,
     HOOK_EFFECT = 2,
+    HOOK_REF    = 3,
 };
 
 struct StateData {
@@ -19,11 +20,23 @@ struct StateData {
 };
 
 struct EffectData {
-    ReactEffectFn  fn;
-    ReactCleanupFn cleanup;
-    void          *user;
+    // What use_effect just scheduled, awaiting next flush.
+    ReactEffectFn  pending_fn;
+    ReactCleanupFn pending_cleanup;
+    void          *pending_user;
+    bool           has_pending;
+
+    // The cleanup paired with the most recently executed effect, waiting
+    // to be invoked on the next deps-change or on unmount.
+    ReactCleanupFn active_cleanup;
+    void          *active_user;
+    bool           has_active;
+
     uint64_t       deps_hash;
-    bool           has_run;
+};
+
+struct RefData {
+    void *current;
 };
 
 struct HookSlot {
@@ -31,6 +44,7 @@ struct HookSlot {
     union {
         StateData  state;
         EffectData effect;
+        RefData    ref;
     } u;
 };
 
@@ -149,21 +163,32 @@ void use_effect(ReactEffectFn fn, ReactCleanupFn cleanup, void *user, uint64_t d
     if (first) {
         s->kind = HOOK_EFFECT;
         s->u.effect = {};
-        s->u.effect.deps_hash = ~deps_hash; // force mismatch on first run
+        s->u.effect.deps_hash = ~deps_hash; // force first-run mismatch
     }
     EffectData *e = &s->u.effect;
 
     if (first || e->deps_hash != deps_hash) {
-        e->fn       = fn;
-        e->cleanup  = cleanup;
-        e->user     = user;
-        e->deps_hash = deps_hash;
+        e->pending_fn      = fn;
+        e->pending_cleanup = cleanup;
+        e->pending_user    = user;
+        e->has_pending     = true;
+        e->deps_hash       = deps_hash;
         if (G.effect_queue_count < REACT_MAX_EFFECT_QUEUE) {
             G.effect_queue[G.effect_queue_count++] = { G.current->id, idx };
         } else {
             fprintf(stderr, "react: effect queue full\n");
         }
     }
+}
+
+void **use_ref(void *initial) {
+    HookSlot *s = take_slot(nullptr);
+    if (!s) { static void *sink = nullptr; sink = initial; return &sink; }
+    if (s->kind == HOOK_NONE) {
+        s->kind = HOOK_REF;
+        s->u.ref.current = initial;
+    }
+    return &s->u.ref.current;
 }
 
 // --- Context ---
@@ -196,10 +221,10 @@ void react_begin_frame(void) {
     G.effect_queue_count = 0;
 }
 
-static void run_cleanup_if_active(HookSlot *s) {
-    if (s->kind == HOOK_EFFECT && s->u.effect.has_run && s->u.effect.cleanup) {
-        s->u.effect.cleanup(s->u.effect.user);
-        s->u.effect.has_run = false;
+static void run_active_cleanup(HookSlot *s) {
+    if (s->kind == HOOK_EFFECT && s->u.effect.has_active && s->u.effect.active_cleanup) {
+        s->u.effect.active_cleanup(s->u.effect.active_user);
+        s->u.effect.has_active = false;
     }
 }
 
@@ -212,23 +237,35 @@ void react_end_frame(void) {
         if (f->id == 0) continue;
         if (f->generation != current_gen) {
             for (int j = 0; j < REACT_HOOKS_PER_FIBER; j++) {
-                run_cleanup_if_active(&f->slots[j]);
+                run_active_cleanup(&f->slots[j]);
             }
-            f->id = 0; // tombstone; lookup still skips because id check fails
+            f->id = 0; // tombstone
         }
     }
 
-    // 2. Flush queued effects: cleanup-then-run.
+    // 2. Flush queued effects: prior active cleanup, then new effect.
+    //    Uses pending_* for what just got scheduled, active_* for what was
+    //    previously running. Crucially: active cleanup uses the *old* user,
+    //    not whatever use_effect was just called with.
     for (int i = 0; i < G.effect_queue_count; i++) {
         EffectQueueEntry &q = G.effect_queue[i];
         Fiber *f = fiber_lookup(q.fiber_id);
-        if (!f) continue; // fiber was unmounted in same frame; skip
+        if (!f) continue; // fiber unmounted in same frame
         HookSlot *s = &f->slots[q.slot_index];
         if (s->kind != HOOK_EFFECT) continue;
         EffectData *e = &s->u.effect;
-        if (e->has_run && e->cleanup) e->cleanup(e->user);
-        if (e->fn) e->fn(e->user);
-        e->has_run = true;
+        if (!e->has_pending) continue;
+
+        if (e->has_active && e->active_cleanup) {
+            e->active_cleanup(e->active_user);
+        }
+        if (e->pending_fn) {
+            e->pending_fn(e->pending_user);
+        }
+        e->active_cleanup = e->pending_cleanup;
+        e->active_user    = e->pending_user;
+        e->has_active     = true;
+        e->has_pending    = false;
     }
     G.effect_queue_count = 0;
 }

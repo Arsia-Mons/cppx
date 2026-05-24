@@ -52,6 +52,10 @@ typedef void (*ReactCleanupFn)(void *user);
 
 void use_effect(ReactEffectFn fn, ReactCleanupFn cleanup, void *user, uint64_t deps_hash);
 
+// A slot holding a single pointer that persists across renders.
+// Returns the address of the slot; the caller reads `*ref` and writes `*ref = ...`.
+void **use_ref(void *initial);
+
 // --- Context / providers ---
 
 #define REACT_CONTEXT_MAX_DEPTH 16

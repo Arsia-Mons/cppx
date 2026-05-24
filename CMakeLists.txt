@@ -39,15 +39,19 @@ if(NOT SDL3_ttf_FOUND)
   FetchContent_MakeAvailable(SDL3_ttf)
 endif()
 
+find_package(CURL REQUIRED)
+
 add_executable(hello
   src/main.cpp
   src/react.cpp
   third_party/clay_impl.cpp
   third_party/clay/clay_renderer_SDL3.c
+  third_party/stb_image_impl.cpp
 )
 
 target_include_directories(hello PRIVATE
   src
+  third_party
   third_party/clay
 )
 
@@ -61,4 +65,5 @@ target_compile_options(hello PRIVATE
 target_link_libraries(hello PRIVATE
   SDL3::SDL3
   SDL3_ttf::SDL3_ttf
+  CURL::libcurl
 )
