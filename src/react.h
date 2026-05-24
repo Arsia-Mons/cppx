@@ -1,18 +1,20 @@
 // Minimal React-style hook runtime on top of Clay.
 //
-// Fiber identity comes from Clay's parent-hashed element IDs (CLAY_ID_LOCAL).
+// Fiber identity comes from Clay's parent-hashed element IDs plus a sibling
+// position. Use REACT_COMPONENT_BEGIN_KEY for reorderable same-type siblings.
 // Hook state lives in a side table keyed by that ID. Effects run after
 // Clay_EndLayout. Unmount detection uses the runtime's frame generation.
 //
 // Public API:
-//   react_init(clay_ctx)           — call once after Clay_Initialize.
-//   react_begin_frame()            — call once per frame, before component tree.
-//   react_end_frame()              — call once per frame, after Clay_EndLayout.
-//   REACT_COMPONENT_BEGIN/END      — bracket a component's body.
-//   use_state_int(initial)         — returns int* that persists across frames.
-//   use_effect(fn, cleanup, user, deps_hash) — runs after commit when deps change.
-//   PROVIDE(ctx_ptr, value) { ... } — pushes a context value for the body.
-//   use_context(ctx_ptr)           — reads current value of a context.
+//   react_init(clay_ctx)           - call once after Clay_Initialize.
+//   react_begin_frame()            - call once per frame, before component tree.
+//   react_end_frame()              - call once per frame, after Clay_EndLayout.
+//   REACT_COMPONENT_BEGIN/END      - bracket a component's body.
+//   REACT_COMPONENT_BEGIN_KEY/END  - bracket a repeated/keyed component body.
+//   use_state_int(initial)         - returns int* that persists across frames.
+//   use_effect(fn, cleanup, user, deps_hash) - runs after commit when deps change.
+//   PROVIDE(ctx_ptr, value) { ... } - pushes a context value for the body.
+//   use_context(ctx_ptr)           - reads current value of a context.
 //
 // Component shapes:
 //   void Component(const ComponentProps &props);
@@ -40,14 +42,25 @@ extern "C" {
 void react_init(Clay_Context *clay_ctx);
 void react_begin_frame(void);
 void react_end_frame(void);
+int  react_error_count(void);
 
 // Internal: push/pop the "currently rendering fiber" + reset/restore hook index.
 void react_enter(uint32_t fiber_id);
 void react_leave(void);
+uint32_t react_next_child_index(void);
 
 #define REACT_COMPONENT_BEGIN(name_literal)                                       \
     {                                                                             \
-        Clay_ElementId _react_cid = CLAY_ID_LOCAL(name_literal);                  \
+        Clay_ElementId _react_cid = CLAY_IDI_LOCAL(                               \
+            name_literal, react_next_child_index());                              \
+        react_enter(_react_cid.id);                                               \
+        CLAY({ .id = _react_cid })
+
+#define REACT_COMPONENT_BEGIN_KEY(name_literal, key_index)                        \
+    {                                                                             \
+        (void)react_next_child_index();                                           \
+        Clay_ElementId _react_cid = CLAY_IDI_LOCAL(                               \
+            name_literal, ((uint32_t)(key_index) ^ 0x80000000u));                 \
         react_enter(_react_cid.id);                                               \
         CLAY({ .id = _react_cid })
 

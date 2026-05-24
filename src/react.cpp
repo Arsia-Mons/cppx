@@ -1,5 +1,6 @@
 #include "react.h"
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -56,6 +57,7 @@ struct Fiber {
     HookSlot slots[REACT_HOOKS_PER_FIBER];
     int32_t  slot_count;    // hook count from the previous render; -1 on mount
     int32_t  render_slot_count;
+    uint32_t next_child_index;
 };
 
 struct EffectQueueEntry {
@@ -80,12 +82,28 @@ static struct {
     Fiber            *current;
     int32_t           hook_index;
     uint32_t          frame;   // our own per-frame generation counter
+    uint32_t          root_child_index;
+    int32_t           error_count;
 } G;
+
+static void run_active_cleanup(HookSlot *s);
+
+static void react_report_error(const char *fmt, ...) {
+    G.error_count++;
+    va_list args;
+    va_start(args, fmt);
+    vfprintf(stderr, fmt, args);
+    va_end(args);
+}
 
 void react_init(Clay_Context *clay_ctx) {
     (void)clay_ctx; // reserved for future use; we don't need to read Clay internals
     memset(&G, 0, sizeof(G));
     for (int i = 0; i < REACT_MAX_FIBERS; i++) G.buckets[i] = -1;
+}
+
+int react_error_count(void) {
+    return G.error_count;
 }
 
 static Fiber *fiber_lookup(uint32_t id) {
@@ -100,33 +118,74 @@ static Fiber *fiber_lookup(uint32_t id) {
     return nullptr;
 }
 
-static Fiber *fiber_create(uint32_t id) {
-    if (G.fiber_count >= REACT_MAX_FIBERS) {
-        fprintf(stderr, "react: out of fibers (max=%d)\n", REACT_MAX_FIBERS);
-        return nullptr;
+static void fiber_link_to_bucket(int32_t idx) {
+    Fiber *f = &G.fibers[idx];
+    uint32_t bucket = f->id % REACT_MAX_FIBERS;
+    f->next_index = G.buckets[bucket];
+    G.buckets[bucket] = idx;
+}
+
+static void fiber_unlink_from_bucket(int32_t idx) {
+    Fiber *f = &G.fibers[idx];
+    if (f->id == 0) return;
+
+    uint32_t bucket = f->id % REACT_MAX_FIBERS;
+    int32_t prev = -1;
+    int32_t cur = G.buckets[bucket];
+    while (cur >= 0) {
+        Fiber *entry = &G.fibers[cur];
+        if (cur == idx) {
+            if (prev >= 0) {
+                G.fibers[prev].next_index = entry->next_index;
+            } else {
+                G.buckets[bucket] = entry->next_index;
+            }
+            entry->next_index = -1;
+            return;
+        }
+        prev = cur;
+        cur = entry->next_index;
     }
-    Fiber *f = &G.fibers[G.fiber_count];
+}
+
+static Fiber *fiber_create(uint32_t id) {
+    int32_t idx = -1;
+    for (int32_t i = 0; i < G.fiber_count; i++) {
+        if (G.fibers[i].id == 0) {
+            idx = i;
+            break;
+        }
+    }
+    if (idx < 0) {
+        if (G.fiber_count >= REACT_MAX_FIBERS) {
+            react_report_error("react: out of fibers (max=%d)\n", REACT_MAX_FIBERS);
+            return nullptr;
+        }
+        idx = G.fiber_count++;
+    }
+
+    Fiber *f = &G.fibers[idx];
     *f = {};
     f->id = id;
-    f->next_index = -1;
     f->slot_count = -1;
-
-    uint32_t bucket = id % REACT_MAX_FIBERS;
-    int32_t head = G.buckets[bucket];
-    if (head < 0) {
-        G.buckets[bucket] = G.fiber_count;
-    } else {
-        Fiber *p = &G.fibers[head];
-        while (p->next_index >= 0) p = &G.fibers[p->next_index];
-        p->next_index = G.fiber_count;
-    }
-    G.fiber_count++;
+    fiber_link_to_bucket(idx);
     return f;
+}
+
+static void fiber_destroy(int32_t idx) {
+    Fiber *f = &G.fibers[idx];
+    if (f->id == 0) return;
+
+    for (int j = 0; j < REACT_HOOKS_PER_FIBER; j++) {
+        run_active_cleanup(&f->slots[j]);
+    }
+    fiber_unlink_from_bucket(idx);
+    *f = {};
 }
 
 void react_enter(uint32_t fiber_id) {
     if (G.render_stack_count >= REACT_MAX_RENDER_DEPTH) {
-        fprintf(stderr, "react: render stack overflow (max=%d)\n", REACT_MAX_RENDER_DEPTH);
+        react_report_error("react: render stack overflow (max=%d)\n", REACT_MAX_RENDER_DEPTH);
         G.current = nullptr;
         G.hook_index = 0;
         return;
@@ -135,7 +194,7 @@ void react_enter(uint32_t fiber_id) {
     G.render_stack[G.render_stack_count++] = { G.current, G.hook_index };
 
     if (fiber_id == 0) {
-        fprintf(stderr, "react: component entered with id=0; add a Clay .id\n");
+        react_report_error("react: component entered with id=0; add a Clay .id\n");
         G.current = nullptr;
         G.hook_index = 0;
         return;
@@ -146,13 +205,19 @@ void react_enter(uint32_t fiber_id) {
     if (!f) { G.current = nullptr; G.hook_index = 0; return; }
     f->generation = G.frame;
     f->render_slot_count = 0;
+    f->next_child_index = 0;
     G.current = f;
     G.hook_index = 0;
 }
 
+uint32_t react_next_child_index(void) {
+    if (!G.current) return G.root_child_index++;
+    return G.current->next_child_index++;
+}
+
 void react_leave(void) {
     if (G.render_stack_count <= 0) {
-        fprintf(stderr, "react: leave without matching enter\n");
+        react_report_error("react: leave without matching enter\n");
         G.current = nullptr;
         G.hook_index = 0;
         return;
@@ -161,9 +226,8 @@ void react_leave(void) {
     Fiber *leaving = G.current;
     if (leaving) {
         if (leaving->slot_count >= 0 && leaving->slot_count != leaving->render_slot_count) {
-            fprintf(stderr,
-                    "react: hook count changed on fiber %u (was=%d now=%d)\n",
-                    leaving->id, leaving->slot_count, leaving->render_slot_count);
+            react_report_error("react: hook count changed on fiber %u (was=%d now=%d)\n",
+                               leaving->id, leaving->slot_count, leaving->render_slot_count);
         }
         leaving->slot_count = leaving->render_slot_count;
     }
@@ -188,16 +252,15 @@ static HookSlot *take_slot(HookKind expected, int32_t *index_out) {
     int i = G.hook_index++;
     if (i + 1 > G.current->render_slot_count) G.current->render_slot_count = i + 1;
     if (i >= REACT_HOOKS_PER_FIBER) {
-        fprintf(stderr, "react: hook overflow on fiber %u (max=%d)\n",
-                G.current->id, REACT_HOOKS_PER_FIBER);
+        react_report_error("react: hook overflow on fiber %u (max=%d)\n",
+                           G.current->id, REACT_HOOKS_PER_FIBER);
         return nullptr;
     }
     if (index_out) *index_out = i;
     HookSlot *slot = &G.current->slots[i];
     if (slot->kind != HOOK_NONE && slot->kind != expected) {
-        fprintf(stderr,
-                "react: hook kind changed on fiber %u slot %d (was=%s now=%s)\n",
-                G.current->id, i, hook_kind_name(slot->kind), hook_kind_name(expected));
+        react_report_error("react: hook kind changed on fiber %u slot %d (was=%s now=%s)\n",
+                           G.current->id, i, hook_kind_name(slot->kind), hook_kind_name(expected));
         return nullptr;
     }
     return slot;
@@ -237,7 +300,7 @@ void use_effect(ReactEffectFn fn, ReactCleanupFn cleanup, void *user, uint64_t d
         if (G.effect_queue_count < REACT_MAX_EFFECT_QUEUE) {
             G.effect_queue[G.effect_queue_count++] = { G.current->id, idx };
         } else {
-            fprintf(stderr, "react: effect queue full\n");
+            react_report_error("react: effect queue full\n");
         }
     }
 }
@@ -270,7 +333,7 @@ void react_provider_pop(ReactContext *ctx) {
 }
 
 void *use_context(ReactContext *ctx) {
-    // useContext doesn't consume a hook slot in this simple impl — it's a pure
+    // useContext doesn't consume a hook slot in this simple impl; it's a pure
     // read of the descent-stack. (No selective rerender, so no subscription.)
     return ctx->current;
 }
@@ -283,6 +346,7 @@ void react_begin_frame(void) {
     G.render_stack_count = 0;
     G.current = nullptr;
     G.hook_index = 0;
+    G.root_child_index = 0;
 }
 
 static void run_active_cleanup(HookSlot *s) {
@@ -300,10 +364,7 @@ void react_end_frame(void) {
         Fiber *f = &G.fibers[i];
         if (f->id == 0) continue;
         if (f->generation != current_gen) {
-            for (int j = 0; j < REACT_HOOKS_PER_FIBER; j++) {
-                run_active_cleanup(&f->slots[j]);
-            }
-            f->id = 0; // tombstone
+            fiber_destroy(i);
         }
     }
 

@@ -41,6 +41,8 @@ endif()
 
 find_package(CURL REQUIRED)
 
+enable_testing()
+
 add_executable(hello
   src/main.cpp
   src/react.cpp
@@ -72,3 +74,21 @@ target_link_libraries(hello PRIVATE
   SDL3_ttf::SDL3_ttf
   CURL::libcurl
 )
+
+add_executable(react_runtime_tests
+  tests/react_runtime_tests.cpp
+  src/react.cpp
+  third_party/clay_impl.cpp
+)
+
+target_include_directories(react_runtime_tests PRIVATE
+  src
+  third_party
+  third_party/clay
+)
+
+target_compile_options(react_runtime_tests PRIVATE
+  $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall -Wextra -Wno-missing-field-initializers -Wno-c99-designator -Wno-unused-parameter>
+)
+
+add_test(NAME react_runtime_tests COMMAND react_runtime_tests)
