@@ -43,6 +43,7 @@ extern "C" {
 void react_init(Clay_Context *clay_ctx);
 void react_begin_frame(void);
 void react_end_frame(void);
+void react_shutdown(void);
 int  react_error_count(void);
 
 // Internal: push/pop the "currently rendering fiber" + reset/restore hook index.

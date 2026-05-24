@@ -177,6 +177,7 @@ int main(int, char **) {
         SDL_RenderPresent(g_sdl);
     }
 
+    react_shutdown();
     SDL_free(clay_buf);
     TTF_CloseFont(g_font);
     TTF_DestroyRendererTextEngine(g_text_eng);

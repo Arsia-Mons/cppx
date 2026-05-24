@@ -32,6 +32,7 @@ struct FetchCell {
     int               w = 0, h = 0;
     unsigned char    *rgba = nullptr;   // owned by worker until ready; then by main
     SDL_Texture      *texture = nullptr; // main-thread only
+    SDL_Thread       *thread = nullptr;  // joined by cleanup before curl_global_cleanup
 };
 
 static void cell_retain(FetchCell *c) {
@@ -106,12 +107,10 @@ static void start_fetch(void *user) {
     FetchCell *c = static_cast<FetchCell *>(user);
     if (!c) return;
     cell_retain(c); // worker's ref
-    SDL_Thread *t = SDL_CreateThread(worker_fetch, "img-fetch", c);
-    if (!t) {
+    c->thread = SDL_CreateThread(worker_fetch, "img-fetch", c);
+    if (!c->thread) {
         SDL_Log("SDL_CreateThread failed: %s", SDL_GetError());
         cell_release(c); // worker never started; undo retain
-    } else {
-        SDL_DetachThread(t);
     }
 }
 
@@ -119,6 +118,10 @@ static void cancel_fetch(void *user) {
     FetchCell *c = static_cast<FetchCell *>(user);
     if (!c) return;
     c->cancelled.store(true, std::memory_order_relaxed);
+    if (c->thread) {
+        SDL_WaitThread(c->thread, nullptr);
+        c->thread = nullptr;
+    }
     if (c->texture) {
         SDL_DestroyTexture(c->texture);
         c->texture = nullptr;

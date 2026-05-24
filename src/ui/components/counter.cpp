@@ -13,21 +13,30 @@
 
 #include <stdio.h>
 
+struct CounterScratch {
+    char count_buf[64];
+};
+
 static void on_counter_mount(void *user) {
     (void)user;
     SDL_Log("[effect] Counter mounted");
 }
 
 static void on_counter_unmount(void *user) {
-    (void)user;
     SDL_Log("[effect] Counter unmounted (cleanup ran)");
+    delete static_cast<CounterScratch *>(user);
 }
 
 void Counter(void) {
     REACT_COMPONENT_BEGIN("Counter") {
         // --- hooks (always in this order; never conditional) ---
         int *count = use_state_int(0);
-        use_effect(on_counter_mount, on_counter_unmount, /*user*/ nullptr, /*deps*/ 0);
+        void **scratch_ref = use_ref(nullptr);
+        if (!*scratch_ref) {
+            *scratch_ref = new CounterScratch();
+        }
+        CounterScratch *scratch = static_cast<CounterScratch *>(*scratch_ref);
+        use_effect(on_counter_mount, on_counter_unmount, scratch, /*deps*/ 0);
         Theme            *theme = (Theme *)use_context(&ThemeContext);
         const InputState *input = (const InputState *)use_context(&InputContext);
 
@@ -36,8 +45,7 @@ void Counter(void) {
         if (input && input->decrement_counter) *count -= 1;
 
         // --- format the dynamic text into a buffer that outlives Clay_EndLayout ---
-        static char count_buf[64];
-        snprintf(count_buf, sizeof(count_buf), "Count: %d", *count);
+        snprintf(scratch->count_buf, sizeof(scratch->count_buf), "Count: %d", *count);
 
         CLAY({
             .id = CLAY_ID_LOCAL("CounterPanel"),
@@ -50,7 +58,7 @@ void Counter(void) {
             .backgroundColor = theme->panel,
             .cornerRadius = CLAY_CORNER_RADIUS(8),
         }) {
-            CLAY_TEXT(cs(count_buf),
+            CLAY_TEXT(cs(scratch->count_buf),
                 CLAY_TEXT_CONFIG({ .textColor = theme->fg, .fontSize = 32 }));
             CLAY_TEXT(cs("(UP/DOWN to change)"),
                 CLAY_TEXT_CONFIG({ .textColor = theme->fg, .fontSize = 14 }));

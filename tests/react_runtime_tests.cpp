@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define CHECK(expr)                                                              \
     do {                                                                         \
@@ -21,6 +22,12 @@ static void on_clay_error(Clay_ErrorData error) {
     fprintf(stderr, "clay: %.*s\n", (int)error.errorText.length, error.errorText.chars);
 }
 
+static Clay_Dimensions measure_text(Clay_StringSlice text,
+                                    Clay_TextElementConfig *,
+                                    void *) {
+    return Clay_Dimensions{ (float)text.length * 8.0f, 16.0f };
+}
+
 static bool init_clay_once(void) {
     if (g_clay) return true;
 
@@ -32,19 +39,21 @@ static bool init_clay_once(void) {
     g_clay = Clay_Initialize(arena, Clay_Dimensions{ 640, 480 },
                              Clay_ErrorHandler{ on_clay_error, nullptr });
     CHECK(g_clay != nullptr);
+    Clay_SetMeasureTextFunction(measure_text, nullptr);
     return true;
 }
 
 template <typename Build>
-static void run_frame(Build build) {
+static Clay_RenderCommandArray run_frame(Build build) {
     react_begin_frame();
     Clay_SetLayoutDimensions(Clay_Dimensions{ 640, 480 });
     Clay_BeginLayout();
     CLAY({ .id = CLAY_ID("TestRoot") }) {
         build();
     }
-    (void)Clay_EndLayout();
+    Clay_RenderCommandArray commands = Clay_EndLayout();
     react_end_frame();
+    return commands;
 }
 
 static int g_probe_values[2] = {};
@@ -217,6 +226,67 @@ static bool transparent_providers_use_instance_identity(void) {
     return true;
 }
 
+static int g_scratch_cleanups = 0;
+
+static void cleanup_text_scratch(void *user) {
+    g_scratch_cleanups++;
+    delete[] static_cast<char *>(user);
+}
+
+static void TextScratchProbe(int value) {
+    REACT_COMPONENT_BEGIN("TextScratchProbe") {
+        void **scratch_ref = use_ref(nullptr);
+        if (!*scratch_ref) {
+            *scratch_ref = new char[64];
+        }
+        char *scratch = static_cast<char *>(*scratch_ref);
+        int len = snprintf(scratch, 64, "Value:%d", value);
+        use_effect(nullptr, cleanup_text_scratch, scratch, 0);
+        Clay_String text = { false, len, scratch };
+        CLAY_TEXT(text, CLAY_TEXT_CONFIG({ .fontSize = 12 }));
+    } REACT_COMPONENT_END();
+}
+
+static bool text_scratch_is_instance_owned(void) {
+    react_init(g_clay);
+    g_scratch_cleanups = 0;
+
+    Clay_RenderCommandArray commands = run_frame([] {
+        TextScratchProbe(10);
+        TextScratchProbe(20);
+    });
+
+    bool saw_10 = false;
+    bool saw_20 = false;
+    const char *ptr_10 = nullptr;
+    const char *ptr_20 = nullptr;
+
+    for (int32_t i = 0; i < commands.length; i++) {
+        Clay_RenderCommand *command = Clay_RenderCommandArray_Get(&commands, i);
+        if (!command || command->commandType != CLAY_RENDER_COMMAND_TYPE_TEXT) continue;
+        Clay_StringSlice text = command->renderData.text.stringContents;
+        if (text.length == 8 && memcmp(text.chars, "Value:10", 8) == 0) {
+            saw_10 = true;
+            ptr_10 = text.chars;
+        }
+        if (text.length == 8 && memcmp(text.chars, "Value:20", 8) == 0) {
+            saw_20 = true;
+            ptr_20 = text.chars;
+        }
+    }
+
+    CHECK(react_error_count() == 0);
+    CHECK(saw_10);
+    CHECK(saw_20);
+    CHECK(ptr_10 != nullptr);
+    CHECK(ptr_20 != nullptr);
+    CHECK(ptr_10 != ptr_20);
+
+    react_shutdown();
+    CHECK(g_scratch_cleanups == 2);
+    return true;
+}
+
 static int g_effect_mounts = 0;
 static int g_effect_cleanups = 0;
 
@@ -249,6 +319,27 @@ static bool remounts_reuse_unmounted_fibers(void) {
     CHECK(react_error_count() == 0);
     CHECK(g_effect_mounts == 200);
     CHECK(g_effect_cleanups == 200);
+    return true;
+}
+
+static bool shutdown_cleans_live_effects(void) {
+    react_init(g_clay);
+    g_effect_mounts = 0;
+    g_effect_cleanups = 0;
+
+    run_frame([] {
+        EffectProbe();
+    });
+
+    CHECK(react_error_count() == 0);
+    CHECK(g_effect_mounts == 1);
+    CHECK(g_effect_cleanups == 0);
+
+    react_shutdown();
+    CHECK(g_effect_cleanups == 1);
+
+    react_shutdown();
+    CHECK(g_effect_cleanups == 1);
     return true;
 }
 
@@ -309,9 +400,12 @@ int main(void) {
     if (!positional_siblings_keep_distinct_state()) return 1;
     if (!keyed_siblings_keep_state_across_reorder()) return 1;
     if (!transparent_providers_use_instance_identity()) return 1;
+    if (!text_scratch_is_instance_owned()) return 1;
     if (!remounts_reuse_unmounted_fibers()) return 1;
+    if (!shutdown_cleans_live_effects()) return 1;
     if (!hook_drift_is_diagnosed()) return 1;
 
+    react_shutdown();
     free(g_clay_memory);
     return 0;
 }

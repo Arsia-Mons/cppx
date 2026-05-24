@@ -98,6 +98,9 @@ static void react_report_error(const char *fmt, ...) {
 
 void react_init(Clay_Context *clay_ctx) {
     (void)clay_ctx; // reserved for future use; we don't need to read Clay internals
+    if (G.fiber_count > 0) {
+        react_shutdown();
+    }
     memset(&G, 0, sizeof(G));
     for (int i = 0; i < REACT_MAX_FIBERS; i++) G.buckets[i] = -1;
 }
@@ -181,6 +184,17 @@ static void fiber_destroy(int32_t idx) {
     }
     fiber_unlink_from_bucket(idx);
     *f = {};
+}
+
+void react_shutdown(void) {
+    for (int32_t i = 0; i < G.fiber_count; i++) {
+        fiber_destroy(i);
+    }
+    G.effect_queue_count = 0;
+    G.render_stack_count = 0;
+    G.current = nullptr;
+    G.hook_index = 0;
+    G.root_child_index = 0;
 }
 
 void react_enter(uint32_t fiber_id) {
