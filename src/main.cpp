@@ -192,6 +192,10 @@ static size_t curl_write_to_vec(void *ptr, size_t size, size_t n, void *user) {
     return total;
 }
 
+static int curl_check_cancel(void *user, curl_off_t, curl_off_t, curl_off_t, curl_off_t) {
+    return static_cast<FetchCell *>(user)->cancelled.load(std::memory_order_relaxed) ? 1 : 0;
+}
+
 static int worker_fetch(void *user) {
     FetchCell *c = static_cast<FetchCell *>(user);
     if (c->cancelled.load(std::memory_order_relaxed)) {
@@ -207,6 +211,12 @@ static int worker_fetch(void *user) {
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_to_vec);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &body);
         curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
+        // Real cancellation: progress callback returns non-zero → libcurl
+        // aborts the transfer with CURLE_ABORTED_BY_CALLBACK (within ~100ms
+        // of the cancelled flag flipping).
+        curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+        curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, curl_check_cancel);
+        curl_easy_setopt(curl, CURLOPT_XFERINFODATA, c);
         CURLcode rc = curl_easy_perform(curl);
         curl_easy_cleanup(curl);
 
