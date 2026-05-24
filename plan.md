@@ -101,20 +101,26 @@ test that would fail if the implementation took the easiest visible shortcut:
   whole world every frame.
 - **Write lane:** command replay proves deterministic end state; a negative
   test proves dispatching from UI cannot mutate world state until the next
-  engine tick drains commands.
+  engine tick drains commands. The proof must include a compile-time boundary
+  check showing UI code cannot acquire a mutable `World&` or call engine-only
+  mutation helpers directly.
 - **Fast lane:** reconciliation counters prove bound visuals update while the
   declaring subtree stays flat; a negative test fails if `use_bind` falls back
   to ordinary per-frame reconciliation outside the explicit disable-bindings
   comparison mode.
 - **Screen stack:** an inspection test proves `World.ui_stack` is the owner and
-  UI only renders it; a negative test fails if screen state is owned by UI-only
-  globals or component-local state.
+  UI only renders it; a tick-gating transcript proves gameplay systems do not
+  run or mutate gameplay pools while Pause / Title is on top; a negative test
+  fails if screen state is owned by UI-only globals, component-local state, or a
+  render-only pause that leaves gameplay simulation running.
 - **Screen lifecycle:** lifecycle transcripts prove deterministic enter, focus,
   blur, exit ordering; cancellation tests fail on missed cleanup, duplicate
   callbacks, or reordered events.
 - **Identity discipline:** Clay IDs, actor handles, and binding targets must be
-  stable across reorder/remount cases; negative tests fail on position-only
-  identity where keys or handles are required.
+  stable across reorder/remount cases; binding targets are opaque IDs / handles,
+  not raw UI pointers or component addresses; negative tests fail on
+  position-only identity where keys or handles are required and on pointer-based
+  binding targets that survive only because the visible tree did not remount.
 
 ### Design checkpoints
 
@@ -145,10 +151,14 @@ rendering those visuals exclusively through direct SDL.
 
 Performance claims must be measured from a release build at a fixed 1280x720
 window size with vsync configuration recorded, a deterministic seed, and a
-scripted scenario that can be rerun. Each perf artifact must include target
-machine descriptor, build type, commit SHA, scenario seed, run duration, entity
-counts, p50/p95/max frame time, p95/max engine tick time, p95/max render time,
-and any dropped-frame count.
+scripted scenario that can be rerun. Before any phase claims a framerate or soak
+result, commit `docs/phase-evidence/perf-target.md` naming the target CPU, GPU,
+RAM, OS, compiler/toolchain, build preset, display mode, power mode, and vsync
+configuration. Every perf artifact must cite that target file plus its build
+type, commit SHA, scenario seed, run duration, entity counts, p50/p95/max frame
+time, p95/max engine tick time, p95/max render time, and any dropped-frame
+count. Changing the target machine or configuration invalidates earlier perf
+claims unless the affected phase artifacts are rerun on the new target.
 
 Phase-level 60fps claims require a continuous 60-second scripted run unless a
 phase specifies a longer duration. Whole-plan soak requires a 30-minute
@@ -350,17 +360,19 @@ previous phase's acceptance is met.** Profile at the end of each phase.
 - [ ] Add `use_dispatch()` hook returning a callable that pushes commands.
 - [ ] Replace direct mutations from the input path: input handler dispatches
       commands; engine applies them inside the tick.
-- [ ] Add an assertion / build-time barrier that world fields cannot be
-      mutated outside of `engine.cpp`. (At minimum, document the rule
-      and grep for violations in CI.)
+- [ ] Add a compile-time mutation boundary: UI-facing code receives only a
+      read-only world view plus `use_dispatch()`, while non-const `World&` and
+      mutation helpers are engine-owned. Grep/search checks may supplement this,
+      but they cannot be the phase-exit proof.
 
 **Acceptance:**
 - Player movement works identically to phase 1 but is now command-driven.
 - Replaying a recorded command stream against the same initial world
   produces an identical end state (smoke test for determinism / replay).
 - Mid-frame: dispatching a command does not take effect until the next tick.
-- Phase evidence includes a grep or compile-time barrier artifact proving UI
-  code cannot write world fields directly.
+- Phase evidence includes a compile-fail or boundary-test artifact proving UI
+  code cannot acquire a mutable `World&`, write world fields directly, or call
+  engine-only mutation helpers.
 
 ---
 
@@ -406,7 +418,9 @@ the React component that owns them.
       attribute (e.g. an HP-bar fill width, a world-space label position).
       The design checkpoint must specify target identity, unmount cleanup,
       transition behavior, failure behavior when the target is missing, and why
-      the implementation cannot silently fall back to full reconciliation.
+      the implementation cannot silently fall back to full reconciliation. The
+      target identity must be an opaque stable ID / handle, never a raw UI
+      pointer, component address, or lifetime-dependent Clay internals pointer.
 - [ ] Implement binding application: after `react_end_frame()` and before
       `SDL_RenderPresent()`, walk active bindings and apply the latest
       selector value to the target. The exact mechanism may be a parallel
@@ -428,7 +442,9 @@ the React component that owns them.
 - Disabling all bindings reverts the visual to per-frame full reconciliation
   with no visible difference except framerate / re-render counters.
 - Phase evidence includes both binding-enabled and binding-disabled counter
-  artifacts from the same deterministic HP/damage-number scenario.
+  artifacts from the same deterministic HP/damage-number scenario, plus an
+  unmount/remount negative test proving stale binding targets are invalidated
+  instead of accidentally updating a recycled UI pointer.
 
 ---
 
@@ -462,6 +478,9 @@ the React component that owns them.
 - Stack depth of 2+ works (e.g. Pause pushed over Gameplay).
 - Phase evidence includes an inspection artifact proving `World.ui_stack` owns
   the stack and screen components only render the entries.
+- Phase evidence includes a pause-gating transcript with gameplay system
+  counters and gameplay pool versions unchanged while Pause / Title is topmost,
+  while transition clocks and other allowed non-gameplay systems continue.
 
 ---
 
