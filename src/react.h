@@ -1,0 +1,77 @@
+// Minimal React-style hook runtime on top of Clay.
+//
+// Fiber identity comes from Clay's parent-hashed element IDs (CLAY_ID_LOCAL).
+// Hook state lives in a side table keyed by that ID. Effects run after
+// Clay_EndLayout. Unmount detection uses Clay_Context.generation.
+//
+// Public API:
+//   react_init(clay_ctx)           — call once after Clay_Initialize.
+//   react_begin_frame()            — call once per frame, before component tree.
+//   react_end_frame()              — call once per frame, after Clay_EndLayout.
+//   REACT_COMPONENT_BEGIN/END      — bracket a component's body.
+//   use_state_int(initial)         — returns int* that persists across frames.
+//   use_effect(fn, cleanup, user, deps_hash) — runs after commit when deps change.
+//   PROVIDE(ctx_ptr, value) { ... } — pushes a context value for the body.
+//   use_context(ctx_ptr)           — reads current value of a context.
+
+#pragma once
+
+#include <stdint.h>
+#include <stdbool.h>
+
+#include <clay.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void react_init(Clay_Context *clay_ctx);
+void react_begin_frame(void);
+void react_end_frame(void);
+
+// Internal: set/clear the "currently rendering fiber" + reset hook index.
+void react_enter(uint32_t fiber_id);
+void react_leave(void);
+
+#define REACT_COMPONENT_BEGIN(name_literal)                                       \
+    {                                                                             \
+        Clay_ElementId _react_cid = CLAY_ID_LOCAL(name_literal);                  \
+        react_enter(_react_cid.id);                                               \
+        CLAY({ .id = _react_cid })
+
+#define REACT_COMPONENT_END()                                                     \
+        react_leave();                                                            \
+    }
+
+// --- Hooks ---
+
+int *use_state_int(int initial);
+
+typedef void (*ReactEffectFn)(void *user);
+typedef void (*ReactCleanupFn)(void *user);
+
+void use_effect(ReactEffectFn fn, ReactCleanupFn cleanup, void *user, uint64_t deps_hash);
+
+// --- Context / providers ---
+
+#define REACT_CONTEXT_MAX_DEPTH 16
+
+typedef struct ReactContext {
+    void *current;
+    void *stack[REACT_CONTEXT_MAX_DEPTH];
+    int   depth;
+} ReactContext;
+
+void  react_provider_push(ReactContext *ctx, void *value);
+void  react_provider_pop(ReactContext *ctx);
+void *use_context(ReactContext *ctx);
+
+// Scoped provider via the same for-loop trick Clay uses for CLAY(...).
+#define PROVIDE(ctx_ptr, value)                                                   \
+    for (int _react_once = (react_provider_push((ctx_ptr), (value)), 0);          \
+         !_react_once;                                                            \
+         _react_once = 1, react_provider_pop((ctx_ptr)))
+
+#ifdef __cplusplus
+}
+#endif
