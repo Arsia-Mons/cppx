@@ -91,44 +91,51 @@ The planned ownership model is:
   high-volume direct-SDL pass and Clay command arrays/binding targets for UI.
 - UI receives only target-bound or subsystem-bound read sources and
   target/context-scoped action capabilities. Examples:
-  `ActorReadSource<Enemy>{Handle<Enemy>}`,
-  `PlayerHudSource{Handle<Player>}`, `InventorySource{InventoryId}`,
-  `SelectedEnemySource{SelectionId, Handle<Enemy>}`,
-  `PerfStatsSource{PerfPanelId}`, `PauseMenuActions{ScreenEntryId}`, and
-  `UpgradeOfferActions{OfferId, Handle<Player>, ScreenEntryId}`.
+  `SourceToken<EnemyReadSource>`, `SourceToken<PlayerHudSource>`,
+  `SourceToken<InventorySource>`, `SourceToken<SelectedEnemySource>`,
+  `SourceToken<PerfStatsSource>`, `PauseMenuActions{PauseMenuActionScope}`, and
+  `UpgradeOfferActions{UpgradeOfferActionScope}`.
 
-All source IDs, screen entry IDs, offer IDs, debug panel IDs, run IDs, and
-action objects are owner-issued capability tokens with private construction.
+All source IDs, source tokens, screen entry IDs, offer IDs, debug panel IDs,
+run IDs, action scopes, and action objects are owner-issued capability tokens
+with private construction.
 UI can receive them through typed props or scoped hooks, but ordinary UI cannot
 fabricate them, reinterpret one token as another, or request a token for an
 unrelated actor/subsystem/screen. A hook that accepts an ID must also validate
 the token's owner, generation, focus/phase where relevant, and run/session.
 
-Read hooks must be shaped around those sources, not around a generic world
-value or a renamed grab bag. Acceptable forms include narrow hooks such as
-`use_actor_value<Player>(player_handle, [](const PlayerHudSource &p) { return p.hp(); })`
-or `use_actor_value<Enemy>(enemy_handle, [](const EnemyReadSource &e) { return e.hp(); })`.
-Subsystem reads must be keyed to the subsystem or panel that owns the
-subscription. Aggregate views are allowed only when they are presenter-specific
-snapshots with an explicit field list and explicit dependency stamps; they must
-not expose arbitrary actor enumeration, unrelated pools, or "reach through"
-access to the simulation.
+Read hooks must be shaped around injected source tokens, not around a generic
+world value, a renamed grab bag, a bare actor handle, or a caller-selected source
+type. Acceptable forms include narrow hooks such as
+`use_source_value(player_hud_source, [](const PlayerHudSource &p) { return p.hp(); })`
+or `use_source_value(enemy_source, [](const EnemyReadSource &e) { return e.hp(); })`.
+Subsystem reads must use an injected `SourceToken<TSource>` for the subsystem or
+panel that owns the subscription. Aggregate views are allowed only when they are
+presenter-specific snapshots with an explicit field list and explicit dependency
+stamps; they must not expose arbitrary actor enumeration, unrelated pools, or
+"reach through" access to the simulation. A `Handle<T>` identifies an actor; it
+never authorizes reading that actor. Frame orchestration mints the specific
+`SourceToken<TSource>` a screen/component is allowed to read.
 
-Action hooks must also be target/context-specific. A gameplay screen may receive
-`PlayerPawnActions{Handle<Player>}` for movement. An upgrade modal may receive
-`UpgradeOfferActions{OfferId, Handle<Player>, ScreenEntryId}`. A debug panel may
-receive `DebugSpawnActions{DebugPanelId}` only in debug contexts. A Game Over
-screen may receive `SimulationLifecycleActions{RunId, ScreenEntryId}`. Full
-command routers are infrastructure-only; ordinary UI must not receive
+Action hooks must also use injected sealed action scopes, not target IDs. A
+gameplay screen may receive `PlayerPawnActions{PlayerPawnActionScope}` for
+movement. An upgrade modal may receive
+`UpgradeOfferActions{UpgradeOfferActionScope}`. A debug panel may receive
+`DebugSpawnActions{DebugSpawnActionScope}` only in debug contexts. A Game Over
+screen may receive `SimulationLifecycleActions{SimulationLifecycleActionScope}`.
+Full command routers are infrastructure-only; ordinary UI must not receive
 `GameCommands`, `NavigationCommands`, a raw command queue, or a universal
-`use_dispatch()` equivalent.
+`use_dispatch()` equivalent. A `Handle<T>`, read source, `DebugPanelId`,
+`ScreenEntryId`, or `RunId` alone never authorizes writes.
 
 Route/navigation APIs follow the same rule. Full stack push/pop/replace is
 owned by frame orchestration. Ordinary screens receive entry-scoped actions such
-as `TitleActions{ScreenEntryId}`, `PauseMenuActions{ScreenEntryId}`,
-`UpgradeModalActions{OfferId, ScreenEntryId}`, and `GameOverActions{RunId,
-ScreenEntryId}`. They cannot enumerate the whole stack, push arbitrary screen
-IDs, pop entries they do not own, or attach arbitrary payload types.
+as `TitleActions{TitleActionScope}`, `PauseMenuActions{PauseMenuActionScope}`,
+`UpgradeModalActions{UpgradeModalActionScope}`, and
+`GameOverActions{GameOverActionScope}`. Those scopes are issued by frame
+orchestration for a specific screen entry/run/focus generation. Screens cannot
+enumerate the whole stack, push arbitrary screen IDs, pop entries they do not
+own, or attach arbitrary payload types.
 
 Screen props are data-only field-list structs. They may contain primitive/copy
 data, owner-issued IDs, and explicitly named narrow sources/actions passed as
@@ -404,11 +411,11 @@ primitive.
       layer may build an infrastructure-only `UiReadInputs` while assembling
       providers/props, but `App()`, screens, and components must receive only
       typed field-list props plus explicitly named owner-issued sources such as
-      `PlayerHudSource{Handle<Player>}`. They must not receive `UiReadInputs`,
+      `SourceToken<PlayerHudSource>`. They must not receive `UiReadInputs`,
       a source registry, the full frame snapshot, actor-pool arrays, broad
       dependency registries, or a mutable/const world pointer.
 - [ ] HUD: render `HP: %d` reading through a narrow
-      `PlayerHudSource{Handle<Player>}` provider. Do not add `WorldContext` or
+      `SourceToken<PlayerHudSource>` provider. Do not add `WorldContext` or
       a player/combat grab bag.
 - [ ] Render the player as a colored circle through the chosen world-scene pass.
       If that pass is direct SDL, Phase 1 must still prove the React/Clay HUD
@@ -439,15 +446,17 @@ primitive.
 simulation state.
 
 **Scope:**
-- [ ] Add typed read hooks returning values by copy from stable source IDs, such
-      as `use_actor_value<TActor, TValue>(Handle<TActor>, selector)` and
-      `use_subsystem_value<TSource, TValue>(SourceId, selector)`. Do not add a
-      hook that passes `World&`, `SimulationWorld&`, `auto&` world-shaped
-      objects, or broad player/combat grab bags to selectors.
-- [ ] Source IDs are owner-issued capability tokens with private construction.
-      UI may use only tokens injected through typed props/sources. It cannot
-      construct arbitrary `Handle<TActor>`, `SourceId`, or subsystem IDs and pass
-      them into read hooks.
+- [ ] Add typed read hooks returning values by copy from injected source tokens,
+      such as `use_source_value<TSource, TValue>(SourceToken<TSource>, selector)`.
+      Do not add a hook that accepts `Handle<TActor>`, `SourceId`, `World&`,
+      `SimulationWorld&`, `auto&` world-shaped objects, or broad player/combat
+      grab bags to selectors.
+- [ ] Source tokens are owner-issued capability tokens with private
+      construction. UI may use only tokens injected through typed props/sources.
+      It cannot construct arbitrary `Handle<TActor>`, `SourceId`, subsystem IDs,
+      or `SourceToken<TSource>` and pass them into read hooks. A bare handle or
+      source ID cannot be upgraded into a read source by choosing a template
+      parameter at the call site.
 - [ ] Selectors receive only the target-bound or subsystem-bound source they
       subscribe to (`const PlayerHudSource&`, `const EnemyReadSource&`,
       `const InventorySource&`, etc.) and return a value (POD or small).
@@ -459,7 +468,7 @@ simulation state.
       reinvocation and reuse the last value. (Cheap optimisation; correctness
       must not depend on it.)
 - [ ] HUD HP text moves from the Phase 1 `PlayerHudSource` pull to
-      `use_actor_value<Player>(player_handle,
+      `use_source_value(player_hud_source,
       [](const PlayerHudSource &player) { return player.hp(); })`.
 
 **Acceptance:**
@@ -477,6 +486,10 @@ simulation state.
   fabricate source IDs, debug panel IDs, screen entry IDs, offer IDs, run IDs,
   actor handles, or read/action tokens. These tests must cover aggregate
   initialization and token synthesis from raw integers.
+- Phase evidence includes compile-fail tests proving `Handle<Player>` alone
+  cannot authorize reads, `SourceToken<A>` cannot be passed as `SourceToken<B>`,
+  and callers cannot choose a source type to turn an injected ID into a broader
+  read capability.
 
 ---
 
@@ -513,21 +526,24 @@ simulation state.
 
 **Scope:**
 - [ ] Add engine command types (`std::variant` or tagged union) with explicit
-      target/context IDs: `MovePlayer{Handle<Player>, dir}`,
-      `SpawnEnemies{DebugPanelId, count}`, `DamagePlayer{DebugPanelId,
-      Handle<Player>, n}`.
+      sealed action scopes: `MovePlayer{PlayerPawnActionScope, dir}`,
+      `SpawnEnemies{DebugSpawnActionScope, count}`,
+      `DamagePlayer{DebugSpawnActionScope, Handle<Player>, n}`.
 - [ ] Add command queues on `EngineState` / the client-engine boundary, not on
       `SimulationWorld`. Gameplay commands are drained at the **top** of
       `engine_tick`; navigation/presentation commands are drained by the frame
       orchestration path that owns `ClientState`.
 - [ ] Add target/context action hooks returning narrow capabilities:
-      `use_player_pawn_actions(Handle<Player>)` for movement and
-      `use_debug_spawn_actions(DebugPanelId)` for debug spawn/damage controls.
+      `use_player_pawn_actions(PlayerPawnActionScope)` for movement and
+      `use_debug_spawn_actions(DebugSpawnActionScope)` for debug spawn/damage
+      controls.
       Do not add `use_game_commands()`, `use_navigation_commands()`, a raw
       dispatcher, or a global `use_dispatch()` equivalent to UI-facing code.
 - [ ] Action hooks accept only owner-issued tokens injected into the current
       screen/panel context. The actions they return are focus/phase-scoped,
-      generation-checked, and run/session-checked where relevant.
+      generation-checked, and run/session-checked where relevant. A
+      `Handle<Player>`, `PlayerHudSource`, `DebugPanelId`, or `ScreenEntryId`
+      cannot mint movement/debug actions.
 - [ ] Replace direct mutations from the input path: input handler dispatches
       commands; engine applies them inside the tick.
 - [ ] Add a compile-time mutation boundary: UI-facing code receives only a
@@ -549,6 +565,9 @@ simulation state.
   its scoped action object.
 - Phase evidence includes runtime tests proving stale, blurred, wrong-generation,
   or wrong-run action tokens reject commands without mutating simulation state.
+- Phase evidence includes compile-fail tests proving `Handle<Player>`,
+  `PlayerHudSource`, and `DebugPanelId` alone cannot obtain movement/debug
+  actions.
 
 ---
 
@@ -569,8 +588,8 @@ real game logic).
 - [ ] Add an `XpGem` pool (position, value). Player auto-collects within
       radius on tick.
 - [ ] HUD: add `Kills: N` and `XP: N` through typed read hooks
-      (`PlayerHudSource{Handle<Player>}` and
-      `RunCombatStatsSource{RunId}` with explicit fields), not through a
+      (`SourceToken<PlayerHudSource>` and
+      `SourceToken<RunCombatStatsSource>` with explicit fields), not through a
       generic world pointer or broad combat grab bag.
 
 **Acceptance:**
@@ -609,7 +628,9 @@ the React component that owns them.
       construction. A component can bind only sources and targets injected into
       its current props/context; it cannot fabricate another actor's source,
       bind to a debug/subsystem source it was not issued, or keep using a source
-      after focus/phase/run/generation invalidation.
+      after focus/phase/run/generation invalidation. Bind accepts
+      `SourceToken<TSource>` and `TargetAttrToken<TAttr>`; a bare `Handle<T>` or
+      `SourceId` cannot authorize a binding by choosing template parameters.
 - [ ] Implement binding application: after `react_end_frame()` and before
       `SDL_RenderPresent()`, walk active source→target bindings, resolve the
       source by its stable handle/key and generation, and apply the selector's
@@ -619,8 +640,8 @@ the React component that owns them.
       decided in this phase, **not in advance**.
 - [ ] Convert HP bar to a binding-driven smooth fill.
 - [ ] Add world-space floating damage numbers (DamageNumber pool) whose screen
-      positions are sourced from `DamageNumberSource{Handle<DamageNumber>}` plus
-      an explicit `ActorPositionSource{Handle<TActor>}` for the entity they
+      positions are sourced from `SourceToken<DamageNumberSource>` plus an
+      explicit `SourceToken<ActorPositionSource<TActor>>` for the entity they
       follow. Destroy/reuse of either source must invalidate the binding.
 - [ ] Add a profile/log mode that proves the HUD subtree no longer
       re-reconciles each frame while the HP bar still updates visibly.
@@ -642,6 +663,9 @@ the React component that owns them.
 - Phase evidence includes compile-fail tests proving UI cannot fabricate
   binding source/target tokens or call bind hooks outside its injected source
   scope.
+- Phase evidence includes compile-fail tests proving `SourceToken<A>` cannot be
+  used as `SourceToken<B>` and that bind cannot use a source or target attribute
+  token not injected into the current props/context.
 - Phase evidence includes negative tests proving binding APIs do not accept
   setter lambdas/callbacks and cannot access command queues, navigation,
   settings, `ClientState`, or `EngineState`.
@@ -675,11 +699,11 @@ the React component that owns them.
       entry-scoped view/actions. Props are data-only field-list structs; narrow
       sources/actions are passed as named fields, not hidden registries or bags.
 - [ ] Implement `Title`, `Gameplay`, `Pause` screen components. Title has a
-      Play button through `TitleActions{ScreenEntryId}`. Pause has Resume and
-      Quit through `PauseMenuActions{ScreenEntryId}`.
+      Play button through `TitleActions{TitleActionScope}`. Pause has Resume
+      and Quit through `PauseMenuActions{PauseMenuActionScope}`.
 - [ ] ESC during Gameplay asks the frame/navigation router to push Pause through
-      a gameplay-screen action for the current `ScreenEntryId`; gameplay UI does
-      not receive raw push/pop/replace.
+      `GameplayScreenActions{GameplayScreenActionScope}`; gameplay UI does not
+      receive raw push/pop/replace or mint that scope from `ScreenEntryId`.
 - [ ] Entry-scoped actions are active only for focused/entered entries unless a
       phase explicitly grants a background read-only capability. Lower mounted
       entries behind Pause render from snapshots/sources but cannot dispatch
@@ -735,7 +759,7 @@ in a deterministic order across stack changes.
 - [ ] Visual transitions: backdrop fade for modals, scale-in for modals,
       crossfade for screen swaps.
 - [ ] Audio side-effect tests: dock a music-duck on Pause's `on_enter`,
-      undock on `on_exit` through `PauseLifecycleActions{ScreenEntryId}`.
+      undock on `on_exit` through `PauseLifecycleActions{PauseLifecycleActionScope}`.
       (Audio system may be a stub that logs.)
 
 **Acceptance:**
@@ -770,11 +794,12 @@ mutation through the write lane.
       `SimulationWorld`.
 - [ ] Add `ChooseUpgrade` screen: renders the 3 options, selects one by
       keyboard or click, and receives only
-      `UpgradeOfferSource{OfferId, Handle<Player>, ScreenEntryId}` plus
-      `UpgradeOfferActions{OfferId, Handle<Player>, ScreenEntryId}`. Selecting
-      an option queues `ApplyUpgrade{OfferId, Handle<Player>, UpgradeId}` and
-      requests close for its own screen entry; it cannot reset simulation,
-      spawn enemies, or pop unrelated entries.
+      `SourceToken<UpgradeOfferSource>` plus
+      `UpgradeOfferActions{UpgradeOfferActionScope}`. Selecting an option queues
+      `ApplyUpgrade{UpgradeOfferActionScope, UpgradeId}` and requests close for
+      its own screen entry; it cannot reset simulation, spawn enemies, or pop
+      unrelated entries. The action scope, not `OfferId`, `Handle<Player>`, or
+      `ScreenEntryId` alone, authorizes upgrade application.
 - [ ] Upgrades affect real player stats (fire rate, damage, move speed,
       max HP, etc. — small fixed catalogue).
 - [ ] Multiple level-ups in quick succession queue correctly: pop → next
@@ -807,7 +832,7 @@ mutation through the write lane.
 - [ ] HP ≤ 0 → simulation emits a death event; frame orchestration dispatches
       internal `PushScreen{GameOver, GameOverPayload{RunId}}`.
 - [ ] `GameOver` screen has Restart through
-      `GameOverActions{RunId, ScreenEntryId}`. The action asks frame
+      `GameOverActions{GameOverActionScope}`. The action asks frame
       orchestration to queue `ResetSimulation{RunId}` and replace its own
       entry with `Gameplay`; the screen does not receive a raw reset command or
       raw navigation router.
@@ -815,10 +840,10 @@ mutation through the write lane.
       Navigation reset is a separate frame-orchestration operation so
       `SimulationWorld` never owns the stack.
 - [ ] Add Settings screen reachable from Pause (and from Title). It receives
-      `SettingsProps{ScreenEntryId}`, `SettingsSource{ScreenEntryId}` with only
-      `master_volume` and `fullscreen` fields, and
-      `SettingsActions{ScreenEntryId}` with only `set_master_volume` and
-      `request_fullscreen_toggle`. Persist nothing for now.
+      `SettingsProps`, `SourceToken<SettingsSource>` with only `master_volume`
+      and `fullscreen` fields, and `SettingsActions{SettingsActionScope}` with
+      only `set_master_volume` and `request_fullscreen_toggle`. Persist nothing
+      for now. `ScreenEntryId` alone cannot mint settings access.
 - [ ] Boot flow: stack starts as `[Title]`.
 - [ ] Edge tests: die during a level-up modal; die during a screen
       transition; quit mid-fetch (carry over the existing Image fetch
