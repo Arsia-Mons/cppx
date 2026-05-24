@@ -1,7 +1,5 @@
 #include "theme_provider.h"
 
-#include <clay.h>
-
 #include "../../app_state.h"
 #include "../../input.h"
 #include "../../react.h"
@@ -17,13 +15,7 @@ static Theme s_themes[] = {
 };
 static const int s_theme_count = sizeof(s_themes) / sizeof(s_themes[0]);
 
-// Like REACT_COMPONENT_BEGIN but without a wrapping Clay element: React
-// providers are transparent in the visual tree, same as <Context.Provider>
-// in React. We still need a stable fiber id so use_state_int works.
 void theme_provider__enter(void) {
-    Clay_ElementId cid = CLAY_ID_LOCAL("ThemeProvider");
-    react_enter(cid.id);
-
     int                *theme_idx = use_state_int(0);
     const InputState   *input     = (const InputState *)use_context(&InputContext);
 
@@ -36,5 +28,4 @@ void theme_provider__enter(void) {
 
 void theme_provider__exit(void) {
     react_provider_pop(&ThemeContext);
-    react_leave();
 }

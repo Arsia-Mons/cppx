@@ -18,6 +18,7 @@ void theme_provider__enter(void);
 void theme_provider__exit(void);
 
 #define THEME_PROVIDER                                                              \
-    for (int _theme_provider_once = (theme_provider__enter(), 0);                   \
+    for (int _theme_provider_once =                                                 \
+             (REACT_PROVIDER_ENTER("ThemeProvider"), theme_provider__enter(), 0);   \
          !_theme_provider_once;                                                     \
-         _theme_provider_once = 1, theme_provider__exit())
+         _theme_provider_once = 1, theme_provider__exit(), REACT_PROVIDER_EXIT())

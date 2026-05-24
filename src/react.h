@@ -11,6 +11,7 @@
 //   react_end_frame()              - call once per frame, after Clay_EndLayout.
 //   REACT_COMPONENT_BEGIN/END      - bracket a component's body.
 //   REACT_COMPONENT_BEGIN_KEY/END  - bracket a repeated/keyed component body.
+//   REACT_PROVIDER_ENTER/EXIT      - bracket a transparent provider body.
 //   use_state_int(initial)         - returns int* that persists across frames.
 //   use_effect(fn, cleanup, user, deps_hash) - runs after commit when deps change.
 //   PROVIDE(ctx_ptr, value) { ... } - pushes a context value for the body.
@@ -49,24 +50,37 @@ void react_enter(uint32_t fiber_id);
 void react_leave(void);
 uint32_t react_next_child_index(void);
 
+#define REACT_INSTANCE_ID(name_literal)                                           \
+    CLAY_IDI_LOCAL(name_literal, react_next_child_index())
+
+#define REACT_INSTANCE_ID_KEY(name_literal, key_index)                            \
+    CLAY_IDI_LOCAL(name_literal,                                                  \
+        ((void)react_next_child_index(), ((uint32_t)(key_index) ^ 0x80000000u)))
+
 #define REACT_COMPONENT_BEGIN(name_literal)                                       \
     {                                                                             \
-        Clay_ElementId _react_cid = CLAY_IDI_LOCAL(                               \
-            name_literal, react_next_child_index());                              \
+        Clay_ElementId _react_cid = REACT_INSTANCE_ID(name_literal);              \
         react_enter(_react_cid.id);                                               \
         CLAY({ .id = _react_cid })
 
 #define REACT_COMPONENT_BEGIN_KEY(name_literal, key_index)                        \
     {                                                                             \
-        (void)react_next_child_index();                                           \
-        Clay_ElementId _react_cid = CLAY_IDI_LOCAL(                               \
-            name_literal, ((uint32_t)(key_index) ^ 0x80000000u));                 \
+        Clay_ElementId _react_cid = REACT_INSTANCE_ID_KEY(name_literal, key_index); \
         react_enter(_react_cid.id);                                               \
         CLAY({ .id = _react_cid })
 
 #define REACT_COMPONENT_END()                                                     \
         react_leave();                                                            \
     }
+
+#define REACT_PROVIDER_ENTER(name_literal)                                        \
+    react_enter(REACT_INSTANCE_ID(name_literal).id)
+
+#define REACT_PROVIDER_ENTER_KEY(name_literal, key_index)                         \
+    react_enter(REACT_INSTANCE_ID_KEY(name_literal, key_index).id)
+
+#define REACT_PROVIDER_EXIT()                                                     \
+    react_leave()
 
 typedef struct ReactNoProps {
     uint8_t unused;

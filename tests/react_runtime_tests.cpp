@@ -115,6 +115,71 @@ static bool keyed_siblings_keep_state_across_reorder(void) {
     return true;
 }
 
+static int g_provider_values[2] = {};
+
+static void PositionalProviderProbe(int slot, int initial, int write_value) {
+    REACT_PROVIDER_ENTER("ProviderProbe");
+    int *value = use_state_int(initial);
+    if (write_value >= 0) {
+        *value = write_value;
+    }
+    g_provider_values[slot] = *value;
+    REACT_PROVIDER_EXIT();
+}
+
+static void KeyedProviderProbe(int key, int initial, int write_value) {
+    REACT_PROVIDER_ENTER_KEY("ProviderProbe", key);
+    int *value = use_state_int(initial);
+    if (write_value >= 0) {
+        *value = write_value;
+    }
+    g_provider_values[key] = *value;
+    REACT_PROVIDER_EXIT();
+}
+
+static bool transparent_providers_use_instance_identity(void) {
+    react_init(g_clay);
+    g_provider_values[0] = 0;
+    g_provider_values[1] = 0;
+
+    run_frame([] {
+        PositionalProviderProbe(0, 1, 10);
+        PositionalProviderProbe(1, 2, 20);
+    });
+    CHECK(react_error_count() == 0);
+    CHECK(g_provider_values[0] == 10);
+    CHECK(g_provider_values[1] == 20);
+
+    run_frame([] {
+        PositionalProviderProbe(0, 99, -1);
+        PositionalProviderProbe(1, 99, -1);
+    });
+    CHECK(react_error_count() == 0);
+    CHECK(g_provider_values[0] == 10);
+    CHECK(g_provider_values[1] == 20);
+
+    react_init(g_clay);
+    g_provider_values[0] = 0;
+    g_provider_values[1] = 0;
+
+    run_frame([] {
+        KeyedProviderProbe(0, 1, 10);
+        KeyedProviderProbe(1, 2, 20);
+    });
+    CHECK(react_error_count() == 0);
+    CHECK(g_provider_values[0] == 10);
+    CHECK(g_provider_values[1] == 20);
+
+    run_frame([] {
+        KeyedProviderProbe(1, 99, -1);
+        KeyedProviderProbe(0, 99, -1);
+    });
+    CHECK(react_error_count() == 0);
+    CHECK(g_provider_values[0] == 10);
+    CHECK(g_provider_values[1] == 20);
+    return true;
+}
+
 static int g_effect_mounts = 0;
 static int g_effect_cleanups = 0;
 
@@ -206,6 +271,7 @@ int main(void) {
 
     if (!positional_siblings_keep_distinct_state()) return 1;
     if (!keyed_siblings_keep_state_across_reorder()) return 1;
+    if (!transparent_providers_use_instance_identity()) return 1;
     if (!remounts_reuse_unmounted_fibers()) return 1;
     if (!hook_drift_is_diagnosed()) return 1;
 
