@@ -38,8 +38,9 @@ maps to one or more of:
 
 - [ ] **Engine seam** — engine tick runs before `react_begin_frame`;
       simulation state is committed before UI reconciles.
-- [ ] **Actor model** — typed pools with `Handle = {index, generation}`,
-      cache-friendly, dangling-safe, O(1) spawn / resolve / destroy.
+- [ ] **Actor model** — typed pools with owner-issued opaque `Handle<T>` tokens
+      carrying private index/generation/run identity, cache-friendly,
+      dangling-safe, O(1) spawn / resolve / destroy.
 - [ ] **Read lane** — UI reads through target-bound or subsystem-bound read
       sources with stable IDs and declared dependency/version stamps for cheap
       subscription early-outs.
@@ -56,7 +57,8 @@ maps to one or more of:
       per entry; `use_screen_lifecycle({on_enter, on_exit, on_focus, on_blur})`
       hook fires in deterministic order across stack transitions.
 - [ ] **Identity discipline** — every UI element has a fiber-stable Clay ID;
-      handles are 64-bit; no raw pointers escape the engine.
+      actor handles are opaque owner-issued tokens; no raw pointers escape the
+      engine.
 - [ ] **Lifecycle correctness under cancellation** — die mid-fetch,
       mid-level-up, mid-transition: no leaks, no UB, no stale UI state.
 
@@ -301,9 +303,22 @@ struct Pool {
 };
 
 template <typename T>
-struct Handle {
+class Handle {
+public:
+    static Handle null();
+    bool is_null() const;
+
+private:
     uint32_t index;
     uint32_t generation;       // 0 == null
+    uint32_t run_id;
+
+    Handle(uint32_t index, uint32_t generation, uint32_t run_id);
+    friend struct ActorHandleIssuer;
+    template <typename U, uint32_t M>
+    friend U *resolve_mutable(Pool<U,M> &pool, Handle<U> h);
+    template <typename U, uint32_t M>
+    friend const U *resolve_readonly(const Pool<U,M> &pool, Handle<U> h);
 };
 
 // Engine-internal only. Resolve returns nullptr if the slot is dead or
@@ -318,18 +333,22 @@ const T *resolve_readonly(const Pool<T,N> &pool, Handle<T> h);
 **Why this is enough:**
 
 - Contiguous arrays per actor type → cache-friendly iteration.
-- Stable 64-bit handles → safe to hold across frames, across UI, across
+- Stable opaque handles → safe to hold across frames, across UI, across
   worker threads. A stale handle resolves to `nullptr` inside engine-owned
-  scoped resolution, not a segfault.
+  scoped resolution, not a segfault. Handles are owner-issued capability tokens
+  with private construction, type branding, generation, and run/session
+  identity; UI cannot aggregate-initialize or synthesize them from integers.
 - No allocation per spawn (pools pre-sized; can grow by doubling if needed).
 - Per-pool `version` is the read-lane subscription primitive — selectors
   early-out when no pool they touched has changed since last frame.
 - Loops over actors are written by hand: explicit, debuggable, no query DSL.
 
 Raw actor pointers are a local implementation detail of engine systems. Any
-cross-boundary API must carry handles, copied snapshots, typed read views,
-or short-lived spans/proxies whose lifetime is bounded by the frame/evidence
-test. UI/client read-lane code must not include the internal pool header that
+UI/client-facing API must carry owner-issued handles, copied field-list
+snapshots, or typed read sources. `std::span`, pool proxies, and actor
+enumeration views are allowed only for renderer-owned immutable DTOs and
+engine-internal loops; they are never UI props, sources, hooks, or action
+inputs. UI/client read-lane code must not include the internal pool header that
 exposes `resolve_mutable` / `resolve_readonly`.
 
 **What we give up vs ECS:**
@@ -381,12 +400,13 @@ primitive.
       come in phase 4).
 - [ ] Wire `engine_tick` into `main.cpp` immediately before
       the UI frame. After tick completion, build a renderer-only
-      `WorldSceneSnapshot` for the direct-SDL scene pass and separate UI-only
-      `UiReadInputs` containing only explicit owner-issued sources such as
-      `PlayerHudSource{Handle<Player>}`. `App()` and screens must receive
-      `UiReadInputs` / explicit sources only; they must not receive the full
-      frame snapshot, actor-pool arrays, broad dependency registries, or a
-      mutable/const world pointer.
+      `WorldSceneSnapshot` for the direct-SDL scene pass. The frame composition
+      layer may build an infrastructure-only `UiReadInputs` while assembling
+      providers/props, but `App()`, screens, and components must receive only
+      typed field-list props plus explicitly named owner-issued sources such as
+      `PlayerHudSource{Handle<Player>}`. They must not receive `UiReadInputs`,
+      a source registry, the full frame snapshot, actor-pool arrays, broad
+      dependency registries, or a mutable/const world pointer.
 - [ ] HUD: render `HP: %d` reading through a narrow
       `PlayerHudSource{Handle<Player>}` provider. Do not add `WorldContext` or
       a player/combat grab bag.
@@ -406,8 +426,8 @@ primitive.
   a boundary artifact proving UI code cannot include mutable simulation/pool
   internals or obtain a generic world pointer.
 - Phase evidence includes negative tests proving UI cannot receive
-  `WorldSceneSnapshot`, a full `FrameSnapshot`, actor-pool arrays, or broad
-  dependency registries.
+  `UiReadInputs`, source registries, `WorldSceneSnapshot`, a full
+  `FrameSnapshot`, actor-pool arrays, or broad dependency registries.
 
 ---
 
@@ -455,7 +475,8 @@ simulation state.
   that exposes fields or dependency stamps outside its declared target/subsystem.
 - Phase evidence includes compile-fail tests proving ordinary UI cannot
   fabricate source IDs, debug panel IDs, screen entry IDs, offer IDs, run IDs,
-  or read/action tokens.
+  actor handles, or read/action tokens. These tests must cover aggregate
+  initialization and token synthesis from raw integers.
 
 ---
 
@@ -571,18 +592,19 @@ real game logic).
 the React component that owns them.
 
 **Scope:**
-- [ ] Design and add `use_bind(source, target, setter, selector)` or the
+- [ ] Design and add `use_bind(source, target_attribute, selector)` or the
       equivalent access/subscription API:
       registers a binding from a selector over a target-bound or
-      subsystem-bound source to a target attribute (e.g. an HP-bar fill width,
-      a world-space label position).
+      subsystem-bound source to a closed target-attribute descriptor (e.g. an
+      HP-bar fill width, a world-space label position).
       The design checkpoint must specify source identity, target identity,
-      unmount cleanup, source invalidation, transition behavior, failure
-      behavior when the source or target is missing, and why the implementation
-      cannot silently fall back to full reconciliation. Source and target
-      identities must be opaque stable IDs / handles, never raw UI pointers,
-      component addresses, actor pointers, or lifetime-dependent Clay internals
-      pointers.
+      target attribute identity, unmount cleanup, source invalidation,
+      transition behavior, failure behavior when the source or target is
+      missing, and why the implementation cannot silently fall back to full
+      reconciliation. Source, target, and attribute identities must be opaque
+      stable IDs / handles, never raw UI pointers, component addresses, actor
+      pointers, lifetime-dependent Clay internals pointers, or arbitrary setter
+      callbacks.
 - [ ] Binding source/target IDs are owner-issued capability tokens with private
       construction. A component can bind only sources and targets injected into
       its current props/context; it cannot fabricate another actor's source,
@@ -590,11 +612,11 @@ the React component that owns them.
       after focus/phase/run/generation invalidation.
 - [ ] Implement binding application: after `react_end_frame()` and before
       `SDL_RenderPresent()`, walk active source→target bindings, resolve the
-      source by its stable handle/key and generation, and apply the latest
-      selector value to the target. The exact mechanism may be a parallel
-      "instance attribute" map keyed by Clay element ID and consumed during
-      draw, or a Clay render-command patch pass — to be decided in this phase,
-      **not in advance**.
+      source by its stable handle/key and generation, and apply the selector's
+      returned data only to the issued target-attribute descriptor. The exact
+      mechanism may be a parallel "instance attribute" map keyed by Clay element
+      ID and consumed during draw, or a Clay render-command patch pass — to be
+      decided in this phase, **not in advance**.
 - [ ] Convert HP bar to a binding-driven smooth fill.
 - [ ] Add world-space floating damage numbers (DamageNumber pool) whose screen
       positions are sourced from `DamageNumberSource{Handle<DamageNumber>}` plus
@@ -620,6 +642,9 @@ the React component that owns them.
 - Phase evidence includes compile-fail tests proving UI cannot fabricate
   binding source/target tokens or call bind hooks outside its injected source
   scope.
+- Phase evidence includes negative tests proving binding APIs do not accept
+  setter lambdas/callbacks and cannot access command queues, navigation,
+  settings, `ClientState`, or `EngineState`.
 
 ---
 
