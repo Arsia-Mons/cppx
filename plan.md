@@ -61,6 +61,103 @@ foundation is real.
 
 ---
 
+## Implementation control contract
+
+This plan is intentionally easy to reward-hack if "done" means a visible demo
+or checked boxes. That is not enough. Each phase exits only when it leaves
+reproducible evidence that the foundation it claims to prove is actually true.
+
+### Phase exit evidence
+
+Every phase must add or update a `docs/phase-evidence/phase-N.md` file before
+the next phase starts. That file is part of the deliverable, not a note to write
+later. It must include:
+
+- The commit SHA being evaluated and the exact phase number.
+- The exact build command, test command(s), sanitizer command(s), profiler or
+  perf command(s), and scripted demo command(s) used for the phase.
+- The artifact paths for logs, perf output, sanitizer output, screenshots or
+  clips, lifecycle transcripts, replay transcripts, and any soak-test output.
+- A requirement-by-requirement table mapping each phase acceptance bullet and
+  each relevant foundation checkbox to the artifact that proves it.
+- Any intentionally deferred risk, with the phase where it must be closed.
+
+Manual inspection may supplement the evidence, but it never replaces scripted
+commands, logs, counters, transcripts, or committed artifacts. A checked box
+without an artifact link is treated as unchecked.
+
+### Anti-reward-hack checks
+
+Each foundation must have at least one positive behavior test and one negative
+test that would fail if the implementation took the easiest visible shortcut:
+
+- **Engine seam:** a frame-order transcript proves `engine_tick` completes
+  before `react_begin_frame`; a negative test fails if UI reconciliation reads
+  a partially-mutated world.
+- **Actor model:** handle/generation tests prove stale handles resolve to null
+  after destroy/reuse; a negative test fails on raw pointer escape from pools.
+- **Read lane:** selector counters prove unrelated pool version changes do not
+  re-run a pure selector; a negative test fails if selectors silently read the
+  whole world every frame.
+- **Write lane:** command replay proves deterministic end state; a negative
+  test proves dispatching from UI cannot mutate world state until the next
+  engine tick drains commands.
+- **Fast lane:** reconciliation counters prove bound visuals update while the
+  declaring subtree stays flat; a negative test fails if `use_bind` falls back
+  to ordinary per-frame reconciliation outside the explicit disable-bindings
+  comparison mode.
+- **Screen stack:** an inspection test proves `World.ui_stack` is the owner and
+  UI only renders it; a negative test fails if screen state is owned by UI-only
+  globals or component-local state.
+- **Screen lifecycle:** lifecycle transcripts prove deterministic enter, focus,
+  blur, exit ordering; cancellation tests fail on missed cleanup, duplicate
+  callbacks, or reordered events.
+- **Identity discipline:** Clay IDs, actor handles, and binding targets must be
+  stable across reorder/remount cases; negative tests fail on position-only
+  identity where keys or handles are required.
+
+### Design checkpoints
+
+Before implementing any new foundation, add a short design checkpoint to that
+phase's evidence file. It must name the chosen API, owner, lifetime rules,
+failure modes, cleanup behavior, negative tests, and why the design cannot
+silently collapse into a visible-only shortcut.
+
+This is mandatory for deferred choices such as `use_game_value`,
+`use_dispatch`, `use_bind`, `ScreenStackRenderer`, `use_screen_lifecycle`,
+`ResetWorld`, async cancellation, and any render-command or sidecar binding
+mechanism. The checkpoint does not need to be long, but it must exist before
+the implementation that depends on it.
+
+### Rendering boundary
+
+Direct SDL drawing is allowed only for the world-scene pass: arena background,
+player, enemies, bullets, gems, and other high-volume gameplay actors. The
+React/Clay foundation remains responsible for HUD, menus, modals, screen stack
+rendering, lifecycle-visible screens, damage numbers, binding-owned attributes,
+and every ID proof.
+
+Foundation-relevant visuals must expose stable Clay IDs or explicit binding
+targets. A phase cannot claim the React-over-Clay foundation is proven by
+rendering those visuals exclusively through direct SDL.
+
+### Performance and soak protocol
+
+Performance claims must be measured from a release build at a fixed 1280x720
+window size with vsync configuration recorded, a deterministic seed, and a
+scripted scenario that can be rerun. Each perf artifact must include target
+machine descriptor, build type, commit SHA, scenario seed, run duration, entity
+counts, p50/p95/max frame time, p95/max engine tick time, p95/max render time,
+and any dropped-frame count.
+
+Phase-level 60fps claims require a continuous 60-second scripted run unless a
+phase specifies a longer duration. Whole-plan soak requires a 30-minute
+scripted run with RSS sampled at least once per minute; pass/fail is based on
+no upward RSS trend beyond pool caps after warmup, no sanitizer findings, no
+thread leaks, and no missed lifecycle or command-replay assertions.
+
+---
+
 ## Explicit non-goals (out of scope)
 
 These are research projects in their own right; each will distort the
@@ -168,8 +265,9 @@ previous phase's acceptance is met.** Profile at the end of each phase.
 - [ ] Wire `engine_tick` into `main.cpp` immediately before
       `react_begin_frame()`. Pass `&world` to `App()`.
 - [ ] HUD: render `HP: %d` reading the world via a `WorldContext` provider.
-- [ ] Render the player as a colored circle through Clay (or via a direct
-      SDL draw pass — pick one and stick to it for the whole plan).
+- [ ] Render the player as a colored circle through the chosen world-scene pass.
+      If that pass is direct SDL, Phase 1 must still prove the React/Clay HUD
+      reads the committed world after `engine_tick` and uses stable Clay IDs.
 
 **Acceptance:**
 - WASD moves the player visibly.
@@ -178,6 +276,8 @@ previous phase's acceptance is met.** Profile at the end of each phase.
 - No leaks on clean shutdown (Valgrind / AddressSanitizer clean).
 - `Handle<Player>` resolves correctly; resolving a manually-destroyed handle
   returns `nullptr`.
+- Phase evidence includes a frame-order transcript proving `engine_tick`
+  finishes before `react_begin_frame` and a stable-ID inspection for the HUD.
 
 ---
 
@@ -205,6 +305,8 @@ previous phase's acceptance is met.** Profile at the end of each phase.
 - Spawning 200 dummy moving entities does **not** cause the HP selector to
   re-run (verified via a counter / log).
 - Selector outputs are deterministic across identical world states.
+- Phase evidence includes selector invocation counters and a negative test where
+  unrelated pool mutations do not re-run the HP selector.
 
 ---
 
@@ -228,6 +330,8 @@ previous phase's acceptance is met.** Profile at the end of each phase.
 - Linear scaling (no sudden cliffs) — verify by sweeping 100 / 500 / 1000.
 - Destroying enemies (via another hotkey) leaves the pool clean: live count
   drops correctly, generation bumps, resolve of old handles returns null.
+- Phase evidence includes the 100 / 500 / 1000 sweep artifact from the
+  performance protocol and stale-handle negative tests after destroy/reuse.
 
 ---
 
@@ -255,6 +359,8 @@ previous phase's acceptance is met.** Profile at the end of each phase.
 - Replaying a recorded command stream against the same initial world
   produces an identical end state (smoke test for determinism / replay).
 - Mid-frame: dispatching a command does not take effect until the next tick.
+- Phase evidence includes a grep or compile-time barrier artifact proving UI
+  code cannot write world fields directly.
 
 ---
 
@@ -282,6 +388,8 @@ real game logic).
 - Enemy death always frees its pool slot; generation bumps verified.
 - Stop-the-world test: spawn 500 enemies + 500 bullets, then trigger
   collisions; no hangs, no leaks.
+- Phase evidence includes a deterministic combat transcript proving kills, XP,
+  gem collection, pool frees, and generation bumps in one run.
 
 ---
 
@@ -296,6 +404,9 @@ the React component that owns them.
 - [ ] Design and add `use_bind(target, setter, selector)`:
       registers a binding from a selector over the world to a target
       attribute (e.g. an HP-bar fill width, a world-space label position).
+      The design checkpoint must specify target identity, unmount cleanup,
+      transition behavior, failure behavior when the target is missing, and why
+      the implementation cannot silently fall back to full reconciliation.
 - [ ] Implement binding application: after `react_end_frame()` and before
       `SDL_RenderPresent()`, walk active bindings and apply the latest
       selector value to the target. The exact mechanism may be a parallel
@@ -316,6 +427,8 @@ the React component that owns them.
 - Reconciliation counter for the HUD subtree is flat across frames.
 - Disabling all bindings reverts the visual to per-frame full reconciliation
   with no visible difference except framerate / re-render counters.
+- Phase evidence includes both binding-enabled and binding-disabled counter
+  artifacts from the same deterministic HP/damage-number scenario.
 
 ---
 
@@ -347,6 +460,8 @@ the React component that owns them.
 - ESC (or Resume) pops Pause; gameplay resumes seamlessly.
 - Title → Gameplay flow works on boot.
 - Stack depth of 2+ works (e.g. Pause pushed over Gameplay).
+- Phase evidence includes an inspection artifact proving `World.ui_stack` owns
+  the stack and screen components only render the entries.
 
 ---
 
@@ -376,6 +491,8 @@ in a deterministic order across stack changes.
   scripted sequence: Boot → Play → Pause → Resume → Quit).
 - Reversing a transition mid-flight works (push Pause, immediately pop while
   still `entering` — ends `exited` correctly).
+- Phase evidence includes negative transcripts for cancellation, duplicate
+  callbacks, and reversed mid-flight transitions.
 
 ---
 
@@ -406,6 +523,8 @@ mutation through the write lane.
 - HUD HP / XP bars update via bindings throughout (phase 6 still works).
 - Triggering a level-up while another modal is animating in/out behaves
   deterministically (queued, not dropped, not interleaved).
+- Phase evidence includes a ten-level-up scripted transcript with queued
+  modal handling and command-only upgrade application.
 
 ---
 
@@ -436,6 +555,8 @@ mutation through the write lane.
   bound listeners (AddressSanitizer + thread sanitizer clean).
 - Dying with a level-up modal already on the stack resolves to GameOver
   with the upgrade modal correctly torn down.
+- Phase evidence includes reset/cancellation artifacts proving no stale actors,
+  UI fibers, bindings, async fetches, or lifecycle listeners survive restart.
 
 ---
 
