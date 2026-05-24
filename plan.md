@@ -468,9 +468,8 @@ simulation state.
 - [ ] Add target/context action hooks returning narrow capabilities:
       `use_player_pawn_actions(Handle<Player>)` for movement and
       `use_debug_spawn_actions(DebugPanelId)` for debug spawn/damage controls.
-      Do not add `use_game_commands()`, `use_navigation_commands()`, or a single
-      global `use_dispatch()` unless its evidence proves ordinary UI still
-      cannot obtain actions outside its target/context scope.
+      Do not add `use_game_commands()`, `use_navigation_commands()`, a raw
+      dispatcher, or a global `use_dispatch()` equivalent to UI-facing code.
 - [ ] Replace direct mutations from the input path: input handler dispatches
       commands; engine applies them inside the tick.
 - [ ] Add a compile-time mutation boundary: UI-facing code receives only a
@@ -487,6 +486,9 @@ simulation state.
   code cannot acquire mutable simulation state, write simulation fields directly,
   call engine-only mutation helpers, obtain all gameplay commands, or send
   navigation/debug/settings work through a player-only action capability.
+- Phase evidence includes compile-fail tests proving ordinary UI cannot include
+  or call the dispatcher/queue and cannot construct command variants outside
+  its scoped action object.
 
 ---
 
@@ -594,8 +596,11 @@ the React component that owns them.
 - [ ] Add `<ScreenStackRenderer>` component that reads the stack via
       an infrastructure-only stack snapshot and renders the screen component(s)
       for each entry. Lower entries stay mounted but visually layered behind
-      upper ones. Individual screen components receive only their
-      `ScreenEntryId`, route payload, and entry-scoped view/actions.
+      upper ones. It must switch by `ScreenId` and construct typed per-screen
+      props such as `TitleProps`, `PauseProps`, `GameplayProps`,
+      `UpgradeOfferProps`, `GameOverProps`, and `SettingsProps`. Individual
+      screen components receive only their typed props, `ScreenEntryId`, and
+      entry-scoped view/actions.
 - [ ] Implement `Title`, `Gameplay`, `Pause` screen components. Title has a
       Play button through `TitleActions{ScreenEntryId}`. Pause has Resume and
       Quit through `PauseMenuActions{ScreenEntryId}`.
@@ -617,6 +622,9 @@ the React component that owns them.
 - Phase evidence includes negative tests proving ordinary screens cannot
   enumerate the whole stack, push arbitrary screen IDs, pop entries they do not
   own, or attach arbitrary payload types.
+- Phase evidence includes negative tests proving ordinary screens cannot receive
+  raw stack snapshots, `std::any`, unfiltered payload variants, or payload fields
+  for other screen types.
 
 ---
 
@@ -634,12 +642,17 @@ in a deterministic order across stack changes.
 - [ ] Frame orchestration advances phase clocks each tick (and does so even
       when gameplay is paused; transitions never freeze).
 - [ ] Add `use_screen_lifecycle({on_enter, on_exit, on_focus, on_blur})` hook.
-      Order across a push: previous-top `on_blur` → new-top `on_enter` →
-      new-top `on_focus` (after `entered`). Reverse on pop.
+      Callbacks receive only a narrow lifecycle event keyed by `ScreenEntryId`
+      and separately injected lifecycle action capabilities. They must not
+      receive `ClientState`, command queues, navigation routers, platform
+      services, or mutable simulation access. Order across a push: previous-top
+      `on_blur` → new-top `on_enter` → new-top `on_focus` (after `entered`).
+      Reverse on pop.
 - [ ] Visual transitions: backdrop fade for modals, scale-in for modals,
       crossfade for screen swaps.
 - [ ] Audio side-effect tests: dock a music-duck on Pause's `on_enter`,
-      undock on `on_exit`. (Audio system may be a stub that logs.)
+      undock on `on_exit` through `PauseLifecycleActions{ScreenEntryId}`.
+      (Audio system may be a stub that logs.)
 
 **Acceptance:**
 - Smooth animated push and pop; no popping / flashing.
@@ -649,6 +662,9 @@ in a deterministic order across stack changes.
   still `entering` — ends `exited` correctly).
 - Phase evidence includes negative transcripts for cancellation, duplicate
   callbacks, and reversed mid-flight transitions.
+- Phase evidence includes negative tests proving lifecycle callbacks cannot push
+  arbitrary screens, reset simulation, spawn/debug, or access global
+  service/state bags directly.
 
 ---
 
@@ -714,8 +730,11 @@ mutation through the write lane.
 - [ ] `ResetSimulation` command: clear all simulation pools and reset player.
       Navigation reset is a separate frame-orchestration operation so
       `SimulationWorld` never owns the stack.
-- [ ] Add Settings screen reachable from Pause (and from Title). Two
-      settings: master volume, fullscreen toggle. Persist nothing for now.
+- [ ] Add Settings screen reachable from Pause (and from Title). It receives
+      `SettingsProps{ScreenEntryId}`, `SettingsSource{ScreenEntryId}` with only
+      `master_volume` and `fullscreen` fields, and
+      `SettingsActions{ScreenEntryId}` with only `set_master_volume` and
+      `request_fullscreen_toggle`. Persist nothing for now.
 - [ ] Boot flow: stack starts as `[Title]`.
 - [ ] Edge tests: die during a level-up modal; die during a screen
       transition; quit mid-fetch (carry over the existing Image fetch
@@ -736,6 +755,9 @@ mutation through the write lane.
   an upgrade modal cannot reset simulation, GameOver cannot spawn debug enemies,
   and commands with stale run IDs, screen entry IDs, offer IDs, or actor
   generations are rejected.
+- Phase evidence includes negative tests proving Settings cannot acquire
+  simulation actions, debug spawn, raw navigation, platform handles, or unrelated
+  `ClientState` fields.
 
 ---
 
