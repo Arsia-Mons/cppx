@@ -944,3 +944,9 @@ the 2D traversal API shape, the scope-nesting precedence rule, a
 `use_focus_state()` reader, and a repeat-rate helper for confirm-held.
 Everything else in §6 is fixable in the consumer with mild ugliness, but
 those four leak straight into the consumption layer with no workaround.
+
+Follow-up: `client-ui-spatial-navigation-example.md` sketches the stronger
+answer for the biggest flaw above. Instead of asking the screen author for a
+`GridStrategy`, the focus layer harvests each focusable's Clay rectangle after
+layout and derives directional neighbors spatially, with explicit navigation
+rules reserved for boundaries and exceptions.
