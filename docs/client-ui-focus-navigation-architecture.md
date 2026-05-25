@@ -3,7 +3,8 @@
 The client UI architecture:
 
 - `ui/` owns the generic focus/navigation engine.
-- `client/ui/` marks interactive components as focusable and supplies actions.
+- `client/ui/` marks interactive components as focusable and reads values /
+  functions through hooks.
 - Screen authors declare components, not directional edges between siblings.
 - Directional navigation is derived from the focusable components' laid-out
   rectangles after Clay computes layout.
@@ -15,6 +16,9 @@ and a confirm dialog.
 
 The snippets are implementation-shaped C++. They define the ownership model and
 the intended shape of client screen code.
+
+`{Name}ScreenView` means the root component tree for a screen. It is not an MVC
+view, and it does not get a companion screen-wide data object.
 
 ---
 
@@ -191,7 +195,7 @@ ui_focus_begin_frame(&input);
 
 react_begin_frame();
 Clay_BeginLayout();
-ClientUi_Build(&client_ui, view_model);
+ClientUi_Build(&client_ui);
 Clay_RenderCommandArray cmds = Clay_EndLayout();
 
 ui_focus_end_layout(); // harvest Clay_GetElementData() for next frame nav
@@ -463,7 +467,7 @@ void Button(const ButtonProps &props) {
 ```
 
 The callback lambdas are used during the current UI declaration pass. A
-production action layer should enqueue a typed UI intent from `on_confirm` and
+production write lane should enqueue a typed UI intent from `on_confirm` and
 drain it after layout, rather than mutating the screen stack or game state from
 inside `Button`.
 
@@ -520,7 +524,7 @@ void ConfirmDialog(const ConfirmDialogProps &props) {
             Text(props.body, text_style_body());
 
             CLAY({
-                .id = CLAY_ID_LOCAL("Actions"),
+                .id = CLAY_ID_LOCAL("DialogButtons"),
                 .layout = {
                     .childGap = 8,
                     .layoutDirection = CLAY_LEFT_TO_RIGHT,
@@ -815,7 +819,7 @@ void ScreenStack::build_visible(void) {
 
 #### 6. Client UI owner
 
-`ClientUi` owns the frame-level UI runtime: focus, input routing, action
+`ClientUi` owns the frame-level UI runtime: focus, input routing, intent
 draining, and the screen stack.
 
 ```cpp
@@ -834,12 +838,12 @@ public:
         screens.build_visible();
     }
 
-    std::vector<UiAction> dispatch_input_after_layout(const UiInputFrame &input);
+    std::vector<UiIntent> dispatch_input_after_layout(const UiInputFrame &input);
 
 private:
     ScreenStack screens;
     UiFocusRuntime focus;
-    UiActionQueue actions;
+    UiIntentQueue intents;
 };
 ```
 
@@ -862,10 +866,10 @@ void GameUiPipeline::render_client_ui_frame(const GameUiFrame &frame) {
     Clay_RenderCommandArray commands = client_ui.end_frame();
     render_clay(frame.surface, commands);
 
-    std::vector<UiAction> unhandled =
+    std::vector<UiIntent> unhandled =
         client_ui.dispatch_input_after_layout(input);
 
-    dispatch_unhandled_game_ui_actions(unhandled);
+    dispatch_unhandled_game_ui_intents(unhandled);
 }
 ```
 
@@ -899,10 +903,10 @@ Game::tick_one_frame
   polls input, ticks world, draws world, asks GameUiPipeline to render UI
 
 GameUiPipeline::render_client_ui_frame
-  builds UiInputFrame, runs ClientUi, renders Clay commands, dispatches actions
+  builds UiInputFrame, runs ClientUi, renders Clay commands, drains UI intents
 
 ClientUi
-  owns focus runtime, UI action queue, and ScreenStack
+  owns focus runtime, UI intent queue, and ScreenStack
 
 ScreenStack
   owns top-level screen lifetime and visible-screen ordering
@@ -942,8 +946,7 @@ This is game-specific, so it lives under `client/ui/overlays/buy_menu/`.
 ```text
 client/ui/overlays/buy_menu/
   BuyMenuOverlay.cpp
-  BuyMenuState.h
-  BuyMenuViewModel.h
+  buy_menu_hooks.h
   components/
     BuyCategoryList.cpp
     BuyItemGrid.cpp
@@ -951,20 +954,22 @@ client/ui/overlays/buy_menu/
     BuyDetailsPanel.cpp
 ```
 
-The view model has game-specific data. The focus runtime only sees ids,
-disabled flags, callbacks, and Clay rectangles.
+The overlay and its descendants read game data and write functions through
+hooks. The focus runtime only sees ids, disabled flags, callbacks, and Clay
+rectangles. There is no screen-wide data object or action bundle to pass
+through the component tree.
 
 ```cpp
-// client/ui/overlays/buy_menu/BuyMenuViewModel.h
+// client/ui/overlays/buy_menu/buy_menu_hooks.h
 
 #include <functional>
 
-struct BuyCategoryVm {
+struct BuyCategoryOption {
     BuyCategoryId id;
     const char *label;
 };
 
-struct BuyItemVm {
+struct BuyItemOption {
     ItemId id;
     const char *name;
     int price;
@@ -972,21 +977,23 @@ struct BuyItemVm {
     bool already_owned;
 };
 
-struct BuyMenuViewModel {
+struct BuyMenuResult {
+    Span<const BuyCategoryOption> categories;
+    Span<const BuyItemOption> items;
+
     BuyCategoryId selected_category;
     ItemId preview_item;
 
-    Span<const BuyCategoryVm> categories;
-    Span<const BuyItemVm> items;
+    std::function<void(BuyCategoryId)> select_category;
+    std::function<void(ItemId)> set_preview_item;
+    std::function<void(ItemId)> request_buy;
 };
 
-struct BuyMenuActions {
-    std::function<void(BuyCategoryId)> select_category = {};
-    std::function<void(ItemId)> preview_item = {};
-    std::function<void(ItemId)> request_buy = {};
-    std::function<void()> close = {};
-};
+BuyMenuResult use_buy_menu();
 ```
+
+`BuyMenuResult` is the return value of a hook. Components call `use_buy_menu()`
+where they need it; the result is not passed down as a prop.
 
 ### Overlay root
 
@@ -997,10 +1004,19 @@ screen focus remains stored but frozen.
 ```cpp
 // client/ui/overlays/buy_menu/BuyMenuOverlay.cpp
 
-void BuyMenuOverlay(const BuyMenuViewModel &vm,
-                    const BuyMenuActions &actions,
-                    BuyMenuState *state) {
+void BuyMenuOverlay(void) {
     REACT_COMPONENT_BEGIN("BuyMenuOverlay") {
+        BuyMenuResult buy_menu = use_buy_menu();
+        int *confirm_open = use_state_int(0);
+
+        auto open_confirmation = [confirm_open] {
+            *confirm_open = 1;
+        };
+
+        auto close_confirmation = [confirm_open] {
+            *confirm_open = 0;
+        };
+
         ui_focus_push_scope({
             .id = CLAY_ID("BuyMenuFocusScope"),
             .modal = true,
@@ -1028,13 +1044,13 @@ void BuyMenuOverlay(const BuyMenuViewModel &vm,
             .backgroundColor = panel_bg,
             .cornerRadius = CLAY_CORNER_RADIUS(6),
         }) {
-            BuyCategoryList(vm, actions);
-            BuyItemGrid(vm, actions);
-            BuyDetailsPanel(vm.preview_item);
+            BuyCategoryList();
+            BuyItemGrid(open_confirmation);
+            BuyDetailsPanel();
         }
 
-        if (state->confirm_open) {
-            BuyConfirmDialog(state, actions);
+        if (*confirm_open) {
+            BuyConfirmDialog(buy_menu.preview_item, close_confirmation);
         }
 
         ui_focus_pop_scope();
@@ -1053,9 +1069,10 @@ tile because the grid sits to the right.
 ```cpp
 // client/ui/overlays/buy_menu/components/BuyCategoryList.cpp
 
-void BuyCategoryList(const BuyMenuViewModel &vm,
-                     const BuyMenuActions &actions) {
+void BuyCategoryList(void) {
     REACT_COMPONENT_BEGIN("BuyCategoryList") {
+        BuyMenuResult buy_menu = use_buy_menu();
+
         CLAY({
             .id = CLAY_ID_LOCAL("CategoryColumn"),
             .layout = {
@@ -1064,16 +1081,16 @@ void BuyCategoryList(const BuyMenuViewModel &vm,
                 .layoutDirection = CLAY_TOP_TO_BOTTOM,
             },
         }) {
-            for (int i = 0; i < vm.categories.count; ++i) {
-                const BuyCategoryVm &category = vm.categories[i];
+            for (int i = 0; i < buy_menu.categories.count; ++i) {
+                const BuyCategoryOption &category = buy_menu.categories[i];
                 BuyCategoryId category_id = category.id;
 
                 ListItem({
                     .id = CLAY_IDI("BuyCategory", (uint32_t)category_id),
                     .label = category.label,
-                    .selected = category_id == vm.selected_category,
-                    .on_confirm = [&actions, category_id] {
-                        actions.select_category(category_id);
+                    .selected = category_id == buy_menu.selected_category,
+                    .on_confirm = [buy_menu, category_id] {
+                        buy_menu.select_category(category_id);
                     },
                 });
             }
@@ -1092,9 +1109,10 @@ rectangles, not from `row` or `col` fields.
 ```cpp
 // client/ui/overlays/buy_menu/components/BuyItemGrid.cpp
 
-void BuyItemGrid(const BuyMenuViewModel &vm,
-                 const BuyMenuActions &actions) {
+void BuyItemGrid(std::function<void()> open_confirmation) {
     REACT_COMPONENT_BEGIN("BuyItemGrid") {
+        BuyMenuResult buy_menu = use_buy_menu();
+
         CLAY({
             .id = CLAY_ID_LOCAL("ItemGrid"),
             .layout = {
@@ -1105,7 +1123,7 @@ void BuyItemGrid(const BuyMenuViewModel &vm,
         }) {
             const int columns = 4; // layout detail, not navigation metadata
 
-            for (int row = 0; row * columns < vm.items.count; ++row) {
+            for (int row = 0; row * columns < buy_menu.items.count; ++row) {
                 CLAY({
                     .id = CLAY_IDI_LOCAL("ItemGridRow", row),
                     .layout = {
@@ -1115,9 +1133,9 @@ void BuyItemGrid(const BuyMenuViewModel &vm,
                 }) {
                     for (int col = 0; col < columns; ++col) {
                         int index = row * columns + col;
-                        if (index >= vm.items.count) break;
+                        if (index >= buy_menu.items.count) break;
 
-                        BuyItemTile(vm.items[index], actions);
+                        BuyItemTile(buy_menu.items[index], open_confirmation);
                     }
                 }
             }
@@ -1139,20 +1157,22 @@ remain visible but disabled.
 ```cpp
 // client/ui/overlays/buy_menu/components/BuyItemTile.cpp
 
-void BuyItemTile(const BuyItemVm &item,
-                 const BuyMenuActions &actions) {
+void BuyItemTile(const BuyItemOption &item,
+                 std::function<void()> open_confirmation) {
     REACT_COMPONENT_BEGIN_KEY("BuyItemTile", (uint32_t)item.id) {
+        BuyMenuResult buy_menu = use_buy_menu();
         ItemId item_id = item.id;
         bool disabled = !item.affordable || item.already_owned;
 
         Focusable({
             .id = CLAY_IDI("BuyItem", (uint32_t)item_id),
             .disabled = disabled,
-            .on_confirm = [&actions, item_id] {
-                actions.request_buy(item_id);
+            .on_confirm = [buy_menu, open_confirmation, item_id] {
+                buy_menu.set_preview_item(item_id);
+                open_confirmation();
             },
-            .on_focus = [&actions, item_id] {
-                actions.preview_item(item_id);
+            .on_focus = [buy_menu, item_id] {
+                buy_menu.set_preview_item(item_id);
             },
         }, [&](const UiFocusableState &focus) {
             VisualState visual = derive_visual_state(focus, {
@@ -1196,12 +1216,14 @@ Again, there is no navigation code. The tile only says:
 
 ### Details panel
 
-The details panel is not focusable. It responds to `preview_item`, which is
-updated by `on_focus`.
+The details panel is not focusable. It reads the preview item through the
+buy-menu hook. The focused tile updates that hook-owned value.
 
 ```cpp
-void BuyDetailsPanel(ItemId preview_item) {
+void BuyDetailsPanel(void) {
     REACT_COMPONENT_BEGIN("BuyDetailsPanel") {
+        BuyMenuResult buy_menu = use_buy_menu();
+
         CLAY({
             .id = CLAY_ID_LOCAL("DetailsPanel"),
             .layout = {
@@ -1213,7 +1235,7 @@ void BuyDetailsPanel(ItemId preview_item) {
             .backgroundColor = details_bg,
             .cornerRadius = CLAY_CORNER_RADIUS(4),
         }) {
-            const ItemDetails *details = lookup_item_details(preview_item);
+            const ItemDetails *details = lookup_item_details(buy_menu.preview_item);
             if (!details) {
                 Text("Select an item", text_style_body());
                 return;
@@ -1227,9 +1249,9 @@ void BuyDetailsPanel(ItemId preview_item) {
 }
 ```
 
-This keeps preview state in `client/ui`, not in the generic focus engine. The
-focus engine reports focus changes; the buy menu decides what those changes
-mean.
+This keeps preview state behind the buy-menu hooks, not in the generic focus
+engine. The focus engine reports focus changes; the buy menu decides what those
+changes mean.
 
 ---
 
@@ -1241,9 +1263,11 @@ parent buy-menu scope keeps its focused item but does not move while the dialog
 is open.
 
 ```cpp
-void BuyConfirmDialog(BuyMenuState *state,
-                      const BuyMenuActions &actions) {
+void BuyConfirmDialog(ItemId item_to_buy,
+                      std::function<void()> close_confirmation) {
     REACT_COMPONENT_BEGIN("BuyConfirmDialog") {
+        BuyMenuResult buy_menu = use_buy_menu();
+
         ui_focus_push_scope({
             .id = CLAY_ID("BuyConfirmFocusScope"),
             .modal = true,
@@ -1279,7 +1303,7 @@ void BuyConfirmDialog(BuyMenuState *state,
                 Text("Buy this item?", text_style_title());
 
                 CLAY({
-                    .id = CLAY_ID_LOCAL("DialogActions"),
+                    .id = CLAY_ID_LOCAL("DialogButtons"),
                     .layout = {
                         .childGap = 8,
                         .layoutDirection = CLAY_LEFT_TO_RIGHT,
@@ -1288,17 +1312,17 @@ void BuyConfirmDialog(BuyMenuState *state,
                     Button({
                         .id = CLAY_ID("BuyConfirmNo"),
                         .label = "Cancel",
-                        .on_confirm = [state] {
-                            state->confirm_open = false;
+                        .on_confirm = [close_confirmation] {
+                            close_confirmation();
                         },
                     });
 
                     Button({
                         .id = CLAY_ID("BuyConfirmYes"),
                         .label = "Buy",
-                        .on_confirm = [state, &actions] {
-                            state->confirm_open = false;
-                            actions.request_buy(state->pending_item);
+                        .on_confirm = [buy_menu, close_confirmation, item_to_buy] {
+                            close_confirmation();
+                            buy_menu.request_buy(item_to_buy);
                         },
                     });
                 }
@@ -1324,16 +1348,17 @@ debug button behind the menu. The category list can stop at its left boundary.
 
 ```cpp
 BuyCategoryId category_id = category.id;
+BuyMenuResult buy_menu = use_buy_menu();
 
 ListItem({
     .id = CLAY_IDI("BuyCategory", (uint32_t)category_id),
     .label = category.label,
-    .selected = category_id == vm.selected_category,
+    .selected = category_id == buy_menu.selected_category,
     .nav = {
         .left = { .kind = UiNavRuleKind::Stop },
     },
-    .on_confirm = [&actions, category_id] {
-        actions.select_category(category_id);
+    .on_confirm = [buy_menu, category_id] {
+        buy_menu.select_category(category_id);
     },
 });
 ```
@@ -1348,9 +1373,9 @@ Button({
     .nav = {
         .down = { .kind = UiNavRuleKind::Wrap },
     },
-    .on_confirm = [state, &actions] {
-        state->confirm_open = false;
-        actions.request_buy(state->pending_item);
+    .on_confirm = [buy_menu, close_confirmation, item_to_buy] {
+        close_confirmation();
+        buy_menu.request_buy(item_to_buy);
     },
 });
 ```
@@ -1404,9 +1429,9 @@ And replace screen-level traversal with:
 use_focus_traversal(GridStrategy{ .cols = 4 });
 
 // Better default: the screen only renders focusable components.
-BuyCategoryList(vm, actions);
-BuyItemGrid(vm, actions);
-BuyDetailsPanel(vm.preview_item);
+BuyCategoryList();
+BuyItemGrid(open_confirmation);
+BuyDetailsPanel();
 ```
 
 The runtime infers directional neighbors from the laid-out focusable
