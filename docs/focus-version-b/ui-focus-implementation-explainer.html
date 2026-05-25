@@ -1,0 +1,2209 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UI Focus Implementation Explainer</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f5f1;
+      --paper: #fffefa;
+      --ink: #1d2528;
+      --muted: #5d676b;
+      --line: #cfd7d8;
+      --line-strong: #8fa1a3;
+      --blue: #2f6f9f;
+      --blue-soft: #e4f0f7;
+      --teal: #18756f;
+      --teal-soft: #ddf0ed;
+      --red: #a33f3f;
+      --red-soft: #f7e4e2;
+      --amber: #946018;
+      --amber-soft: #f6ebd3;
+      --green: #43753e;
+      --green-soft: #e4f0df;
+      --shadow: 0 18px 45px rgba(28, 37, 40, 0.08);
+      --radius: 8px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background:
+        linear-gradient(180deg, rgba(255, 254, 250, 0.92), rgba(246, 245, 241, 0.96)),
+        repeating-linear-gradient(90deg, rgba(207, 215, 216, 0.24) 0, rgba(207, 215, 216, 0.24) 1px, transparent 1px, transparent 56px);
+      color: var(--ink);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.55;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    code,
+    pre,
+    .code {
+      font-family: var(--mono);
+    }
+
+    pre {
+      margin: 0;
+      padding: 14px;
+      overflow: auto;
+      background: #172024;
+      color: #eef6f3;
+      border-radius: var(--radius);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .shell {
+      max-width: 1220px;
+      margin: 0 auto;
+      padding: 28px 22px 72px;
+    }
+
+    header {
+      min-height: 58vh;
+      display: grid;
+      align-items: end;
+      padding: 24px 0 34px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+      gap: 28px;
+      align-items: end;
+    }
+
+    .eyebrow {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0;
+      text-transform: uppercase;
+      color: var(--teal);
+      margin: 0 0 8px;
+    }
+
+    h1,
+    h2,
+    h3 {
+      letter-spacing: 0;
+      line-height: 1.08;
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 52px;
+      max-width: 820px;
+    }
+
+    h2 {
+      font-size: 30px;
+      margin-bottom: 14px;
+    }
+
+    h3 {
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+
+    p {
+      margin: 0;
+    }
+
+    .lead {
+      max-width: 800px;
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .hero-card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+
+    .doc-picker {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .doc-row {
+      display: grid;
+      grid-template-columns: 90px 1fr;
+      gap: 10px;
+      align-items: start;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #ffffff;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 24px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .tag.chosen {
+      background: var(--green-soft);
+      color: var(--green);
+      border: 1px solid rgba(67, 117, 62, 0.28);
+    }
+
+    .tag.archive {
+      background: var(--amber-soft);
+      color: var(--amber);
+      border: 1px solid rgba(148, 96, 24, 0.28);
+    }
+
+    .tag.not {
+      background: var(--red-soft);
+      color: var(--red);
+      border: 1px solid rgba(163, 63, 63, 0.26);
+    }
+
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 12px 0;
+      background: rgba(246, 245, 241, 0.94);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .nav a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 32px;
+      padding: 5px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fffefa;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .nav a.active {
+      border-color: rgba(47, 111, 159, 0.6);
+      background: var(--blue-soft);
+      color: var(--blue);
+    }
+
+    section {
+      padding: 44px 0;
+      border-bottom: 1px solid var(--line);
+      scroll-margin-top: 72px;
+    }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(0, 0.82fr) minmax(240px, 0.38fr);
+      gap: 24px;
+      align-items: start;
+      margin-bottom: 22px;
+    }
+
+    .section-head p {
+      color: var(--muted);
+    }
+
+    .source-list,
+    .mini-list,
+    .check-list {
+      display: grid;
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .source-list li,
+    .mini-list li,
+    .check-list li {
+      position: relative;
+      padding-left: 18px;
+    }
+
+    .source-list li::before,
+    .mini-list li::before,
+    .check-list li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0.72em;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--teal);
+    }
+
+    .source-note {
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--blue);
+      background: var(--paper);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .source-note strong {
+      color: var(--ink);
+    }
+
+    .grid-2,
+    .grid-3,
+    .grid-4 {
+      display: grid;
+      gap: 16px;
+    }
+
+    .grid-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grid-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .grid-4 {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .panel {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(28, 37, 40, 0.05);
+    }
+
+    .panel.tight {
+      padding: 12px;
+    }
+
+    .panel h3 + p {
+      color: var(--muted);
+    }
+
+    .panel .src,
+    .src {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 1px 7px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: #364548;
+      background: #ffffff;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.4;
+      white-space: normal;
+    }
+
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 22px;
+    }
+
+    .kpi {
+      min-height: 92px;
+      display: grid;
+      align-content: start;
+      gap: 6px;
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--paper);
+    }
+
+    .kpi b {
+      font-size: 22px;
+      line-height: 1;
+      color: var(--blue);
+    }
+
+    .kpi span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .flow {
+      display: grid;
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .flow.horizontal {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    .node {
+      min-height: 96px;
+      padding: 13px;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--radius);
+      background: #ffffff;
+      position: relative;
+    }
+
+    .node::after {
+      content: "";
+      position: absolute;
+      right: -10px;
+      top: calc(50% - 7px);
+      width: 0;
+      height: 0;
+      border-top: 7px solid transparent;
+      border-bottom: 7px solid transparent;
+      border-left: 9px solid var(--line-strong);
+    }
+
+    .node:last-child::after {
+      display: none;
+    }
+
+    .node small {
+      display: block;
+      color: var(--muted);
+      font-weight: 700;
+      margin-top: 6px;
+    }
+
+    .bad {
+      background: var(--red-soft);
+      border-color: rgba(163, 63, 63, 0.35);
+    }
+
+    .good {
+      background: var(--green-soft);
+      border-color: rgba(67, 117, 62, 0.35);
+    }
+
+    .neutral {
+      background: var(--blue-soft);
+      border-color: rgba(47, 111, 159, 0.35);
+    }
+
+    .warn {
+      background: var(--amber-soft);
+      border-color: rgba(148, 96, 24, 0.35);
+    }
+
+    .diagram {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, #fffefa, #f8fbfb);
+      overflow: hidden;
+    }
+
+    .lane-grid {
+      display: grid;
+      grid-template-columns: 140px repeat(4, minmax(0, 1fr));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: #ffffff;
+    }
+
+    .lane-cell {
+      min-height: 82px;
+      padding: 12px;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      display: grid;
+      align-content: start;
+      gap: 5px;
+    }
+
+    .lane-cell:nth-child(5n) {
+      border-right: 0;
+    }
+
+    .lane-head {
+      background: #eef4f4;
+      font-weight: 800;
+    }
+
+    .lane-name {
+      background: #f7faf9;
+      font-weight: 800;
+      color: var(--teal);
+    }
+
+    .timeline {
+      display: grid;
+      gap: 12px;
+    }
+
+    .timeline-row {
+      display: grid;
+      grid-template-columns: 130px minmax(0, 1fr);
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .timeline-label {
+      padding: 12px;
+      border-radius: var(--radius);
+      background: #ffffff;
+      border: 1px solid var(--line);
+      font-weight: 800;
+    }
+
+    .timeline-track {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .tick {
+      min-height: 74px;
+      padding: 9px;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background: #ffffff;
+      font-size: 13px;
+    }
+
+    .tick strong {
+      display: block;
+      margin-bottom: 3px;
+    }
+
+    .state-card {
+      display: grid;
+      gap: 9px;
+      min-height: 170px;
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #ffffff;
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    .example-frame {
+      display: grid;
+      grid-template-columns: 250px minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .mock-screen {
+      aspect-ratio: 4 / 3;
+      border: 2px solid #25353a;
+      border-radius: var(--radius);
+      background: #eaf0ef;
+      padding: 14px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 10px;
+    }
+
+    .mock-title {
+      font-weight: 900;
+      color: #25353a;
+    }
+
+    .mock-stack {
+      display: grid;
+      gap: 8px;
+      align-content: center;
+    }
+
+    .mock-button {
+      min-height: 38px;
+      border: 1px solid #72878b;
+      border-radius: 6px;
+      background: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+    }
+
+    .mock-button.focus {
+      border: 3px solid var(--blue);
+      background: var(--blue-soft);
+    }
+
+    .mock-button.disabled {
+      opacity: 0.48;
+    }
+
+    .mock-note {
+      min-height: 24px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .stepper {
+      display: grid;
+      gap: 10px;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #ffffff;
+    }
+
+    .num {
+      width: 30px;
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: var(--blue);
+      color: #ffffff;
+      font-weight: 900;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    th,
+    td {
+      padding: 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #eef4f4;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .risk-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .risk {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 13px;
+      display: grid;
+      gap: 6px;
+    }
+
+    .risk b {
+      color: var(--red);
+    }
+
+    details {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+    }
+
+    details + details {
+      margin-top: 10px;
+    }
+
+    summary {
+      cursor: pointer;
+      font-weight: 900;
+      color: var(--ink);
+    }
+
+    details p {
+      margin-top: 10px;
+      color: var(--muted);
+    }
+
+    .glossary {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .term {
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #ffffff;
+    }
+
+    .term b {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .term span {
+      color: var(--muted);
+    }
+
+    .footer {
+      padding: 32px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 960px) {
+      h1 {
+        font-size: 40px;
+      }
+
+      .hero-grid,
+      .section-head,
+      .grid-2,
+      .grid-3,
+      .grid-4,
+      .kpi-row,
+      .example-frame,
+      .risk-grid,
+      .glossary {
+        grid-template-columns: 1fr;
+      }
+
+      .flow.horizontal {
+        grid-template-columns: 1fr;
+      }
+
+      .node::after {
+        right: auto;
+        left: calc(50% - 7px);
+        top: auto;
+        bottom: -10px;
+        border-left: 7px solid transparent;
+        border-right: 7px solid transparent;
+        border-top: 9px solid var(--line-strong);
+        border-bottom: 0;
+      }
+
+      .lane-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .lane-cell,
+      .lane-cell:nth-child(5n) {
+        border-right: 0;
+      }
+
+      .timeline-row {
+        grid-template-columns: 1fr;
+      }
+
+      .timeline-track {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .shell {
+        padding: 20px 14px 56px;
+      }
+
+      header {
+        min-height: 62vh;
+      }
+
+      h1 {
+        font-size: 34px;
+      }
+
+      h2 {
+        font-size: 25px;
+      }
+
+      .doc-row {
+        grid-template-columns: 1fr;
+      }
+
+      th,
+      td {
+        padding: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div class="hero-grid">
+        <div>
+          <p class="eyebrow">Falsifiable implementation explainer</p>
+          <h1>UI Focus Plan: How It Would Actually Work</h1>
+          <p class="lead">
+            This page explains the focus plan from first principles and ties each major claim
+            back to the repository as it exists now. It separates current compiled behavior,
+            archived reference code, and proposed implementation work.
+          </p>
+          <div class="kpi-row" aria-label="top-level status">
+            <div class="kpi"><b>1</b><span>Chosen source plan</span></div>
+            <div class="kpi"><b>0</b><span>Focus manager types in compiled src today</span></div>
+            <div class="kpi"><b>4</b><span>Input families the plan must normalize</span></div>
+            <div class="kpi"><b>1</b><span>Frame-order issue that must be proven fixed</span></div>
+          </div>
+        </div>
+        <aside class="hero-card">
+          <h2>Source Selection</h2>
+          <p class="source-note">
+            <strong>Chosen source:</strong> <span class="src">docs/ui-focus-plan.md</span>.
+            It is the only top-level document explicitly titled as a UI focus and input state plan.
+          </p>
+          <div class="doc-picker">
+            <div class="doc-row">
+              <span class="tag chosen">chosen</span>
+              <p><span class="src">docs/ui-focus-plan.md</span> defines UI element focus, focus state, registry, queue, scopes, frame lifecycle, phases, and acceptance checks.</p>
+            </div>
+            <div class="doc-row">
+              <span class="tag archive">context</span>
+              <p><span class="src">docs/archive/ui.md</span> provides the archived vocabulary for interaction, control, and visual states.</p>
+            </div>
+            <div class="doc-row">
+              <span class="tag archive">context</span>
+              <p><span class="src">plan.md</span> describes the larger game UI direction: domain hooks, screen stack, and action boundaries.</p>
+            </div>
+            <div class="doc-row">
+              <span class="tag not">not source</span>
+              <p><span class="src">README.md</span> and <span class="src">architecture.md</span> are broader architecture notes and do not define the focus implementation contract.</p>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </header>
+
+    <nav class="nav" aria-label="page sections">
+      <a href="#problem">Problem</a>
+      <a href="#current">Current</a>
+      <a href="#proposal">Proposal</a>
+      <a href="#state">State</a>
+      <a href="#component-use">Component Use</a>
+      <a href="#primitives">Primitives</a>
+      <a href="#input">Input</a>
+      <a href="#lifecycle">Lifecycle</a>
+      <a href="#react">React Fit</a>
+      <a href="#ownership">Ownership</a>
+      <a href="#walkthroughs">Walkthroughs</a>
+      <a href="#risks">Risks</a>
+      <a href="#verify">Verify</a>
+      <a href="#glossary">Glossary</a>
+    </nav>
+
+    <main>
+      <section id="problem">
+        <div class="section-head">
+          <div>
+            <h2>1. What Problem Is Being Solved</h2>
+            <p>
+              Clay lays out and renders retained-looking UI from immediate declarations, but it does
+              not supply a browser-like focus layer. The plan adds the missing host services:
+              targetable element registration, keyboard/gamepad traversal, pointer capture,
+              focus-visible styling, and delayed activation dispatch.
+            </p>
+          </div>
+          <div class="source-note">
+            <strong>Plan source:</strong> <span class="src">docs/ui-focus-plan.md:7-17</span>
+            defines focus as UI element focus only, and says it owns targeting, traversal,
+            capture, and focus visuals.
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="diagram">
+            <h3>Today: direct demo command booleans</h3>
+            <div class="flow">
+              <div class="node bad"><strong>SDL key event</strong><small>UP, DOWN, M, T, I</small></div>
+              <div class="node bad"><strong><span class="src">InputState</span></strong><small>Five booleans only</small></div>
+              <div class="node bad"><strong>Component render</strong><small>Counter/theme/image mutate local state during declaration</small></div>
+              <div class="node bad"><strong>Clay commands</strong><small>No registered focus targets</small></div>
+            </div>
+          </div>
+          <div class="diagram">
+            <h3>Proposed: focus host layer</h3>
+            <div class="flow">
+              <div class="node neutral"><strong>UiInputSnapshot</strong><small>Pointer, scroll, keyboard, gamepad, text, modality</small></div>
+              <div class="node neutral"><strong>Focus manager</strong><small>Persistent focus keys by scope</small></div>
+              <div class="node neutral"><strong>Interactable registry</strong><small>Frame-local controls and handlers</small></div>
+              <div class="node neutral"><strong>Activation queue</strong><small>Validated dispatch after render</small></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="current">
+        <div class="section-head">
+          <div>
+            <h2>2. Current Architecture In Code Today</h2>
+            <p>
+              The compiled app is the <span class="src">hello</span> target. It initializes SDL,
+              SDL_ttf, Clay, and a small React-style runtime, then re-declares the whole UI each
+              frame. There is no compiled focus manager, focus scope provider, interactable
+              registry, or activation queue yet.
+            </p>
+          </div>
+          <div class="source-note">
+            <strong>Build source:</strong> <span class="src">CMakeLists.txt:46-57</span>
+            compiles <span class="src">src/main.cpp</span>, <span class="src">src/react.cpp</span>,
+            current components, providers, Clay, and stb only.
+          </div>
+        </div>
+
+        <div class="flow horizontal diagram" aria-label="current frame architecture">
+          <div class="node">
+            <strong>Platform loop</strong>
+            <small><span class="src">main()</span> polls SDL events and maps keys into demo booleans.</small>
+          </div>
+          <div class="node">
+            <strong>React begin</strong>
+            <small><span class="src">react_begin_frame()</span> increments frame generation and resets render cursors.</small>
+          </div>
+          <div class="node">
+            <strong>Clay declaration</strong>
+            <small><span class="src">App(&amp;input)</span> calls providers, components, and raw <span class="src">CLAY</span> blocks.</small>
+          </div>
+          <div class="node warn">
+            <strong>React end</strong>
+            <small>Currently runs immediately after <span class="src">Clay_EndLayout()</span>.</small>
+          </div>
+          <div class="node">
+            <strong>Render</strong>
+            <small>SDL renderer consumes the command array after React cleanup has already run.</small>
+          </div>
+        </div>
+
+        <div class="grid-3" style="margin-top: 16px;">
+          <div class="panel">
+            <h3>Input Today</h3>
+            <p>
+              <span class="src">src/input.h:10-16</span> contains only
+              <span class="src">increment_counter</span>, <span class="src">decrement_counter</span>,
+              <span class="src">toggle_counter</span>, <span class="src">cycle_theme</span>, and
+              <span class="src">fetch_image</span>.
+            </p>
+          </div>
+          <div class="panel">
+            <h3>Component State Today</h3>
+            <p>
+              Hook state is stored per fiber in <span class="src">src/react.cpp:53-61</span>.
+              <span class="src">Counter()</span> uses <span class="src">use_state_int</span>,
+              <span class="src">use_ref</span>, and <span class="src">use_effect</span>.
+            </p>
+          </div>
+          <div class="panel">
+            <h3>Providers Today</h3>
+            <p>
+              <span class="src">App()</span> wraps children with
+              <span class="src">INPUT_PROVIDER</span> and <span class="src">THEME_PROVIDER</span>.
+              Context is a descent stack, not a subscription system.
+            </p>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 16px;">
+          <div class="panel">
+            <h3>Current Code Evidence</h3>
+            <ul class="source-list">
+              <li><span class="src">src/main.cpp:136-159</span> polls SDL events and maps only demo key-down events.</li>
+              <li><span class="src">src/main.cpp:161-164</span> feeds pointer state directly to Clay each frame.</li>
+              <li><span class="src">src/main.cpp:166-177</span> runs React/Clay declaration, ends layout, runs React cleanup, then renders.</li>
+              <li><span class="src">src/react.h:1-18</span> documents the React-style public API and current timing.</li>
+              <li><span class="src">src/ui/components/app.cpp:17-63</span> is the current root UI surface.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>Archived Reference Evidence</h3>
+            <ul class="source-list">
+              <li><span class="src">src-archive/ui/runtime/ClayService.cpp:22-34</span> shows a former runtime wrapper for dimensions, pointer, scroll, and layout.</li>
+              <li><span class="src">src-archive/ui/runtime/CallbackStore.cpp:7-25</span> stores callbacks and dispatches them immediately on Clay hover press.</li>
+              <li><span class="src">src-archive/ui/primitives/Button.cpp:17-58</span> is a primitive API that currently returns no clicked boolean, but still dispatches through Clay hover callbacks.</li>
+              <li><span class="src">src-archive/client/ui/navigation/ScreenStack.h:7-15</span> is a single-active-screen archive stack, not the keyed modal stack required by the focus plan.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="proposal">
+        <div class="section-head">
+          <div>
+            <h2>3. Proposed Implementation, Step By Step</h2>
+            <p>
+              The implementation is a host runtime around the existing React-over-Clay frame. It
+              should add four reusable runtime pieces first, then move primitives and screen bodies
+              onto those pieces.
+            </p>
+          </div>
+          <div class="source-note">
+            <strong>Plan source:</strong> runtime pieces are named in
+            <span class="src">docs/ui-focus-plan.md:99-271</span>, and phases are listed in
+            <span class="src">docs/ui-focus-plan.md:391-567</span>.
+          </div>
+        </div>
+
+        <div class="grid-4">
+          <div class="panel state-card">
+            <h3>1. Snapshot</h3>
+            <p>Normalize raw SDL input once per frame before UI declaration.</p>
+            <div class="pill-row">
+              <span class="pill">layout</span><span class="pill">pointer</span><span class="pill">scroll</span><span class="pill">keys</span><span class="pill">gamepad</span><span class="pill">text</span>
+            </div>
+          </div>
+          <div class="panel state-card">
+            <h3>2. Focus Manager</h3>
+            <p>Persist one focused/restorable element per keyed scope, plus transient capture/confirm state.</p>
+            <div class="pill-row">
+              <span class="pill">active_scope</span><span class="pill">focused</span><span class="pill">restore_target</span><span class="pill">last_modality</span>
+            </div>
+          </div>
+          <div class="panel state-card">
+            <h3>3. Registry</h3>
+            <p>Each focus-aware primitive registers its current-frame role, stable key, state, navigation, and handler token.</p>
+            <div class="pill-row">
+              <span class="pill">UiElementKey</span><span class="pill">role</span><span class="pill">disabled</span><span class="pill">bounds</span>
+            </div>
+          </div>
+          <div class="panel state-card">
+            <h3>4. Queue</h3>
+            <p>Activation is validated and dispatched after Clay commands are rendered.</p>
+            <div class="pill-row">
+              <span class="pill">key</span><span class="pill">handler token</span><span class="pill">copied payload</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top: 16px;">
+          <h3>Code-Shaped Plan</h3>
+          <pre><code>Platform SDL events
+  -&gt; UiInputSnapshot snapshot
+  -&gt; ui_begin_frame(snapshot, active_scope)
+  -&gt; react_begin_frame()
+  -&gt; Clay_BeginLayout()
+  -&gt; Screen/App declares focus-aware primitives
+       ui_button(id, props, make_activation_handler(payload))
+       registry.add({ key: {scope, id_hash}, role, disabled, nav, handler })
+       visual = focus_manager.visual_state(key, control_state)
+  -&gt; Clay_EndLayout()
+  -&gt; ui_end_frame() reconciles registry, focus, capture, default focus, mounted scopes
+  -&gt; renderer consumes Clay_RenderCommandArray
+  -&gt; react host post-render cleanup/effects
+  -&gt; activation_queue.drain()</code></pre>
+        </div>
+      </section>
+
+      <section id="state">
+        <div class="section-head">
+          <div>
+            <h2>4. How Focus State Is Represented</h2>
+            <p>
+              The plan draws a hard line between persistent identity and frame-local Clay data.
+              Persistent focus stores app-owned keys. The registry can carry full
+              <span class="src">Clay_ElementId</span> values only for the frame that declared them.
+            </p>
+          </div>
+          <div class="source-note">
+            <strong>Plan source:</strong> <span class="src">docs/ui-focus-plan.md:122-180</span>
+            defines <span class="src">UiFocusManager</span> and the app-owned
+            <span class="src">UiElementKey</span>.
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="panel">
+            <h3>Persistent Across Frames</h3>
+            <pre><code>struct UiElementKey {
+    UiFocusScopeId scope;
+    uint32_t clay_id_hash;
+};
+
+struct UiScopeFocusState {
+    Optional&lt;UiElementKey&gt; focused;
+    Optional&lt;UiElementKey&gt; restore_target;
+    bool initial_focus_consumed;
+};</code></pre>
+            <p style="margin-top: 10px; color: var(--muted);">
+              This is the durable record. It must survive remounts only when the keyed scope and
+              element hash still refer to a mounted, enabled interactable.
+            </p>
+          </div>
+          <div class="panel">
+            <h3>Frame-Local Only</h3>
+            <pre><code>struct UiInteractable {
+    UiElementKey key;
+    Clay_ElementId clay_id;   // diagnostic/current frame only
+    UiRole role;
+    UiControlState control;
+    UiNavMetadata nav;
+    UiActivationHandler on_activate;
+};</code></pre>
+            <p style="margin-top: 10px; color: var(--muted);">
+              Full Clay IDs and handler tokens belong to the completed frame registry. They must
+              not be stored as persistent focus state.
+            </p>
+          </div>
+        </div>
+
+        <div class="grid-3" style="margin-top: 16px;">
+          <div class="panel">
+            <h3>Assigned</h3>
+            <p>Initial focus chooses a deterministic enabled target when a scope first becomes active, or uses a screen-provided initial target if still valid.</p>
+          </div>
+          <div class="panel">
+            <h3>Moved</h3>
+            <p>Keyboard/gamepad navigation uses explicit directional overrides, then previous-frame bounds, then linear order fallback.</p>
+          </div>
+          <div class="panel">
+            <h3>Cleared</h3>
+            <p>Focused, captured, or confirm-pressed keys are cleared when missing, disabled, unmounted, hidden from the active scope, or released outside.</p>
+          </div>
+          <div class="panel">
+            <h3>Restored</h3>
+            <p>A covered scope stores <span class="src">restore_target</span>. When uncovered, the target is restored only if the same keyed scope instance still owns a matching enabled element.</p>
+          </div>
+          <div class="panel">
+            <h3>Visible</h3>
+            <p><span class="src">focus_visible</span> is derived from modality. Keyboard, gamepad, and programmatic moves draw rings; pointer hover does not force a ring.</p>
+          </div>
+          <div class="panel">
+            <h3>Pressed</h3>
+            <p>Pointer capture and keyboard/gamepad confirm hold set pressed visuals. Release validates before queueing activation.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="component-use">
+        <div class="section-head">
+          <div>
+            <h2>5. How An Individual Component Uses These States</h2>
+            <p>
+              A normal screen component should not manually juggle every focus flag. The reusable
+              primitive consumes the raw interaction state, combines it with semantic control state,
+              draws the right visuals, and registers the activation handler. Screen-specific code
+              mostly passes domain meaning: disabled, selected, checked, value, and what action to run.
+            </p>
+          </div>
+          <div class="source-note">
+            <strong>Plan source:</strong> <span class="src">docs/ui-focus-plan.md:329-358</span>
+            says primitives register interactables, read derived interaction state, combine it with
+            control state, draw visuals, and queue activation instead of returning clicked booleans.
+          </div>
+        </div>
+
+        <div class="grid-3">
+          <div class="panel good">
+            <h3>Screen Component</h3>
+            <p>
+              Knows domain state and user verbs. It decides whether a control is disabled or
+              selected, and passes the current-frame action handler.
+            </p>
+          </div>
+          <div class="panel neutral">
+            <h3>Primitive</h3>
+            <p>
+              Knows UI roles and visuals. It registers the element, asks the runtime for interaction
+              state, derives visual flags, and emits Clay nodes.
+            </p>
+          </div>
+          <div class="panel warn">
+            <h3>Focus Runtime</h3>
+            <p>
+              Knows input targeting. It owns focused, focus-visible, hover, pressed, capture,
+              modality, traversal, and queued dispatch validation.
+            </p>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top: 16px;">
+          <h3>Button: Host Scope Plus Screen Body</h3>
+          <pre><code>void RenderScreenEntry(const ScreenEntry &entry) {
+    REACT_COMPONENT_BEGIN_KEY("ScreenEntry", entry.entry_id) {
+        PROVIDE(&EntryContext, &entry) {
+            UI_FOCUS_SCOPE(entry.entry_id, entry.input_active) {
+                render_screen_body(entry);
+            }
+        }
+    } REACT_COMPONENT_END();
+}
+
+void PauseMenu() {
+    REACT_COMPONENT_BEGIN("PauseMenu") {
+        PauseMenuStatus pause_status = use_pause_menu_status();
+        auto pause = use_pause_actions();
+
+        ui_button(CLAY_ID_LOCAL("Resume"), {
+            .label = "Resume",
+            .disabled = !pause_status.can_resume,
+            .nav_order = 10,
+        }, pause.resume_handler());
+
+        ui_button(CLAY_ID_LOCAL("Settings"), {
+            .label = "Settings",
+            .disabled = false,
+            .nav_order = 20,
+        }, pause.open_settings_handler());
+    } REACT_COMPONENT_END();
+}</code></pre>
+          <p style="margin-top: 10px; color: var(--muted);">
+            The screen does not receive a retained screen-state object,
+            and it does not ask whether Resume is hovered, pressed, or focused. It uses hooks:
+            one hook reads current game/engine status, another exposes current-frame actions, and
+            screen-local UI state would live in <span class="src">use_state</span>,
+            <span class="src">use_ref</span>, or <span class="src">use_effect</span>. The screen
+            stack or modal host, not the screen body, calls <span class="src">UI_FOCUS_SCOPE</span>
+            around the active entry body.
+          </p>
+        </div>
+
+        <div class="grid-2" style="margin-top: 16px;">
+          <div class="panel">
+            <h3>Button Primitive: No React Macro Because It Has No Hook State</h3>
+            <pre><code>void ui_button(Clay_ElementId id,
+               UiButtonProps props,
+               UiActivationHandler on_activate) {
+    UiElementKey key = ui_make_key(ui_current_scope(), id.id);
+
+    UiControlState control = {
+        .checked = false,
+        .selected = false,
+        .disabled = props.disabled,
+    };
+
+    ui_register_interactable({
+        .key = key,
+        .clay_id = id,
+        .role = UiRole_Button,
+        .control = control,
+        .nav = {.order = props.nav_order},
+        .accepts_focus = !props.disabled,
+        .accepts_pointer = !props.disabled,
+        .on_activate = on_activate,
+    });
+
+    UiInteractionState interaction = ui_interaction_state(key);
+    UiVisualState visual = ui_visual_state(interaction, control);
+
+    CLAY({
+        .id = id,
+        .backgroundColor = button_bg(visual),
+        .border = button_border(visual),
+    }) {
+        if (visual.targeted) draw_target_treatment();
+        if (interaction.focus_visible) draw_focus_ring();
+        draw_label(props.label, visual);
+    }
+}</code></pre>
+            <p style="margin-top: 10px; color: var(--muted);">
+              This primitive can be a plain function because it does not own hook state. It receives
+              a stable Clay ID from the caller, registers with the focus runtime, and emits Clay
+              nodes. If a primitive needs hooks, it must add its own React component boundary.
+            </p>
+          </div>
+          <div class="panel">
+            <h3>State Flow For One Button</h3>
+            <div class="flow">
+              <div class="node"><strong>Caller</strong><small><span class="src">disabled=false</span>, label, handler.</small></div>
+              <div class="node"><strong>Register</strong><small>Button enters current-frame registry with role and key.</small></div>
+              <div class="node"><strong>Runtime</strong><small>Returns focused, focus_visible, hovered, pressed for that key.</small></div>
+              <div class="node"><strong>Primitive</strong><small>Derives targeted, active, chosen, unavailable and draws Clay.</small></div>
+              <div class="node"><strong>Queue</strong><small>Activation dispatches later if key is still valid.</small></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 16px;">
+          <div class="panel">
+            <h3>Toggle Or List Item Primitive: No Macro If It Has No Hook State</h3>
+            <pre><code>void ui_toggle(Clay_ElementId id,
+               UiToggleProps props,
+               UiActivationHandler on_toggle) {
+    UiControlState control = {
+        .checked = props.checked,
+        .selected = false,
+        .disabled = props.disabled,
+    };
+    UiInteractionState interaction = ui_interaction_state_for_registered(id, control, on_toggle);
+    UiVisualState visual = ui_visual_state(interaction, control);
+
+    // checked is semantic state from the caller.
+    // focused is only the current activation target.
+    draw_toggle_box(visual.chosen, visual.targeted, visual.unavailable);
+}</code></pre>
+            <p style="margin-top: 10px; color: var(--muted);">
+              Checked or selected does not mean focused. A selected server row can remain selected
+              while keyboard focus is on the Play button.
+            </p>
+          </div>
+          <div class="panel">
+            <h3>Text Field Primitive: React Macro Because It Owns Hook State</h3>
+            <pre><code>void ui_text_field(Clay_ElementId id, UiTextFieldProps props) {
+    REACT_COMPONENT_BEGIN_KEY("TextField", id.id) {
+        TextEditState *edit = use_text_edit_state(props.value);
+        UiElementKey key = ui_register_text_field(id, props.disabled);
+
+        UiInteractionState interaction = ui_interaction_state(key);
+        UiTextInputEvents text = ui_text_input_for_focused_key(key);
+
+        if (interaction.focused) {
+            text_edit_apply(edit, text);
+        }
+
+        draw_field({
+            .text = edit-&gt;display_text,
+            .cursor_visible = interaction.focused,
+            .focus_ring = interaction.focus_visible,
+            .hover = interaction.hovered,
+            .disabled = props.disabled,
+        });
+    } REACT_COMPONENT_END();
+}</code></pre>
+            <p style="margin-top: 10px; color: var(--muted);">
+              The focus runtime routes text events. Cursor, selection, composition, and draft text
+              are component hook/ref state, not focus-manager state. Because this primitive owns
+              hook state, it must establish a React identity boundary instead of consuming the
+              caller's hook slots.
+            </p>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 16px;">
+          <div class="panel bad">
+            <h3>Wrong Shape</h3>
+            <pre><code>// Screen code manually interprets raw interaction.
+if (ui_is_focused(resume_id) &amp;&amp; input.confirm_pressed) {
+    game.nav.pop_screen();       // mutates during declaration
+}
+
+if (Clay_Hovered() &amp;&amp; mouse_down) {
+    *selected_server = row;     // local state write in primitive path
+}</code></pre>
+          </div>
+          <div class="panel good">
+            <h3>Intended Shape</h3>
+            <pre><code>// Host wraps the current screen entry once.
+UI_FOCUS_SCOPE(entry.entry_id, entry.input_active) {
+    PauseMenu();
+}
+
+// Screen describes controls. Runtime handles targeting.
+REACT_COMPONENT_BEGIN("PauseMenu") {
+    PauseMenuStatus pause_status = use_pause_menu_status();
+    auto pause = use_pause_actions();
+
+    ui_button(resume_id, {
+        .label = "Resume",
+        .disabled = !pause_status.can_resume,
+    }, pause.resume_handler());
+} REACT_COMPONENT_END();
+
+// Later, after render:
+activation_queue.drain(); // validates key, then calls handler</code></pre>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top: 16px;">
+          <h3>Custom Interactive Box: Hover Styling Plus Click Handler</h3>
+          <pre><code>void InventoryCard(const InventoryItemSummary &item) {
+    REACT_COMPONENT_BEGIN_KEY("InventoryCard", item.item_id) {
+        auto actions = use_inventory_actions();
+
+        ui_interactive(CLAY_ID_LOCAL("InventoryCard"), {
+            .role = UiRole_Button,
+            .accepts_focus = true,
+            .accepts_pointer = true,
+            .nav_order = 40,
+            .disabled = false,
+            .on_activate = actions.open_item_handler(item.item_id),
+        }, [&item](UiInteractionState interaction, UiVisualState visual) {
+            ui_box({
+                .padding = 16,
+                .background = interaction.hovered ? color::SurfaceRaised : color::Surface,
+                .border = interaction.focus_visible ? color::Accent : color::Border,
+                .offset_y = interaction.pressed ? 1 : 0,
+            }) {
+                ui_text(item.name);
+                ui_text(item.description);
+            }
+        });
+    } REACT_COMPONENT_END();
+}</code></pre>
+          <p style="margin-top: 10px; color: var(--muted);">
+            This is the intended equivalent of an HTML <span class="src">div</span> with
+            <span class="src">tabindex</span>, <span class="src">role</span>, hover styling, and an
+            <span class="src">onclick</span> handler. A parent would get
+            <span class="src">InventoryItemSummary</span> values from a hook such as
+            <span class="src">use_inventory_items()</span>; the card receives one item, reads
+            computed interaction state for styling, and provides an activation handler. The caller
+            still does not set
+            <span class="src">hovered</span>, <span class="src">pressed</span>, or
+            <span class="src">focused</span>; the runtime computes those facts.
+          </p>
+        </div>
+
+        <div class="panel" style="margin-top: 16px;">
+          <h3>Where React Macros Belong</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Function kind</th>
+                <th>Use React macro?</th>
+                <th>Reason</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Screen or composed widget using hooks</strong></td>
+                <td>Yes: <span class="src">REACT_COMPONENT_BEGIN[_KEY]</span></td>
+                <td>It owns hook state, effects, refs, and keyed identity.</td>
+              </tr>
+              <tr>
+                <td><strong>Provider or focus scope</strong></td>
+                <td>Yes: provider-style enter/exit macro</td>
+                <td>It must create a scoped context value and often needs keyed identity.</td>
+              </tr>
+              <tr>
+                <td><strong>Leaf primitive with no hooks</strong></td>
+                <td>No</td>
+                <td>It can be a plain helper that registers an interactable and emits Clay nodes.</td>
+              </tr>
+              <tr>
+                <td><strong>Leaf primitive with local state</strong></td>
+                <td>Yes</td>
+                <td>Otherwise its hooks attach to the caller's fiber and can corrupt hook order.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="grid-2" style="margin-top: 16px;">
+          <div class="panel">
+            <h3>Default Rule</h3>
+            <p>
+              <span class="src">ui_box</span>, <span class="src">ui_row</span>,
+              <span class="src">ui_column</span>, <span class="src">ui_text</span>, and spacing
+              primitives are not focusable and do not register with the interaction runtime by
+              default.
+            </p>
+          </div>
+          <div class="panel">
+            <h3>Opt-In Rule</h3>
+            <p>
+              Any visible region can become interactive by using
+              <span class="src">ui_interactive</span> or a convenience primitive built on it, such
+              as <span class="src">ui_clickable_box</span>. That is how complex custom cards, rows,
+              toolbar items, and canvas overlays participate in hover, focus, pressed, and activation
+              behavior.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="primitives">
+        <div class="section-head">
+          <div>
+            <h2>6. Canonical Primitive Set</h2>
+            <p>
+              The UI should be built from a small number of reusable primitives, not from screen code
+              reimplementing input checks. The set below is enough to build dense menus, settings
+              panels, modal flows, inventory grids, chat surfaces, tabbed screens, and custom
+              interactive cards.
+            </p>
+          </div>
+          <div class="source-note">
+            <strong>Repo context:</strong> the archive already sketches layout and primitive names in
+            <span class="src">src-archive/ui/layout</span> and <span class="src">src-archive/ui/primitives</span>.
+            The current compiled app has not moved these into <span class="src">src/</span> yet.
+          </div>
+        </div>
+
+        <div class="grid-3">
+          <div class="panel">
+            <h3>Layout Primitives</h3>
+            <ul class="mini-list">
+              <li><span class="src">ui_box</span>: generic Clay container; no interaction by default.</li>
+              <li><span class="src">ui_row</span> and <span class="src">ui_column</span>: directional layout wrappers.</li>
+              <li><span class="src">ui_stack</span>: layered children for overlays or badge positioning.</li>
+              <li><span class="src">ui_spacer</span> and <span class="src">ui_divider</span>: rhythm and separation.</li>
+              <li><span class="src">ui_scroll_area</span>: scroll clipping, wheel/drag-scroll integration, and optional focus auto-scroll.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>Content Primitives</h3>
+            <ul class="mini-list">
+              <li><span class="src">ui_text</span>: immutable display text.</li>
+              <li><span class="src">ui_icon</span>: theme-aware symbolic image or glyph.</li>
+              <li><span class="src">ui_image</span>: texture/image region with explicit lifetime rules.</li>
+              <li><span class="src">ui_badge</span>: compact status label, count, or severity mark.</li>
+              <li><span class="src">ui_progress_bar</span>: read-only progress or meter visualization.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>Interaction Adapter</h3>
+            <ul class="mini-list">
+              <li><span class="src">ui_interactive</span>: opt-in wrapper that registers any region as an interactable.</li>
+              <li><span class="src">ui_clickable_box</span>: convenience wrapper for custom hover/click cards.</li>
+              <li><span class="src">UiInteractionState</span>: runtime facts exposed to the render callback.</li>
+              <li><span class="src">UiControlState</span>: semantic caller state such as disabled, selected, checked.</li>
+              <li><span class="src">UiVisualState</span>: normalized styling flags derived from both.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="grid-3" style="margin-top: 16px;">
+          <div class="panel">
+            <h3>Action Primitives</h3>
+            <ul class="mini-list">
+              <li><span class="src">ui_button</span>: primary action with keyboard/gamepad/pointer activation.</li>
+              <li><span class="src">ui_icon_button</span>: compact toolbar action with tooltip/accessibility label.</li>
+              <li><span class="src">ui_menu_item</span>: menu row with optional shortcut and selected/disabled state.</li>
+              <li><span class="src">ui_list_item</span>: selectable row/card in a list or grid.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>Value Primitives</h3>
+            <ul class="mini-list">
+              <li><span class="src">ui_toggle</span>, <span class="src">ui_checkbox</span>, <span class="src">ui_switch</span>: boolean controls.</li>
+              <li><span class="src">ui_radio</span> and <span class="src">ui_radio_group</span>: exclusive choice.</li>
+              <li><span class="src">ui_slider</span> and <span class="src">ui_stepper</span>: numeric adjustment.</li>
+              <li><span class="src">ui_select</span>: compact option picker.</li>
+              <li><span class="src">ui_text_field</span> and <span class="src">ui_text_area</span>: editable text with local cursor/selection state.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>Composition Primitives</h3>
+            <ul class="mini-list">
+              <li><span class="src">ui_tabs</span>: tab list plus active panel selection.</li>
+              <li><span class="src">ui_toolbar</span>: grouped icon/action controls.</li>
+              <li><span class="src">ui_panel</span>: visual grouping with title/action slots.</li>
+              <li><span class="src">ui_dialog</span> and <span class="src">ui_modal</span>: focus-scoped overlay surfaces.</li>
+              <li><span class="src">ui_tooltip</span> and <span class="src">ui_popover</span>: transient explanatory or option surfaces.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top: 16px;">
+          <h3>How Complex UI Gets Built</h3>
+          <pre><code>void SettingsDialog() {
+    REACT_COMPONENT_BEGIN("SettingsDialog") {
+        TabState tabs = use_tab_state(SettingsTab_Controls);
+        auto settings = use_settings_actions();
+        ControlsSettings controls = use_controls_settings();
+        AudioSettings audio = use_audio_settings();
+        VideoSettings video = use_video_settings();
+
+        ui_dialog("Settings") {
+            ui_tabs(CLAY_ID_LOCAL("SettingsTabs"), {
+                .active = tabs.active,
+                .items = {
+                    tab("Controls", SettingsTab_Controls,
+                        tabs.set_handler(SettingsTab_Controls)),
+                    tab("Audio", SettingsTab_Audio,
+                        tabs.set_handler(SettingsTab_Audio)),
+                    tab("Video", SettingsTab_Video,
+                        tabs.set_handler(SettingsTab_Video)),
+                },
+            });
+
+            if (tabs.active == SettingsTab_Controls) {
+                ui_panel("Controls") {
+                    ui_select(CLAY_ID_LOCAL("AimMode"), {
+                        .label = "Aim mode",
+                        .value = controls.aim_mode,
+                        .options = controls.aim_mode_options,
+                    }, settings.set_aim_mode_handler());
+
+                    ui_toggle(CLAY_ID_LOCAL("InvertLook"), {
+                        .label = "Invert look",
+                        .checked = controls.invert_look,
+                    }, settings.toggle_invert_look_handler());
+                }
+            }
+
+            if (tabs.active == SettingsTab_Audio) {
+                ui_panel("Audio") {
+                    ui_slider(CLAY_ID_LOCAL("MasterVolume"), {
+                        .label = "Master",
+                        .value = audio.master_volume,
+                        .disabled = false,
+                    }, settings.set_master_volume_handler());
+
+                    ui_toggle(CLAY_ID_LOCAL("MuteWhenUnfocused"), {
+                        .label = "Mute when unfocused",
+                        .checked = audio.mute_when_unfocused,
+                    }, settings.toggle_mute_unfocused_handler());
+
+                    ui_clickable_box(CLAY_ID_LOCAL("ResetAudioCard"), {
+                        .role = UiRole_Button,
+                        .on_activate = settings.reset_audio_handler(),
+                    }, [](UiInteractionState s, UiVisualState v) {
+                        ui_box(card_style(s, v)) {
+                            ui_text("Reset audio defaults");
+                            ui_text("Restores all volume and device settings");
+                        }
+                    });
+                }
+            }
+
+            if (tabs.active == SettingsTab_Video) {
+                ui_panel("Video") {
+                    ui_select(CLAY_ID_LOCAL("Resolution"), {
+                        .label = "Resolution",
+                        .value = video.resolution,
+                        .options = video.resolution_options,
+                    }, settings.set_resolution_handler());
+
+                    ui_toggle(CLAY_ID_LOCAL("Vsync"), {
+                        .label = "Vsync",
+                        .checked = video.vsync,
+                    }, settings.toggle_vsync_handler());
+                }
+            }
+        }
+    } REACT_COMPONENT_END();
+}</code></pre>
+          <p style="margin-top: 10px; color: var(--muted);">
+            The complex screen is still composed from primitives. It does not poll mouse state,
+            check Enter/Space, mutate domain state during layout, or manually maintain hover/focus
+            booleans. The active tab is local UI state returned by
+            <span class="src">use_tab_state</span>, not a field on a retained screen-state object.
+            Settings values come from domain read hooks because they live outside UI, and settings
+            mutations go through domain action hooks.
+          </p>
+        </div>
+      </section>
+
+      <section id="input">
+        <div class="section-head">
+          <div>
+            <h2>7. Mouse, Keyboard, Gamepad, And Text Input Flow</h2>
+            <p>
+              The same primitive should be targetable and activatable from every supported input
+              family. Text input is routed by focus but editing state stays in the text component's
+              hook/ref state.
+            </p>
+          </div>
+          <div class="source-note">
+            <strong>Plan source:</strong> snapshot fields are listed in
+            <span class="src">docs/ui-focus-plan.md:101-120</span>. Text entry is scoped in
+            <span class="src">docs/ui-focus-plan.md:525-539</span>.
+          </div>
+        </div>
+
+        <div class="lane-grid" role="table" aria-label="input flow matrix">
+          <div class="lane-cell lane-head">Input family</div>
+          <div class="lane-cell lane-head">Snapshot</div>
+          <div class="lane-cell lane-head">Focus manager</div>
+          <div class="lane-cell lane-head">Primitive state</div>
+          <div class="lane-cell lane-head">Dispatch</div>
+
+          <div class="lane-cell lane-name">Mouse</div>
+          <div class="lane-cell">Position, down, pressed, released, scroll.</div>
+          <div class="lane-cell">Hit test/capture key. Last modality becomes pointer.</div>
+          <div class="lane-cell">Hover and pressed. Focus ring only if policy assigns visible focus.</div>
+          <div class="lane-cell">Release inside captured enabled element queues activation.</div>
+
+          <div class="lane-cell lane-name">Keyboard</div>
+          <div class="lane-cell">Next, previous, arrows, confirm, cancel.</div>
+          <div class="lane-cell">Moves active-scope focus against previous registry.</div>
+          <div class="lane-cell">Focused, focus visible, pressed during confirm hold.</div>
+          <div class="lane-cell">Confirm release queues the focused element handler after current registry validation.</div>
+
+          <div class="lane-cell lane-name">Gamepad</div>
+          <div class="lane-cell">D-pad/stick mapped to same commands as keyboard.</div>
+          <div class="lane-cell">Uses same traversal and repeat logic as keyboard.</div>
+          <div class="lane-cell">Same focus ring and pressed semantics.</div>
+          <div class="lane-cell">Same activation queue. No separate gamepad-only path.</div>
+
+          <div class="lane-cell lane-name">Text</div>
+          <div class="lane-cell">Text input events stay separate from movement commands.</div>
+          <div class="lane-cell">Routes text only to focused text-entry control.</div>
+          <div class="lane-cell">Cursor, selection, placeholder, composition live in component state.</div>
+          <div class="lane-cell">Domain action only on commit, such as Apply or Submit.</div>
+        </div>
+      </section>
+
+      <section id="lifecycle">
+        <div class="section-head">
+          <div>
+            <h2>8. Clay Frame Lifecycle Fit</h2>
+            <p>
+              The plan is mostly a frame-order contract. The focus layer must not traverse against
+              a half-built registry, and UI activation must not mutate state while Clay commands
+              still reference current-frame resources.
+            </p>
+          </div>
+          <div class="source-note">
+            <strong>Falsifiable issue:</strong> current code calls
+            <span class="src">react_end_frame()</span> at
+            <span class="src">src/main.cpp:170-171</span>, before
+            <span class="src">SDL_Clay_RenderClayCommands</span> at
+            <span class="src">src/main.cpp:173-177</span>.
+          </div>
+        </div>
+
+        <div class="timeline">
+          <div class="timeline-row">
+            <div class="timeline-label bad">Current src</div>
+            <div class="timeline-track">
+              <div class="tick"><strong>1</strong>Poll SDL into <span class="src">InputState</span></div>
+              <div class="tick"><strong>2</strong>Set Clay pointer</div>
+              <div class="tick"><strong>3</strong><span class="src">react_begin_frame</span></div>
+              <div class="tick"><strong>4</strong><span class="src">Clay_BeginLayout</span> and declare UI</div>
+              <div class="tick"><strong>5</strong><span class="src">Clay_EndLayout</span></div>
+              <div class="tick bad"><strong>6</strong><span class="src">react_end_frame</span> cleanup/effects</div>
+              <div class="tick"><strong>7</strong>Render commands</div>
+            </div>
+          </div>
+          <div class="timeline-row">
+            <div class="timeline-label good">Required plan</div>
+            <div class="timeline-track">
+              <div class="tick"><strong>1</strong>Build <span class="src">UiInputSnapshot</span></div>
+              <div class="tick"><strong>2</strong><span class="src">ui_begin_frame</span></div>
+              <div class="tick"><strong>3</strong>Apply Clay dimensions, pointer, scroll</div>
+              <div class="tick"><strong>4</strong>Declare UI and register interactables</div>
+              <div class="tick"><strong>5</strong><span class="src">ui_end_frame</span> validates current registry</div>
+              <div class="tick good"><strong>6</strong>Render commands while resources are alive</div>
+              <div class="tick good"><strong>7</strong>React post-render cleanup, then activation drain</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top: 16px;">
+          <h3>Why This Matters</h3>
+          <p>
+            <span class="src">Image()</span> can hold an <span class="src">SDL_Texture*</span>
+            in hook/ref state and cleanup destroys it in
+            <span class="src">cancel_fetch()</span>. If an activation closes a screen or unmounts
+            an image before the current frame's command array is rendered, the renderer could hold
+            a command referencing a destroyed resource. The plan blocks that by rendering before
+            cleanup and draining activation last.
+          </p>
+          <p style="margin-top: 8px;">
+            Source callouts: <span class="src">src/ui/components/image.cpp:117-129</span>
+            destroys textures during cleanup; <span class="src">docs/ui-focus-plan.md:260-327</span>
+            requires queue drain after render-command consumption and prohibits cleanup from
+            invalidating current-frame render resources.
+          </p>
+        </div>
+      </section>
+
+      <section id="react">
+        <div class="section-head">
+          <div>
+            <h2>9. React-Style Runtime Fit</h2>
+            <p>
+              The focus layer should use the existing runtime's identity and lifecycle rules. It
+              should not introduce a second reconciliation model or own component-local state.
+            </p>
+          </div>
+          <div class="source-note">
+            <strong>Runtime source:</strong> <span class="src">src/react.h:1-18</span>
+            describes identity, hooks, effects, providers, and context. The focus doc delegates
+            identity and component state to this runtime at
+            <span class="src">docs/ui-focus-plan.md:42-55</span>.
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="panel">
+            <h3>Existing Runtime Mechanics</h3>
+            <ul class="mini-list">
+              <li>Fiber identity is a Clay hash derived from parent ID and sibling index or explicit key.</li>
+              <li><span class="src">use_state_int</span>, <span class="src">use_ref</span>, and <span class="src">use_effect</span> use ordered hook slots.</li>
+              <li>Providers enter transparent fibers and push context values onto a scoped stack.</li>
+              <li>Unmount detection is generation-based: missing fibers are destroyed in <span class="src">react_end_frame()</span>.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>Focus Runtime Fit</h3>
+            <ul class="mini-list">
+              <li>A focus-scope provider can mirror existing provider macros and should be called by the screen stack or modal host around an entry body.</li>
+              <li>Scope IDs must be keyed screen/modal entry instances, not screen type names.</li>
+              <li>Focus state belongs to <span class="src">UiFocusManager</span>, not to arbitrary screen components.</li>
+              <li>Text cursor/selection state remains hook/ref state inside the text component.</li>
+              <li>Screen-local state stays in hooks; game/engine reads and actions come from named domain hooks.</li>
+              <li>Domain actions are current-frame handlers produced by domain hooks, copied into frame-owned storage.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 16px;">
+          <div class="panel">
+            <h3>Identity Check</h3>
+            <pre><code>REACT_COMPONENT_BEGIN_KEY("ScreenEntry", entry.entry_id) {
+    PROVIDE(&EntryContext, &entry) {
+        UI_FOCUS_SCOPE(entry.entry_id, entry.input_active) {
+            render_screen_body(entry);
+        }
+    }
+} REACT_COMPONENT_END();</code></pre>
+          </div>
+          <div class="panel">
+            <h3>Why Keyed Scope Matters</h3>
+            <p>
+              If scope identity is just <span class="src">ScreenId::Pause</span>, two simultaneously
+              mounted pause-like entries share focus and capture state. The plan requires
+              <span class="src">entry_id</span>-style keyed scope identity so local UI state behaves
+              like keyed React siblings.
+            </p>
+            <p style="margin-top: 8px;">
+              Current tests already verify keyed sibling state across reorder in
+              <span class="src">tests/react_runtime_tests.cpp:104-125</span>.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="ownership">
+        <div class="section-head">
+          <div>
+            <h2>10. Reads, State Ownership, Commands, And Reuse Boundaries</h2>
+            <p>
+              The plan is falsifiable by ownership. If focus code starts mutating domain state,
+              defining user verbs, or owning text editing state, it has crossed its boundary.
+            </p>
+          </div>
+          <div class="source-note">
+            <strong>Boundary source:</strong> <span class="src">docs/ui-focus-plan.md:19-55</span>
+            lists what the focus runtime may read, may write, and must not write.
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Area</th>
+              <th>Reads</th>
+              <th>Owns State</th>
+              <th>Sends Commands Or Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Platform</strong></td>
+              <td>SDL events, window size, pointer, text, gamepad.</td>
+              <td>Pending platform input only.</td>
+              <td>Produces <span class="src">UiInputSnapshot</span>; does not mutate UI components directly.</td>
+            </tr>
+            <tr>
+              <td><strong>Focus runtime</strong></td>
+              <td>Snapshot, active focus scope, previous/current registries, mounted scopes.</td>
+              <td>Interaction state only: focus keys, restore targets, pointer capture, confirm press, last modality, frame-local queue.</td>
+              <td>Dispatches copied current-frame activation handlers after validation.</td>
+            </tr>
+            <tr>
+              <td><strong>Primitives</strong></td>
+              <td>Props, semantic control state, focus visual state.</td>
+              <td>No domain state. Optional text editing state only in field component hooks.</td>
+              <td>Register interactables; provide handler tokens. They do not return clicked booleans.</td>
+            </tr>
+            <tr>
+              <td><strong>Screen-specific code</strong></td>
+              <td>Domain read/action hooks, current screen entry context, local hook state.</td>
+              <td>Screen-local UI state through hooks, such as tabs, filters, drafts, and initial focus request.</td>
+              <td>Supplies domain action handlers such as resume, apply, choose upgrade, or cancel.</td>
+            </tr>
+            <tr>
+              <td><strong>Domain subsystem</strong></td>
+              <td>Validated app/game state.</td>
+              <td>Game state, screen stack, settings, inventory, run state.</td>
+              <td>Executes named user verbs. Focus runtime must not define a generic domain command bus.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="grid-2" style="margin-top: 16px;">
+          <div class="panel good">
+            <h3>Reusable Primitives</h3>
+            <p>
+              <span class="src">UiInputSnapshot</span>, <span class="src">UiFocusManager</span>,
+              registry, activation queue, focus-scope provider, focus-aware Button/Field/ListItem,
+              navigation helpers, duplicate-ID diagnostics, debug overlay.
+            </p>
+          </div>
+          <div class="panel warn">
+            <h3>Screen-Specific Code</h3>
+            <p>
+              Which element gets initial focus, which cancel handler is active, field validation,
+              domain action payloads, modal stacking policy, selected row semantics, and domain
+              state mutation.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="walkthroughs">
+        <div class="section-head">
+          <div>
+            <h2>11. Concrete Walkthroughs</h2>
+            <p>
+              These are step-by-step traces that should be testable. They do not assume existing
+              compiled focus support; they describe what the implementation must do.
+            </p>
+          </div>
+          <div class="source-note">
+            <strong>Current gap:</strong> compiled <span class="src">src/</span> has no modal stack
+            or focus scopes. The walkthrough uses the plan's target mechanics and labels archive
+            screen code as reference only.
+          </div>
+        </div>
+
+        <div class="example-frame">
+          <div class="mock-screen" aria-label="single frame example screen">
+            <div class="mock-title">Pause Scope #42</div>
+            <div class="mock-stack">
+              <div class="mock-button focus">Resume</div>
+              <div class="mock-button">Settings</div>
+              <div class="mock-button disabled">Quit disabled</div>
+            </div>
+            <div class="mock-note">focused={scope:42, hash:Resume}</div>
+          </div>
+          <div class="panel">
+            <h3>Single Frame Walkthrough: Keyboard Confirm On Resume</h3>
+            <div class="stepper">
+              <div class="step"><span class="num">1</span><p>SDL key-up for Enter becomes <span class="src">snapshot.confirm_released=true</span>, last modality keyboard.</p></div>
+              <div class="step"><span class="num">2</span><p><span class="src">ui_begin_frame</span> freezes previous registry. Focus already points at <span class="src">{scope:42, Resume}</span>.</p></div>
+              <div class="step"><span class="num">3</span><p>Clay dimensions, pointer, and scroll are set. <span class="src">Clay_BeginLayout()</span> starts a new declaration.</p></div>
+              <div class="step"><span class="num">4</span><p><span class="src">PauseMenu</span> declares <span class="src">ui_button("Resume")</span>. The button registers an enabled interactable and supplies a copied handler token.</p></div>
+              <div class="step"><span class="num">5</span><p>Primitive asks the focus manager for visual state. It draws <span class="src">focused=true</span>, <span class="src">focus_visible=true</span>, and <span class="src">pressed=false</span> after release.</p></div>
+              <div class="step"><span class="num">6</span><p><span class="src">Clay_EndLayout()</span> completes the current registry. <span class="src">ui_end_frame</span> validates that the focused key is still enabled in scope 42.</p></div>
+              <div class="step"><span class="num">7</span><p>Renderer consumes the command array while resources from the just-declared UI still exist.</p></div>
+              <div class="step"><span class="num">8</span><p>React post-render cleanup/effects run. Then activation queue drains and invokes the current-frame resume handler.</p></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 16px;">
+          <div class="panel">
+            <h3>Screen Transition Walkthrough: Modal Opens</h3>
+            <div class="stepper">
+              <div class="step"><span class="num">1</span><p>Main scope <span class="src">Run#9</span> has focus on <span class="src">UpgradeButton</span>.</p></div>
+              <div class="step"><span class="num">2</span><p>Domain state pushes modal entry <span class="src">Upgrade#23</span>. This is domain/nav ownership, not focus runtime ownership.</p></div>
+              <div class="step"><span class="num">3</span><p>Renderer declares both scopes, but only <span class="src">Upgrade#23</span> is input-active.</p></div>
+              <div class="step"><span class="num">4</span><p>Focus manager records <span class="src">Run#9.restore_target = UpgradeButton</span> and picks modal initial focus.</p></div>
+              <div class="step"><span class="num">5</span><p>Covered run controls may remain visible but are not focusable or activatable.</p></div>
+            </div>
+          </div>
+          <div class="panel">
+            <h3>Screen Transition Walkthrough: Modal Closes</h3>
+            <div class="stepper">
+              <div class="step"><span class="num">1</span><p>Activation in <span class="src">Upgrade#23</span> dispatches a domain handler after render.</p></div>
+              <div class="step"><span class="num">2</span><p>Domain/nav pops <span class="src">Upgrade#23</span>. Next frame reports mounted scopes without that entry.</p></div>
+              <div class="step"><span class="num">3</span><p>Focus manager prunes <span class="src">Upgrade#23</span> focus/capture state.</p></div>
+              <div class="step"><span class="num">4</span><p><span class="src">Run#9</span> becomes input-active again. Its restore target is validated against the current registry.</p></div>
+              <div class="step"><span class="num">5</span><p>If <span class="src">UpgradeButton</span> still exists and is enabled, focus returns. Otherwise a deterministic default is chosen or focus clears.</p></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="risks">
+        <div class="section-head">
+          <div>
+            <h2>12. Invariants And Failure Modes</h2>
+            <p>
+              The plan is correct only if these invariants hold under normal rendering, remounts,
+              modal transitions, disabled controls, scroll, text input, and layout changes.
+            </p>
+          </div>
+          <div class="source-note">
+            <strong>Verification source:</strong> focus acceptance criteria and risk coverage are
+            called out across <span class="src">docs/ui-focus-plan.md:417-567</span>.
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="panel">
+            <h3>Must-Hold Invariants</h3>
+            <ul class="check-list">
+              <li>Only one focused element exists in the active scope.</li>
+              <li>Persistent focus/capture stores <span class="src">UiElementKey</span>, never full <span class="src">Clay_ElementId</span>.</li>
+              <li>Traversal uses the previous completed registry, not the half-built current frame.</li>
+              <li>Activation dispatch happens after Clay commands are rendered.</li>
+              <li>Disabled, hidden, unmounted, covered, or exiting elements cannot receive activation.</li>
+              <li>Duplicate focusable IDs in the same scope are loud diagnostics.</li>
+              <li>Text input is routed only to focused text-entry controls.</li>
+              <li>Focus scope identity is keyed by screen/modal entry instance.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>Minimum Runtime Checks</h3>
+            <ul class="check-list">
+              <li>Assert one active focus scope per frame.</li>
+              <li>Log duplicate <span class="src">{scope, clay_id_hash}</span> registrations.</li>
+              <li>Drop queued activation if current registry lacks the key or marks it disabled.</li>
+              <li>Clear capture and confirm press on scope change.</li>
+              <li>Track whether React cleanup ran before command rendering in tests.</li>
+              <li>Expose debug overlay: active scope, focused key, capture key, modality.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="risk-grid" style="margin-top: 16px;">
+          <div class="risk"><b>Stale IDs</b><span>Focus points at an element hash that no longer exists. Validation must clear or choose default every completed frame.</span></div>
+          <div class="risk"><b>Remounts</b><span>Unkeyed reorder reuses state for the wrong control. Use keyed component/scope identity where order can change.</span></div>
+          <div class="risk"><b>Duplicate Focusables</b><span>Two enabled controls in one scope share a key. Registration must fail loudly before traversal becomes nondeterministic.</span></div>
+          <div class="risk"><b>Hidden Elements</b><span>Element remains registered while visually covered or clipped. Scope/visibility rules must mark it not focusable or not activatable.</span></div>
+          <div class="risk"><b>Modal Transitions</b><span>Covered screens still receive confirm. Only the top input-accepting scope may traverse or activate.</span></div>
+          <div class="risk"><b>Screen Changes</b><span>A global focused slot restores focus to the wrong screen. Restore target must live per keyed scope.</span></div>
+          <div class="risk"><b>Scrolling</b><span>Directional nav uses stale bounds after scroll. Previous-frame bounds are acceptable only if captured after scroll/layout for the completed frame.</span></div>
+          <div class="risk"><b>Text Fields</b><span>Text composition leaks to gameplay or unfocused fields. Text events route by focused text-control role only.</span></div>
+          <div class="risk"><b>Disabled Controls</b><span>Disabled controls render but still activate. Disabled must suppress focus traversal, capture, and queued dispatch.</span></div>
+          <div class="risk"><b>Layout Changes</b><span>Bounds-aware movement points to a control that moved or disappeared. Current-frame validation and fallback order must cover it.</span></div>
+        </div>
+      </section>
+
+      <section id="verify">
+        <div class="section-head">
+          <div>
+            <h2>13. How To Verify It</h2>
+            <p>
+              Verification should prove behavior, ordering, and ownership boundaries. A passing
+              screenshot is not enough; tests need to cover stale state and frame timing.
+            </p>
+          </div>
+          <div class="source-note">
+            <strong>Existing test baseline:</strong>
+            <span class="src">tests/react_runtime_tests.cpp:397-407</span> already checks
+            runtime identity, providers, cleanup, and hook drift.
+          </div>
+        </div>
+
+        <div class="grid-3">
+          <div class="panel">
+            <h3>Unit Tests</h3>
+            <ul class="mini-list">
+              <li>Empty registry leaves focus empty.</li>
+              <li>Initial focus chooses first enabled element.</li>
+              <li>Disabled element is skipped in traversal and activation.</li>
+              <li>Focused key missing in current registry clears focus.</li>
+              <li>Duplicate focus IDs in one scope increment error count.</li>
+              <li>Two keyed scopes preserve independent restore targets.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>Frame Timing Tests</h3>
+            <ul class="mini-list">
+              <li>Traversal reads previous completed bounds.</li>
+              <li>Pointer press registers capture but release validates current registry.</li>
+              <li>Activation handler payload is copied into frame arena, not stack-referenced.</li>
+              <li>React cleanup runs after render-command consumption and before activation dispatch.</li>
+              <li>Activation cannot mutate state during layout declaration.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>Runtime Smoke Checks</h3>
+            <ul class="mini-list">
+              <li>Keyboard-only path activates every reachable button.</li>
+              <li>Gamepad confirm uses the same dispatch path as Enter/Space.</li>
+              <li>Press-drag-out-release does not activate.</li>
+              <li>Press-drag-out-drag-in-release activates only if capture remains valid.</li>
+              <li>Text input changes only the focused field.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top: 16px;">
+          <h3>Concrete Test Harness Shape</h3>
+          <pre><code>// Suggested additions beside tests/react_runtime_tests.cpp
+focus_empty_registry_clears()
+focus_linear_next_previous_skips_disabled()
+focus_directional_uses_previous_bounds_then_order()
+focus_duplicate_key_reports_error()
+focus_scope_restore_is_keyed_by_entry_id()
+activation_dispatches_after_render_and_react_cleanup()
+activation_payload_is_frame_owned_copy()
+text_input_routes_only_to_focused_field()
+covered_scope_rejects_activation()
+scroll_updates_bounds_for_next_frame()</code></pre>
+        </div>
+      </section>
+
+      <section id="open-questions">
+        <div class="section-head">
+          <div>
+            <h2>14. Open Questions And Assumptions To Validate</h2>
+            <p>
+              These are not hidden objections. They are the places where implementation choices
+              determine whether the plan stays technically correct.
+            </p>
+          </div>
+          <div class="source-note">
+            <strong>Most important assumption:</strong> the React host phase can be split or moved
+            without breaking existing runtime tests and component cleanup expectations.
+          </div>
+        </div>
+
+        <details open>
+          <summary>How exactly should <span class="src">react_end_frame()</span> be split?</summary>
+          <p>
+            The current API combines unmount sweep and effect flush. The plan needs command rendering
+            before cleanup, but may still need hook diagnostics and generation bookkeeping after layout.
+            Candidate split: <span class="src">react_commit_layout()</span> for hook count checks,
+            then render commands, then <span class="src">react_flush_post_render()</span>.
+          </p>
+        </details>
+        <details>
+          <summary>What is the exact payload storage model for activation handlers?</summary>
+          <p>
+            The plan says copied payloads in a frame arena. The implementation must define max payload
+            size, alignment, token invalidation, and how lambdas/domain hooks are represented without
+            storing long-lived callbacks.
+          </p>
+        </details>
+        <details>
+          <summary>How will focus scopes report mounted keyed scopes?</summary>
+          <p>
+            The plan requires providers to report mounted scopes after the completed frame. The
+            implementation needs an explicit provider API and a pruning order that does not delete
+            state for scopes still transitioning visually but not input-active.
+          </p>
+        </details>
+        <details>
+          <summary>Are Clay ID hashes collision-safe enough for focus identity?</summary>
+          <p>
+            The plan stores <span class="src">clay_id_hash</span>. The implementation should add
+            duplicate diagnostics and decide whether debug builds should also retain source labels
+            for collision reporting.
+          </p>
+        </details>
+        <details>
+          <summary>What counts as hidden or clipped for focus traversal?</summary>
+          <p>
+            Clay can clip and scroll. The runtime must decide whether offscreen-but-scrollable items
+            can be focused, and whether focus movement should auto-scroll the containing scroll area.
+          </p>
+        </details>
+        <details>
+          <summary>What is the first real screen-stack owner?</summary>
+          <p>
+            Current compiled <span class="src">src/</span> has no stack. Archive
+            <span class="src">ScreenStack</span> is single-active-screen only. The focus-scope design
+            needs the future keyed entry model from <span class="src">plan.md</span>, not the archive
+            stack as-is.
+          </p>
+        </details>
+      </section>
+
+      <section id="glossary">
+        <div class="section-head">
+          <div>
+            <h2>15. Glossary</h2>
+            <p>
+              Local terms used by the plan and this explainer.
+            </p>
+          </div>
+          <div class="source-note">
+            <strong>Vocabulary source:</strong> interaction/control/visual state names are carried
+            forward from <span class="src">docs/archive/ui.md</span> and expanded in
+            <span class="src">docs/ui-focus-plan.md:57-98</span>.
+          </div>
+        </div>
+
+        <div class="glossary">
+          <div class="term"><b>UI focus</b><span>The UI element that receives keyboard/gamepad activation. Not engine focus or simulation pause state.</span></div>
+          <div class="term"><b>Focus scope</b><span>A keyed screen/modal boundary where focus traversal and activation are contained.</span></div>
+          <div class="term"><b>UiElementKey</b><span>Persistent identity: focus scope plus Clay ID hash. This is what focus stores across frames.</span></div>
+          <div class="term"><b>Interactable registry</b><span>Frame-local list of enabled/disabled targetable primitives declared in the current UI tree.</span></div>
+          <div class="term"><b>Activation handler</b><span>A frame-owned dispatch token/payload supplied by the current render. It is not a domain command enum.</span></div>
+          <div class="term"><b>Focus visible</b><span>Whether the focus ring should render. Keyboard/gamepad movement generally makes focus visible; pointer hover alone should not.</span></div>
+          <div class="term"><b>Pointer capture</b><span>The element pressed by pointer/touch remains the candidate activation target until release or invalidation.</span></div>
+          <div class="term"><b>Restore target</b><span>The last focused element for a scope, used when a covered scope becomes input-active again.</span></div>
+          <div class="term"><b>Domain action hook</b><span>A screen/domain hook that exposes named verbs such as resume or choose upgrade. Focus dispatch invokes these handlers after validation.</span></div>
+          <div class="term"><b>Frame arena</b><span>Short-lived storage that keeps activation payloads alive until the activation queue drains.</span></div>
+        </div>
+      </section>
+    </main>
+
+    <div class="footer">
+      Generated as a standalone HTML file with inline CSS and JS only. No external assets,
+      CDNs, or markdown dependencies.
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const links = Array.from(document.querySelectorAll(".nav a"));
+      const sections = links
+        .map((link) => document.querySelector(link.getAttribute("href")))
+        .filter(Boolean);
+
+      const observer = new IntersectionObserver((entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (!visible) return;
+        links.forEach((link) => {
+          link.classList.toggle("active", link.getAttribute("href") === "#" + visible.target.id);
+        });
+      }, { rootMargin: "-20% 0px -65% 0px", threshold: [0.05, 0.2, 0.5] });
+
+      sections.forEach((section) => observer.observe(section));
+    })();
+  </script>
+</body>
+</html>
