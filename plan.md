@@ -22,12 +22,11 @@ Single-screen top-down 2D arena:
 - Death → Game Over → Restart from clean state.
 - Title screen at boot.
 
-Why this shape, and not anything else, is documented in this repo's
-conversation history; the short version is that it is the smallest playable
-loop that forces all three bridge lanes (read / write / fast), the engine-owned
-screen stack with real pause semantics, and a level-up modal that interrupts
-gameplay — i.e. every primitive in the architecture, all at once, under
-real actor-count load.
+Why this shape, and not anything else: it is the smallest playable loop that
+forces the read and write paths between UI and game, the engine-owned screen
+stack with real pause semantics, and a level-up modal that interrupts gameplay
+— i.e. every primitive in the architecture, all at once, under real
+actor-count load.
 
 ---
 
@@ -40,15 +39,22 @@ maps to one or more of:
       committed before UI reconciles.
 - [ ] **Actor model** — typed pools with `Handle = {index, generation}`,
       cache-friendly, dangling-safe, O(1) spawn / resolve / destroy.
-- [ ] **Read lane** — `use_game_value<T>(selector)` over the world, with
-      per-pool version stamps for cheap subscription early-outs.
-- [ ] **Write lane** — UI never mutates the world directly; it calls
-      domain-specific hook actions whose implementations encapsulate the owning
-      game/client business logic. Formal commands are used behind those hooks
-      only where ordering, replay, networking, automation, or tick-boundary
-      determinism require them.
-- [ ] **Fast lane** — `use_bind(...)` registers a sidecar binding applied at
-      the frame barrier without re-running the component that declared it.
+- [ ] **Read path** — components read state through named domain hooks
+      (`use_player()`, `use_enemies()`, …) that pull `const World&` from
+      context and project typed slices. Components never touch raw
+      `use_context(&WorldContext)`. Because the current React-over-Clay
+      runtime re-runs every fiber every frame, there is no subscription /
+      memoization layer; adding one is a future optimization, not a
+      foundation.
+- [ ] **Write path** — UI never mutates the world directly. It calls hook actions
+      (`use_navigation()`, `use_upgrade_actions()`, `use_settings_actions()`, etc.)
+      that wrap public methods on the owning subsystem of the game object. The hook
+      layer exists only for mutations a UI surface *initiates* — buttons, menu
+      choices, settings toggles. In-world controls (player movement, firing, AI)
+      stay engine-internal; the engine reads `Input` and drives them directly,
+      never through hooks. A formal command queue is *not* a foundation; introduce
+      one inside a specific subsystem only if that subsystem needs ordering /
+      replay / network authority.
 - [ ] **Screen stack** — `ui_stack` lives on the world; engine reads it to
       gate which systems run; UI is a transparent renderer of it.
 - [ ] **Screen lifecycle** — `entering / entered / exiting / exited` phase
@@ -64,157 +70,79 @@ foundation is real.
 
 ---
 
-## Implementation control contract
+## UI contract
 
-This plan is intentionally easy to reward-hack if "done" means a visible demo
-or checked boxes. That is not enough. Each phase exits only when it leaves
-reproducible evidence that the foundation it claims to prove is actually true.
+The contract is about *roles*, not enforcement machinery. Two rules:
 
-### Read and mutation methodology
+### Reads: components call named domain hooks
 
-React-style components should be able to get the data they need where they need
-it. The default read path is still `use_game_value<T>(selector)`: the selector
-receives a read-only game/world view and returns the specific value the
-component wants. We are not replacing that with hand-built per-widget source
-objects or requiring a top-level bridge to know every leaf component's data
-needs.
-
-The mutation path is different. UI code must not receive a mutable `World&`,
-call pool mutation helpers directly, or push arbitrary command variants through
-a universal dispatcher. Components call domain hooks that return named actions:
+A component asks for what it wants by name:
 
 ```cpp
-auto game = use_game_actions();
-auto nav = use_navigation();
-auto settings = use_settings_actions();
-auto keybinds = use_keybind_actions();
-
-game.move_player(dir);
-nav.pause();
-settings.set_master_volume(v);
-keybinds.rebind_action(action, slot, binding);
+auto player  = use_player();
+auto enemies = use_enemies();
+auto stack   = use_screen_stack();
 ```
 
-Those hooks are the UI-facing API. Their implementations live at the boundary to
-the owning subsystem and encapsulate the real business logic in game/client
-code. A hook may call a game service directly for local client work, or it may
-create and queue a small typed command internally when the mutation needs strict
-tick ordering, deterministic replay, network authority, async replies, or
-automation visibility. Formal commands are an implementation detail of those
-hard-boundary cases, not the default component API.
+Each domain hook pulls `const World&` from context and projects out the typed
+slice its consumers actually want. Hooks live alongside the owning subsystem;
+components don't navigate the world's shape themselves, and they never touch
+raw `use_context(&WorldContext)`.
 
-Examples:
+If some future read is genuinely one-off and adding a domain hook feels like
+ceremony, that is a signal to stop and either (a) name the concept properly
+or (b) accept that the read belongs at a higher level of the tree where a hook
+already exists. A generic selector escape hatch is *not* the answer — we are
+choosing not to have one.
 
-- Menu navigation, options toggles, local text buffers, scroll positions, and
-  other client/UI-only changes can be direct hook actions.
-- Gameplay actions such as movement, applying an upgrade, buying/repairing,
-  changing lobby tech, or debug spawning may route through queued commands or
-  game-owned services if ordering, replay, or network authority matters.
-- Keybinding changes should use a shared keybind action/service that owns
-  validation, profile forking, save/load behavior, and persistence. The UI
-  should not reimplement that business logic inline.
+There is no subscription tracking, no version stamps, no memoization — the
+React-over-Clay runtime re-runs every fiber every frame anyway, so reads are
+already as cheap as they're going to be. If profiling later shows reconciliation
+cost is the bottleneck, *then* add memoization. Until then, don't.
 
-### Phase exit evidence
+### Writes: components call hook actions that wrap subsystem methods
 
-Every phase must add or update a `docs/phase-evidence/phase-N.md` file before
-the next phase starts. That file is part of the deliverable, not a note to write
-later. It must include:
+UI never mutates the world directly. It calls named action hooks:
 
-- The commit SHA being evaluated and the exact phase number.
-- The exact build command, test command(s), sanitizer command(s), profiler or
-  perf command(s), and scripted demo command(s) used for the phase.
-- The artifact paths for logs, perf output, sanitizer output, screenshots or
-  clips, lifecycle transcripts, replay transcripts, and any soak-test output.
-- A requirement-by-requirement table mapping each phase acceptance bullet and
-  each relevant foundation checkbox to the artifact that proves it.
-- Any intentionally deferred risk, with the phase where it must be closed.
+```cpp
+auto nav      = use_navigation();
+auto upgrades = use_upgrade_actions();
+auto settings = use_settings_actions();
 
-Manual inspection may supplement the evidence, but it never replaces scripted
-commands, logs, counters, transcripts, or committed artifacts. A checked box
-without an artifact link is treated as unchecked.
+nav.pause();
+upgrades.choose(option_id);
+settings.set_master_volume(v);
+```
 
-### Anti-reward-hack checks
+The hook implementation is a thin wrapper over a public method on the owning
+subsystem of the game object — `game.nav.pause()`, `game.upgrades.choose(...)`,
+`game.audio.set_master_volume(...)`. The subsystem owns validation and business
+logic.
 
-Each foundation must have at least one positive behavior test and one negative
-test that would fail if the implementation took the easiest visible shortcut:
+**Hook actions are exclusively for mutations a UI surface initiates** — Play
+buttons, Pause/Resume, modal selections, settings toggles, Restart. In-world
+controls (player movement, auto-firing, enemy AI, XP collection, level-up
+triggering) are engine-internal: the engine reads `Input` directly inside
+`engine_tick` and drives the relevant subsystem itself. The UI never sees a
+`move_player` or `fire_at` hook because it has no business calling one.
 
-- **Engine seam:** a frame-order transcript proves `engine_tick` completes
-  before `react_begin_frame`; a negative test fails if UI reconciliation reads
-  a partially-mutated world.
-- **Actor model:** handle/generation tests prove stale handles resolve to null
-  after destroy/reuse; a negative test fails on raw pointer escape from pools.
-- **Read lane:** selector counters prove unrelated pool version changes do not
-  re-run a pure selector; a negative test fails if selectors silently read the
-  whole world every frame.
-- **Write lane:** hook-action replay proves deterministic end state for
-  gameplay-affecting actions; a negative test proves queued gameplay actions
-  cannot mutate world state until the owning game/engine boundary applies them.
-  The proof must include a compile-time boundary check showing UI code cannot
-  acquire a mutable `World&`, call engine-only mutation helpers directly, or
-  access a universal command sink that bypasses the action hook.
-- **Fast lane:** reconciliation counters prove bound visuals update while the
-  declaring subtree stays flat; a negative test fails if `use_bind` falls back
-  to ordinary per-frame reconciliation outside the explicit disable-bindings
-  comparison mode.
-- **Screen stack:** an inspection test proves `World.ui_stack` is the owner and
-  UI only renders it; a tick-gating transcript proves gameplay systems do not
-  run or mutate gameplay pools while Pause / Title is on top; a negative test
-  fails if screen state is owned by UI-only globals, component-local state, or a
-  render-only pause that leaves gameplay simulation running.
-- **Screen lifecycle:** lifecycle transcripts prove deterministic enter, focus,
-  blur, exit ordering; cancellation tests fail on missed cleanup, duplicate
-  callbacks, or reordered events.
-- **Identity discipline:** Clay IDs, actor handles, and binding targets must be
-  stable across reorder/remount cases; binding targets are opaque IDs / handles,
-  not raw UI pointers or component addresses; negative tests fail on
-  position-only identity where keys or handles are required and on pointer-based
-  binding targets that survive only because the visible tree did not remount.
+There is **no universal command bus** and **no internal command queue** at the
+foundation layer. If a specific subsystem later needs deterministic ordering,
+replay, or network authority, that subsystem can introduce a queue inside its
+own implementation without changing any caller. Until a real subsystem needs
+that, the simpler shape is the right shape.
 
-### Design checkpoints
-
-Before implementing any new foundation, add a short design checkpoint to that
-phase's evidence file. It must name the chosen API, owner, lifetime rules,
-failure modes, cleanup behavior, negative tests, and why the design cannot
-silently collapse into a visible-only shortcut.
-
-This is mandatory for deferred choices such as `use_game_value`, domain action
-hooks (`use_game_actions`, `use_navigation`, `use_settings_actions`,
-`use_keybind_actions`), any internal command queue they choose to use,
-`use_bind`, `ScreenStackRenderer`, `use_screen_lifecycle`, `ResetWorld`, async
-cancellation, and any render-command or sidecar binding mechanism. The
-checkpoint does not need to be long, but it must exist before the implementation
-that depends on it.
+The point of the hook layer is the React-shaped seam — actions are looked up
+through context (so unmounted components can't keep calling them), hooks don't
+hand out long-lived references that survive renders, and components stay
+declarative. Not a compile-time `World&` ban.
 
 ### Rendering boundary
 
-Direct SDL drawing is allowed only for the world-scene pass: arena background,
-player, enemies, bullets, gems, and other high-volume gameplay actors. The
-React/Clay foundation remains responsible for HUD, menus, modals, screen stack
-rendering, lifecycle-visible screens, damage numbers, binding-owned attributes,
-and every ID proof.
-
-Foundation-relevant visuals must expose stable Clay IDs or explicit binding
-targets. A phase cannot claim the React-over-Clay foundation is proven by
-rendering those visuals exclusively through direct SDL.
-
-### Performance and soak protocol
-
-Performance claims must be measured from a release build at a fixed 1280x720
-window size with vsync configuration recorded, a deterministic seed, and a
-scripted scenario that can be rerun. Before any phase claims a framerate or soak
-result, commit `docs/phase-evidence/perf-target.md` naming the target CPU, GPU,
-RAM, OS, compiler/toolchain, build preset, display mode, power mode, and vsync
-configuration. Every perf artifact must cite that target file plus its build
-type, commit SHA, scenario seed, run duration, entity counts, p50/p95/max frame
-time, p95/max engine tick time, p95/max render time, and any dropped-frame
-count. Changing the target machine or configuration invalidates earlier perf
-claims unless the affected phase artifacts are rerun on the new target.
-
-Phase-level 60fps claims require a continuous 60-second scripted run unless a
-phase specifies a longer duration. Whole-plan soak requires a 30-minute
-scripted run with RSS sampled at least once per minute; pass/fail is based on
-no upward RSS trend beyond pool caps after warmup, no sanitizer findings, no
-thread leaks, and no missed lifecycle or action/command-replay assertions.
+Direct SDL drawing is allowed for the world-scene pass: arena background,
+player, enemies, bullets, gems. React/Clay owns HUD, menus, modals, screen
+stack rendering, and floating damage numbers. Foundation-relevant visuals must
+expose stable Clay IDs.
 
 ---
 
@@ -254,7 +182,6 @@ struct Pool {
     bool     alive[N];
     uint32_t free_head;       // intrusive free list through data[].next_free
     uint32_t count;           // live count, for fast iteration bounds
-    uint64_t version;         // bumped on any spawn/destroy/mutation
 };
 
 template <typename T>
@@ -274,8 +201,6 @@ T *resolve(Pool<T,N> &pool, Handle<T> h);
 - Stable 64-bit handles → safe to hold across frames, across UI, across
   worker threads. A stale handle resolves to `nullptr`, not a segfault.
 - No allocation per spawn (pools pre-sized; can grow by doubling if needed).
-- Per-pool `version` is the read-lane subscription primitive — selectors
-  early-out when no pool they touched has changed since last frame.
 - Loops over actors are written by hand: explicit, debuggable, no query DSL.
 
 **What we give up vs ECS:**
@@ -319,12 +244,19 @@ previous phase's acceptance is met.** Profile at the end of each phase.
 - [ ] Add `src/engine/world.h` / `world.cpp` with a `World` struct.
 - [ ] Add `src/engine/pool.h` with the `Pool<T,N>` template + `Handle<T>`.
 - [ ] Add `Player` actor type (position, hp). Spawn one on world init.
-- [ ] Add `src/engine/engine.h` / `engine.cpp` with `engine_tick(World&, float dt)`.
-      For now: WASD updates player position directly inside tick (hook actions
-      come in phase 4).
+- [ ] Add `src/engine/engine.h` / `engine.cpp` with `engine_tick(World&, const Input&, float dt)`.
+      The engine reads keyboard state from the `Input` snapshot and writes
+      player position directly inside tick. Player movement stays engine-internal
+      throughout the plan — the UI never drives it. Phase 3 adds the hook
+      action layer for the mutations UI legitimately owns (navigation first).
 - [ ] Wire `engine_tick` into `main.cpp` immediately before
-      `react_begin_frame()`. Pass `&world` to `App()`.
-- [ ] HUD: render `HP: %d` reading the world via a `WorldContext` provider.
+      `react_begin_frame()`, feeding it the same `Input` struct already
+      threaded into `App()`. Add a `WorldContext` provider in `App()` carrying
+      `const World&` to children.
+- [ ] Add a `use_player()` domain hook that reads the world from context and
+      returns player info (position, hp, …). Components consume domain hooks
+      like this; they never touch raw `use_context(&WorldContext)`.
+- [ ] HUD: render `HP: %d` via `auto p = use_player(); ... p.hp`.
 - [ ] Render the player as a colored circle through the chosen world-scene pass.
       If that pass is direct SDL, Phase 1 must still prove the React/Clay HUD
       reads the committed world after `engine_tick` and uses stable Clay IDs.
@@ -333,44 +265,13 @@ previous phase's acceptance is met.** Profile at the end of each phase.
 - WASD moves the player visibly.
 - HUD shows the player's HP from the world.
 - 60fps with vsync.
-- No leaks on clean shutdown (Valgrind / AddressSanitizer clean).
+- No leaks on clean shutdown.
 - `Handle<Player>` resolves correctly; resolving a manually-destroyed handle
   returns `nullptr`.
-- Phase evidence includes a frame-order transcript proving `engine_tick`
-  finishes before `react_begin_frame` and a stable-ID inspection for the HUD.
 
 ---
 
-### Phase 2 — Read lane: selector hooks
-
-**Foundations:** read lane.
-
-**Goal:** components subscribe to slices of world state, not the whole world.
-
-**Scope:**
-- [ ] Add `use_game_value<T>(selector)` hook returning `T` by value.
-- [ ] Selector receives a `const World&` and returns a value (POD or small).
-- [ ] Per-pool `version` bumped on every spawn, destroy, and mutation site.
-      Mutation sites go through small inline helpers (`damage()`, `move_to()`)
-      that bump the version; no naked field writes from outside the engine.
-- [ ] Hook records which pool versions it observed; if all unchanged from
-      previous frame **and** the selector is marked pure, skip reinvocation
-      and reuse the last value. (Cheap optimisation; correctness must not
-      depend on it.)
-- [ ] HUD HP text moves from `WorldContext` raw pull to
-      `use_game_value([](auto& w){ return w.player()->hp; })`.
-
-**Acceptance:**
-- HUD reads HP via selector; flipping HP in code updates the HUD next frame.
-- Spawning 200 dummy moving entities does **not** cause the HP selector to
-  re-run (verified via a counter / log).
-- Selector outputs are deterministic across identical world states.
-- Phase evidence includes selector invocation counters and a negative test where
-  unrelated pool mutations do not re-run the HP selector.
-
----
-
-### Phase 3 — Many actors stress test
+### Phase 2 — Many actors stress test
 
 **Foundations:** actor model under load.
 
@@ -386,60 +287,50 @@ previous phase's acceptance is met.** Profile at the end of each phase.
       total frame ms.
 
 **Acceptance:**
-- 1,000 enemies ticking and rendering at ≥60fps on the target machine.
+- 1,000 enemies ticking and rendering at ≥60fps.
 - Linear scaling (no sudden cliffs) — verify by sweeping 100 / 500 / 1000.
 - Destroying enemies (via another hotkey) leaves the pool clean: live count
   drops correctly, generation bumps, resolve of old handles returns null.
-- Phase evidence includes the 100 / 500 / 1000 sweep artifact from the
-  performance protocol and stale-handle negative tests after destroy/reuse.
 
 ---
 
-### Phase 4 — Write lane: hook actions
+### Phase 3 — Write path: navigation as the first UI-driven action
 
-**Foundations:** write lane.
+**Foundations:** write path.
 
-**Goal:** UI mutates game/client state only through named domain actions, not
-through mutable world access or a universal dispatcher.
+**Goal:** establish the action-hook plumbing using the first place UI
+legitimately mutates state — a Title screen whose Play button starts the game.
+In-world controls remain engine-internal.
 
 **Scope:**
-- [ ] Add UI-facing action hooks for the few mutations needed so far:
-      `use_game_actions()` with `move_player(dir)` and narrowly named debug
-      actions such as `spawn_enemies(count)` / `damage_player(n)`.
-- [ ] Implement those hook actions in the game/client boundary, not in leaf UI
-      components. The action implementation owns validation and business rules,
-      then either calls a game-owned service directly or queues an internal typed
-      command when top-of-tick ordering or replay determinism is required.
-- [ ] For gameplay mutations that must not take effect mid-frame, add an
-      internal command buffer (`std::vector<GameCommand>` or equivalent) drained
-      at the **top** of `engine_tick`. This buffer is not exposed through a
-      generic `use_dispatch()`.
-- [ ] Replace direct mutations from the input path: input handling calls the
-      same action boundary the UI uses; engine/game code applies the mutation at
-      the correct point.
-- [ ] Add a compile-time mutation boundary: UI-facing code receives only a
-      read-only world view plus named action hooks, while non-const `World&`,
-      mutation helpers, and any raw command queue are engine/game-owned.
-      Grep/search checks may supplement this, but they cannot be the phase-exit
-      proof.
+- [ ] Define the top-level `Game` object with subsystems (e.g. `game.nav`,
+      and the existing player/combat code now grouped under `game.player`,
+      `game.combat`). Subsystems expose public methods for the mutations they
+      own.
+- [ ] Add a minimal `current_screen` field on the world — `Title | Gameplay`.
+      (The full stack arrives in Phase 6; for now a single scalar is enough.)
+      `game.nav` owns it.
+- [ ] Add `use_navigation()` returning bound callables: `play()`,
+      `quit_to_title()`. Each forwards to a method on `game.nav`.
+- [ ] Plumb `Game&` through context the same way `WorldContext` carries the
+      read view; action hooks pull it from context.
+- [ ] Engine tick gates gameplay systems on `current_screen == Gameplay`: on
+      `Title`, enemies and player input are frozen.
+- [ ] Add a Title screen component with a Play button that calls `nav.play()`.
 
 **Acceptance:**
-- Player movement works identically to phase 1 but is now action-driven.
-- Replaying a recorded gameplay action / internal command stream against the
-  same initial world produces an identical end state (smoke test for
-  determinism / replay).
-- Mid-frame: calling a queued gameplay action does not take effect until the
-  next tick.
-- Phase evidence includes a compile-fail or boundary-test artifact proving UI
-  code cannot acquire a mutable `World&`, write world fields directly, call
-  engine-only mutation helpers, or bypass hooks through a universal dispatcher /
-  raw command queue.
+- Boot lands on Title; world is frozen, player input ignored.
+- Clicking Play transitions to Gameplay; WASD and enemies behave as in Phase 2.
+- In-world controls (movement, enemy ticking) are still driven by `engine_tick`
+  reading `Input` — Phase 1's input path is unchanged, no hook touches them.
+- Action hooks compose cleanly — adding a new subsystem method and exposing it
+  through a hook is a small, local change.
 
 ---
 
-### Phase 5 — Bullets, collisions, enemy death
+### Phase 4 — Bullets, collisions, enemy death
 
-**Foundations:** actor model, read lane, write lane (integration test under
+**Foundations:** actor model, read path, write path (integration test under
 real game logic).
 
 **Goal:** a working combat loop, no UI polish yet.
@@ -461,75 +352,64 @@ real game logic).
 - Enemy death always frees its pool slot; generation bumps verified.
 - Stop-the-world test: spawn 500 enemies + 500 bullets, then trigger
   collisions; no hangs, no leaks.
-- Phase evidence includes a deterministic combat transcript proving kills, XP,
-  gem collection, pool frees, and generation bumps in one run.
 
 ---
 
-### Phase 6 — Fast lane: bindings
+### Phase 5 — Smooth visuals: tweens and floating damage numbers
 
-**Foundations:** fast lane.
+**Foundations:** none new. This phase exercises the read path under
+continuously-animating UI without introducing a new lane.
 
-**Goal:** continuously-changing visuals update every frame without re-running
-the React component that owns them.
+**Goal:** make the HUD feel alive — HP bar interpolates smoothly, damage
+numbers float and fade — using only the seams already established.
 
 **Scope:**
-- [ ] Design and add `use_bind(target, setter, selector)`:
-      registers a binding from a selector over the world to a target
-      attribute (e.g. an HP-bar fill width, a world-space label position).
-      The design checkpoint must specify target identity, unmount cleanup,
-      transition behavior, failure behavior when the target is missing, and why
-      the implementation cannot silently fall back to full reconciliation. The
-      target identity must be an opaque stable ID / handle, never a raw UI
-      pointer, component address, or lifetime-dependent Clay internals pointer.
-- [ ] Implement binding application: after `react_end_frame()` and before
-      `SDL_RenderPresent()`, walk active bindings and apply the latest
-      selector value to the target. The exact mechanism may be a parallel
-      "instance attribute" map keyed by Clay element ID and consumed during
-      draw, or a Clay render-command patch pass — to be decided in this
-      phase, **not in advance**.
-- [ ] Convert HP bar to a binding-driven smooth fill.
-- [ ] Add world-space floating damage numbers (DamageNumber pool) whose
-      screen positions are bindings against the corresponding entity's
-      world position + elapsed-time tween.
-- [ ] Add a profile/log mode that proves the HUD subtree no longer
-      re-reconciles each frame while the HP bar still updates visibly.
+- [ ] Add tween state to the HP bar component using `use_state_int` to hold
+      `displayed_hp_centi` (HP × 100). Each render, lerp it toward
+      `actual_hp_centi`; divide by 100 for the bar fill. This uses only the
+      hook the runtime exposes today (`src/react.h:99`); no new primitive.
+- [ ] Add a `DamageNumber` pool to the world (position, value, elapsed time,
+      lifetime). Spawn on enemy hits; engine ticks the elapsed clock and
+      retires entries past their lifetime.
+- [ ] Render damage numbers as Clay elements: a React component reads the
+      pool via a `use_damage_numbers()` domain hook and emits one element per
+      live entry, with layout position computed each frame from
+      `world_pos + tween(elapsed)`. The component re-runs every frame; this
+      is fine.
+- [ ] If profiling later shows per-frame reconciliation of the HUD subtree
+      is a real cost, design selective memoization or a sidecar binding
+      mechanism then. Not before.
 
 **Acceptance:**
 - HP bar fills/empties smoothly even when HP itself only changes in
-  discrete steps (binding interpolates).
+  discrete steps.
 - Damage numbers track moving enemies and fade out.
-- Reconciliation counter for the HUD subtree is flat across frames.
-- Disabling all bindings reverts the visual to per-frame full reconciliation
-  with no visible difference except framerate / re-render counters.
-- Phase evidence includes both binding-enabled and binding-disabled counter
-  artifacts from the same deterministic HP/damage-number scenario, plus an
-  unmount/remount negative test proving stale binding targets are invalidated
-  instead of accidentally updating a recycled UI pointer.
+- 60fps holds with the HUD running every frame at full reconciliation.
 
 ---
 
-### Phase 7 — Screen stack
+### Phase 6 — Screen stack
 
 **Foundations:** screen stack, engine-driven tick gating.
 
 **Goal:** the engine owns navigation; UI is its viewer.
 
 **Scope:**
-- [ ] Add `ScreenId` enum: `Title`, `Gameplay`, `Pause`.
-- [ ] Add `ui_stack: std::vector<ScreenEntry>` on the world.
-- [ ] Add navigation actions exposed through `use_navigation()`:
-      `push_screen(id)`, `pop_screen()`, `replace_screen(id)`, plus named
-      helpers where useful (`play`, `pause`, `resume`, `quit_to_title`).
-      These may call the stack owner directly; they do not need formal command
-      objects unless transition auditing or async automation requires it.
+- [ ] Promote `ScreenId` to a full enum: `Title`, `Gameplay`, `Pause`.
+- [ ] Replace the Phase 3 `current_screen` scalar with `ui_stack:
+      std::vector<ScreenEntry>` on the world. `game.nav` now owns the stack.
+- [ ] Extend `use_navigation()` with the full vocabulary: `push_screen(id)`,
+      `pop_screen()`, `replace_screen(id)`, plus named helpers (`pause()`,
+      `resume()`, `quit_to_title()`; `play()` from Phase 3 is preserved).
+      All wrap public methods on `game.nav`.
 - [ ] Engine tick reads the top of the stack to decide which systems run:
       `Gameplay` → run combat / AI / physics; `Pause` / `Title` → skip
       gameplay systems, keep cosmetic ones (e.g. damage-number fade is
       paused too).
-- [ ] Add `<ScreenStackRenderer>` component that reads the stack via
-      `use_game_value` and renders the screen component(s) for each entry.
-      Lower entries stay mounted but visually layered behind upper ones.
+- [ ] Add a `use_screen_stack()` domain hook and a `<ScreenStackRenderer>`
+      component that reads the stack through it and renders the screen
+      component(s) for each entry. Lower entries stay mounted but visually
+      layered behind upper ones.
 - [ ] Implement `Title`, `Gameplay`, `Pause` screen components. Title has a
       Play button that calls a navigation action. Pause has Resume and Quit
       actions.
@@ -541,15 +421,12 @@ the React component that owns them.
 - ESC (or Resume) pops Pause; gameplay resumes seamlessly.
 - Title → Gameplay flow works on boot.
 - Stack depth of 2+ works (e.g. Pause pushed over Gameplay).
-- Phase evidence includes an inspection artifact proving `World.ui_stack` owns
-  the stack and screen components only render the entries.
-- Phase evidence includes a pause-gating transcript with gameplay system
-  counters and gameplay pool versions unchanged while Pause / Title is topmost,
-  while transition clocks and other allowed non-gameplay systems continue.
+- Gameplay pools are unchanged while Pause / Title is topmost (verifiable by
+  watching live counts / positions). Transition clocks still advance.
 
 ---
 
-### Phase 8 — Lifecycle + transitions
+### Phase 7 — Lifecycle + transitions
 
 **Foundations:** screen lifecycle.
 
@@ -571,16 +448,16 @@ in a deterministic order across stack changes.
 
 **Acceptance:**
 - Smooth animated push and pop; no popping / flashing.
-- Lifecycle event ordering verified by log (a deterministic transcript for a
-  scripted sequence: Boot → Play → Pause → Resume → Quit).
+- Performing Boot → Play → Pause → Resume → Quit by hand produces a debug
+  `printf` trail of lifecycle events whose order matches the spec
+  (previous-top `on_blur` → new-top `on_enter` → new-top `on_focus` on push,
+  reversed on pop). Eyeball-verified during the demo.
 - Reversing a transition mid-flight works (push Pause, immediately pop while
-  still `entering` — ends `exited` correctly).
-- Phase evidence includes negative transcripts for cancellation, duplicate
-  callbacks, and reversed mid-flight transitions.
+  still `entering` — ends `exited` correctly, also visible in the printf trail).
 
 ---
 
-### Phase 9 — Level-up loop (integration test)
+### Phase 8 — Level-up loop (integration test)
 
 **Foundations:** all of the above, simultaneously.
 
@@ -590,15 +467,16 @@ mutation through the write lane.
 
 **Scope:**
 - [ ] Add player `level` and an XP threshold table.
-- [ ] When `player.xp >= threshold[level]`: engine/game code raises the
-      level-up flow and opens `ChooseUpgrade` with a payload of 3
-      randomly-selected upgrade options through the navigation/action boundary.
+- [ ] When `player.xp >= threshold[level]`: engine code (inside `engine_tick`)
+      detects the threshold and calls `game.nav.push(ChooseUpgrade, payload)`
+      directly, where `payload` is 3 randomly-selected upgrade options. The
+      engine bypasses the hook layer here — only UI surfaces use hooks; engine
+      code mutating its own subsystems is the normal in-process path.
 - [ ] Add `ChooseUpgrade` screen: renders the 3 options, selects one by
       keyboard or click, and calls a hook action such as
-      `use_upgrade_actions().choose(id)`. The action owns the business logic:
-      validate the offer, apply the upgrade through game-owned code, and close
-      the modal. It may queue an internal gameplay command if deterministic
-      ordering/replay requires one.
+      `use_upgrade_actions().choose(id)`. The action wraps a public method on
+      `game.upgrades` that validates the offer, applies the stat change, and
+      closes the modal.
 - [ ] Upgrades affect real player stats (fire rate, damage, move speed,
       max HP, etc. — small fixed catalogue).
 - [ ] Multiple level-ups in quick succession queue correctly: pop → next
@@ -607,30 +485,32 @@ mutation through the write lane.
 **Acceptance:**
 - Full loop plays: kill enemies → XP fills → modal appears, gameplay frozen
   → choose upgrade → modal closes, gameplay resumes with new stats.
-- Modal scale-in / out animates cleanly (phase 8 still works).
-- HUD HP / XP bars update via bindings throughout (phase 6 still works).
+- Modal scale-in / out animates cleanly (phase 7 still works).
+- HUD HP / XP bars update smoothly throughout (phase 5 still works).
 - Triggering a level-up while another modal is animating in/out behaves
   deterministically (queued, not dropped, not interleaved).
-- Phase evidence includes a ten-level-up scripted transcript with queued
-  modal handling and hook-action-only upgrade application from UI code.
 
 ---
 
-### Phase 10 — Death, restart, title shell
+### Phase 9 — Death, restart, title shell
 
 **Foundations:** lifecycle correctness under cancellation; cleanup.
 
 **Goal:** clean boot, clean death, clean restart, no leaks.
 
 **Scope:**
-- [ ] HP ≤ 0 → engine/game code opens `GameOver` through the
-      navigation/action boundary.
-- [ ] `GameOver` screen has Restart → calls a restart action that encapsulates
-      `ResetWorld` plus the navigation transition to `Gameplay`.
+- [ ] HP ≤ 0 → engine code (inside `engine_tick`) calls `game.nav.push(GameOver)`
+      directly. This is engine-internal, not a hook action — the *engine* detected
+      the death condition, not a UI surface.
+- [ ] `GameOver` screen has Restart → calls `use_run_actions().restart()`, which
+      wraps `game.run.restart()` (a public method that performs `ResetWorld` plus
+      the navigation transition back to `Gameplay`).
 - [ ] `ResetWorld` operation: clear all pools, reset player, reset stack to
       `[Gameplay]` (or `[Title]` depending on flow choice).
-- [ ] Add Settings screen reachable from Pause (and from Title). Two
-      settings: master volume, fullscreen toggle. Persist nothing for now.
+- [ ] Add a Settings screen reachable from Pause (and from Title). Two
+      settings: master volume, fullscreen toggle. UI calls
+      `use_settings_actions().set_master_volume(v)` and `.set_fullscreen(b)`,
+      which wrap public methods on `game.settings`. Persist nothing for now.
 - [ ] Boot flow: stack starts as `[Title]`.
 - [ ] Edge tests: die during a level-up modal; die during a screen
       transition; quit mid-fetch (carry over the existing Image fetch
@@ -642,26 +522,22 @@ mutation through the write lane.
 - Play → die → Game Over → Restart → fresh game, no stale entities, no
   stale UI state.
 - Quit during any screen transition leaves no leaked threads / textures /
-  bound listeners (AddressSanitizer + thread sanitizer clean).
+  listeners.
 - Dying with a level-up modal already on the stack resolves to GameOver
   with the upgrade modal correctly torn down.
-- Phase evidence includes reset/cancellation artifacts proving no stale actors,
-  UI fibers, bindings, async fetches, or lifecycle listeners survive restart.
 
 ---
 
 ## Definition of done (whole plan)
 
-All ten phases meet acceptance, and:
+All nine phases meet acceptance, and:
 
 - [ ] All "Foundations under test" checkboxes ticked.
 - [ ] No phase required a hack that violated the architecture rules
-      (UI never mutates world; world never holds raw UI pointers; bindings
-      never need a re-render to update; screen lifecycle is deterministic).
-- [ ] Profiling: 1,000 enemies + 200 bullets + HUD bindings sustains ≥60fps
-      on the target machine.
-- [ ] Memory: 30-minute soak test shows no growth in RSS beyond pool caps.
-- [ ] The level-up loop in Phase 9 plays cleanly back-to-back ten times
+      (UI never mutates world directly; world never holds raw UI pointers;
+      screen lifecycle is deterministic).
+- [ ] 1,000 enemies + 200 bullets + HUD sustains ≥60fps.
+- [ ] The level-up loop in Phase 8 plays cleanly back-to-back ten times
       without a single frame of jank or a missed lifecycle event.
 
 When this is true, the foundation is real and the next game built on it does
