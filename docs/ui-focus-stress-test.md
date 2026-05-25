@@ -1,7 +1,7 @@
-# Stress test: a Loadout screen written against the proposed API
+# UI focus stress test: Loadout screen
 
 This is a deliberately complex client screen written *as if* every primitive in
-`plan-ui-focus.md` (`<FocusScope>`, `use_focusable`, `<Button>`, `<Toggle>`,
+`ui-focus-interaction-plan.md` (`<FocusScope>`, `use_focusable`, `<Button>`, `<Toggle>`,
 `<Selectable>`, `derive_visual_state`, the new `InputState` nav fields) were
 already shipped. The goal is not to be runnable; it is to be the kind of code
 an app developer would actually write at the end of F5 and then *use the
@@ -63,7 +63,7 @@ Self-contained — includes the helper primitives the screen uses
 so the whole thing is reviewable in one read.
 
 ```cpp
-// docs/focus-version-a/stress-test-example.md — IMAGINARY code, do not compile.
+// docs/ui-focus-stress-test.md — IMAGINARY code, do not compile.
 //
 // Proposed file: src/ui/screens/loadout.cpp
 //
@@ -779,7 +779,7 @@ This is the single biggest gap. Almost every "real" UI has a 2D region.
 Plan §F2:
 
 > Cross-screen nav-input gating (Pause shouldn't move its focus while
-> Settings is on top) is a screen-stack concern (`plan.md`), not a
+> Settings is on top) is a screen-stack concern (`engine-ui-boundary-plan.md`), not a
 > focus-model concern.
 
 …and §15 open question 2:
@@ -945,7 +945,7 @@ the 2D traversal API shape, the scope-nesting precedence rule, a
 Everything else in §6 is fixable in the consumer with mild ugliness, but
 those four leak straight into the consumption layer with no workaround.
 
-Follow-up: `client-ui-spatial-navigation-example.md` sketches the stronger
+Follow-up: `client-ui-focus-navigation-architecture.md` sketches the stronger
 answer for the biggest flaw above. Instead of asking the screen author for a
 `GridStrategy`, the focus layer harvests each focusable's Clay rectangle after
 layout and derives directional neighbors spatially, with explicit navigation

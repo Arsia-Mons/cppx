@@ -1,4 +1,4 @@
-# Practical example: implicit spatial navigation in `client/ui`
+# Client UI focus and navigation architecture
 
 The client UI architecture:
 

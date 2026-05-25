@@ -1,6 +1,6 @@
-# Plan: UI focus + interaction-state model
+# UI focus and interaction-state plan
 
-A sister plan to `plan.md`. Pure UI-layer. Lands `docs/archive/ui.md` —
+A sister plan to `engine-ui-boundary-plan.md`. Pure UI-layer. Lands `docs/archive/ui.md` —
 input-agnostic navigation and the interaction / control / visual state
 vocabulary — inside the React/Clay runtime, without touching the engine seam.
 
@@ -43,9 +43,9 @@ concept anywhere, hover is exposed by Clay but not consumed, and
 
 ---
 
-## 2. Why separate from plan.md
+## 2. Why separate from the engine/UI boundary plan
 
-`plan.md` is about engine/UI seams: actor pools, screen stack, write lane,
+`engine-ui-boundary-plan.md` is about engine/UI seams: actor pools, screen stack, write lane,
 lifecycle. **This plan is orthogonal.** It is about how a single UI
 surface — a button, a card, a toggle — behaves uniformly across keyboard,
 mouse, gamepad, and touch.
@@ -57,7 +57,7 @@ subsystem. It *does* add platform-layer plumbing (SDL gamepad / touch in
 fields — see F1.
 
 Anything described here can ship before, during, or after any phase in
-`plan.md` as long as it lands before the screen that needs it.
+`engine-ui-boundary-plan.md` as long as it lands before the screen that needs it.
 
 ---
 
@@ -89,13 +89,13 @@ Anything described here can ship before, during, or after any phase in
 
 ---
 
-## 4. Non-overlap with plan.md (binding)
+## 4. Non-overlap with the engine/UI boundary plan
 
 - Focus state lives in React hook state **under each screen's fiber subtree**
   via `<FocusScope>` (F2). It does not appear on `World` or any `game.*`
   subsystem.
 - Inter-screen navigation is unchanged: `use_*_actions()` hooks → subsystem
-  methods → `game.nav` as `plan.md` specifies. Focus does not enter that path.
+  methods → `game.nav` as `engine-ui-boundary-plan.md` specifies. Focus does not enter that path.
 - `WorldContext` is not extended. The new `FocusContext` is an independent
   provider. The existing `InputContext` is reused; F1 only adds fields to
   the `InputState` struct it already carries.
@@ -426,7 +426,7 @@ This is the same pattern `tests/react_runtime_tests.cpp:104-125` already
 validates for keyed React siblings — sibling fibers with distinct keys
 get distinct identities even when the component type is identical. Focus
 scopes inherit that contract by construction; this rule just makes the
-binding explicit so the screen-stack layer (`plan.md`) cannot accidentally
+binding explicit so the screen-stack layer (`engine-ui-boundary-plan.md`) cannot accidentally
 violate it by passing a typed key as the React key.
 
 Practically: the screen stack must supply each push with a unique
@@ -516,7 +516,7 @@ there is no "name" or "key" the focus model could use to remember things
 across remounts even if it wanted to.
 
 Cross-screen nav-input gating (Pause shouldn't move its focus while
-Settings is on top) is a screen-stack concern (`plan.md`), not a
+Settings is on top) is a screen-stack concern (`engine-ui-boundary-plan.md`), not a
 focus-model concern.
 
 #### Deriving `focusVisible`
@@ -1025,7 +1025,7 @@ machinery is shared identically.
 
 ### Phase F5 — Primitive components + first real consumers
 
-**Goal:** ship the primitives and migrate the first `plan.md` screens
+**Goal:** ship the primitives and migrate the first `engine-ui-boundary-plan.md` screens
 that exist.
 
 - **`<Focusable>`** — slot wrapper. Renders a Clay element with an id;
@@ -1042,7 +1042,7 @@ that exist.
 
 **Migration order.** Title → Play (one button) before anything else,
 because it's the smallest end-to-end test. Pause/ChooseUpgrade/Settings
-migrate as their `plan.md` phases land. Settings' master-volume slider is
+migrate as their `engine-ui-boundary-plan.md` phases land. Settings' master-volume slider is
 explicitly out of scope — it needs a separate continuous-input primitive.
 
 **Scope:**
@@ -1052,24 +1052,24 @@ explicitly out of scope — it needs a separate continuous-input primitive.
 - [ ] `<Toggle>` — `<Focusable>` + `checked` prop + `on_change(bool)`.
 - [ ] `<Selectable>` — `<Focusable>` + `selected` prop. **Leaf primitive,
       no group wrapper.**
-- [ ] Migrate the Title screen Play button (`plan.md` Phase 3) to
+- [ ] Migrate the Title screen Play button (`engine-ui-boundary-plan.md` Phase 3) to
       `<Button>`.
-- [ ] When `plan.md` Phase 6 lands: migrate Pause Resume / Quit-to-Title
+- [ ] When `engine-ui-boundary-plan.md` Phase 6 lands: migrate Pause Resume / Quit-to-Title
       to `<Button>`; verify gamepad / keyboard navigation through the
       menu.
-- [ ] When `plan.md` Phase 8 lands: migrate ChooseUpgrade cards. Prefer
+- [ ] When `engine-ui-boundary-plan.md` Phase 8 lands: migrate ChooseUpgrade cards. Prefer
       `<Button>` (one-shot fire) unless a persistent selection-then-confirm
       flow is actually required by design.
-- [ ] When `plan.md` Phase 9 lands: migrate Settings fullscreen toggle to
+- [ ] When `engine-ui-boundary-plan.md` Phase 9 lands: migrate Settings fullscreen toggle to
       `<Toggle>`. Master-volume slider is out of scope (a separate
       primitive, separate plan).
 
 **Acceptance:**
 - Title → Play works on mouse, keyboard, gamepad, and touch with no
   per-device code in the Title screen body.
-- (Post `plan.md` Phase 6) Pause menu fully navigable on every input
+- (Post `engine-ui-boundary-plan.md` Phase 6) Pause menu fully navigable on every input
   class.
-- (Post `plan.md` Phase 8) ChooseUpgrade picks an upgrade end-to-end via
+- (Post `engine-ui-boundary-plan.md` Phase 8) ChooseUpgrade picks an upgrade end-to-end via
   gamepad without touching the mouse.
 
 ---

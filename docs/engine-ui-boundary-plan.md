@@ -1,4 +1,4 @@
-# Plan: Survivor Arena — foundation hardening
+# Engine/UI boundary plan: Survivor Arena foundation hardening
 
 A staged plan for evolving the current React-over-Clay runtime into a real,
 scalable game-UI foundation by building one playable thing — a minimal
