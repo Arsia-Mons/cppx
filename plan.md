@@ -36,29 +36,26 @@ real actor-count load.
 The whole point of building this is to perfect these foundations. Every phase
 maps to one or more of:
 
-- [ ] **Engine seam** — engine tick runs before `react_begin_frame`;
-      simulation state is committed before UI reconciles.
-- [ ] **Actor model** — typed pools with owner-issued opaque `Handle<T>` tokens
-      carrying private index/generation/run identity, cache-friendly,
-      dangling-safe, O(1) spawn / resolve / destroy.
-- [ ] **Read lane** — UI reads through target-bound or subsystem-bound read
-      sources with stable IDs and declared dependency/version stamps for cheap
-      subscription early-outs.
-- [ ] **Write lane** — UI never mutates simulation state; it invokes
-      target/context-scoped action capabilities that the engine/client boundary
-      turns into queued commands at the top of each tick.
-- [ ] **Fast lane** — `use_bind(...)` or its eventual equivalent registers a
-      sidecar source-to-target access path applied at the frame barrier without
-      re-running the component that declared it.
-- [ ] **Screen stack** — navigation state lives outside the simulation world;
-      engine/frame orchestration reads it to gate systems; UI is a transparent
-      renderer of it.
+- [ ] **Engine seam** — engine tick runs before `react_begin_frame`; world is
+      committed before UI reconciles.
+- [ ] **Actor model** — typed pools with `Handle = {index, generation}`,
+      cache-friendly, dangling-safe, O(1) spawn / resolve / destroy.
+- [ ] **Read lane** — `use_game_value<T>(selector)` over the world, with
+      per-pool version stamps for cheap subscription early-outs.
+- [ ] **Write lane** — UI never mutates the world directly; it calls
+      domain-specific hook actions whose implementations encapsulate the owning
+      game/client business logic. Formal commands are used behind those hooks
+      only where ordering, replay, networking, automation, or tick-boundary
+      determinism require them.
+- [ ] **Fast lane** — `use_bind(...)` registers a sidecar binding applied at
+      the frame barrier without re-running the component that declared it.
+- [ ] **Screen stack** — `ui_stack` lives on the world; engine reads it to
+      gate which systems run; UI is a transparent renderer of it.
 - [ ] **Screen lifecycle** — `entering / entered / exiting / exited` phase
       per entry; `use_screen_lifecycle({on_enter, on_exit, on_focus, on_blur})`
       hook fires in deterministic order across stack transitions.
 - [ ] **Identity discipline** — every UI element has a fiber-stable Clay ID;
-      actor handles are opaque owner-issued tokens; no raw pointers escape the
-      engine.
+      handles are 64-bit; no raw pointers escape the engine.
 - [ ] **Lifecycle correctness under cancellation** — die mid-fetch,
       mid-level-up, mid-transition: no leaks, no UB, no stale UI state.
 
@@ -73,87 +70,49 @@ This plan is intentionally easy to reward-hack if "done" means a visible demo
 or checked boxes. That is not enough. Each phase exits only when it leaves
 reproducible evidence that the foundation it claims to prove is actually true.
 
-### Ownership and capability boundaries
+### Read and mutation methodology
 
-Do not implement a generic `WorldContext`, `world()` getter, or selector API
-that hands UI code a `World&`, `SimulationWorld&`, or `const World&`. That would
-turn the world object into a context bag and let future work pass visible demos
-while quietly making every subsystem globally reachable.
+React-style components should be able to get the data they need where they need
+it. The default read path is still `use_game_value<T>(selector)`: the selector
+receives a read-only game/world view and returns the specific value the
+component wants. We are not replacing that with hand-built per-widget source
+objects or requiring a top-level bridge to know every leaf component's data
+needs.
 
-The planned ownership model is:
+The mutation path is different. UI code must not receive a mutable `World&`,
+call pool mutation helpers directly, or push arbitrary command variants through
+a universal dispatcher. Components call domain hooks that return named actions:
 
-- `SimulationWorld` owns gameplay truth only: actor pools, deterministic
-  gameplay facts, RNG seed/state for simulation, and simulation-local clocks.
-- `ClientState` / `EngineState` owns frame orchestration, command queues,
-  navigation stack, pending modal payloads, transition clocks, settings, and
-  presentation-only async/cancellation state.
-- The renderer receives explicit render inputs: a world-scene snapshot for the
-  high-volume direct-SDL pass and Clay command arrays/binding targets for UI.
-- UI receives only target-bound or subsystem-bound read sources and
-  target/context-scoped action capabilities. Examples:
-  `SourceToken<EnemyReadSource>`, `SourceToken<PlayerHudSource>`,
-  `SourceToken<InventorySource>`, `SourceToken<SelectedEnemySource>`,
-  `SourceToken<PerfStatsSource>`, `PauseMenuActions{PauseMenuActionScope}`, and
-  `UpgradeOfferActions{UpgradeOfferActionScope}`.
+```cpp
+auto game = use_game_actions();
+auto nav = use_navigation();
+auto settings = use_settings_actions();
+auto keybinds = use_keybind_actions();
 
-All source IDs, source tokens, screen entry IDs, offer IDs, debug panel IDs,
-run IDs, action scopes, and action objects are owner-issued capability tokens
-with private construction.
-UI can receive them through typed props or scoped hooks, but ordinary UI cannot
-fabricate them, reinterpret one token as another, or request a token for an
-unrelated actor/subsystem/screen. A hook that accepts an ID must also validate
-the token's owner, generation, focus/phase where relevant, and run/session.
+game.move_player(dir);
+nav.pause();
+settings.set_master_volume(v);
+keybinds.rebind_action(action, slot, binding);
+```
 
-Read hooks must be shaped around injected source tokens, not around a generic
-world value, a renamed grab bag, a bare actor handle, or a caller-selected source
-type. Acceptable forms include narrow hooks such as
-`use_source_value(player_hud_source, [](const PlayerHudSource &p) { return p.hp(); })`
-or `use_source_value(enemy_source, [](const EnemyReadSource &e) { return e.hp(); })`.
-Subsystem reads must use an injected `SourceToken<TSource>` for the subsystem or
-panel that owns the subscription. Aggregate views are allowed only when they are
-presenter-specific snapshots with an explicit field list and explicit dependency
-stamps; they must not expose arbitrary actor enumeration, unrelated pools, or
-"reach through" access to the simulation. A `Handle<T>` identifies an actor; it
-never authorizes reading that actor. Frame orchestration mints the specific
-`SourceToken<TSource>` a screen/component is allowed to read.
+Those hooks are the UI-facing API. Their implementations live at the boundary to
+the owning subsystem and encapsulate the real business logic in game/client
+code. A hook may call a game service directly for local client work, or it may
+create and queue a small typed command internally when the mutation needs strict
+tick ordering, deterministic replay, network authority, async replies, or
+automation visibility. Formal commands are an implementation detail of those
+hard-boundary cases, not the default component API.
 
-Action hooks must also use injected sealed action scopes, not target IDs. A
-gameplay screen may receive `PlayerPawnActions{PlayerPawnActionScope}` for
-movement. An upgrade modal may receive
-`UpgradeOfferActions{UpgradeOfferActionScope}`. A debug panel may receive
-`DebugSpawnActions{DebugSpawnActionScope}` only in debug contexts. A Game Over
-screen may receive `SimulationLifecycleActions{SimulationLifecycleActionScope}`.
-Full command routers are infrastructure-only; ordinary UI must not receive
-`GameCommands`, `NavigationCommands`, a raw command queue, or a universal
-`use_dispatch()` equivalent. A `Handle<T>`, read source, `DebugPanelId`,
-`ScreenEntryId`, or `RunId` alone never authorizes writes.
+Examples:
 
-Route/navigation APIs follow the same rule. Full stack push/pop/replace is
-owned by frame orchestration. Ordinary screens receive entry-scoped actions such
-as `TitleActions{TitleActionScope}`, `PauseMenuActions{PauseMenuActionScope}`,
-`UpgradeModalActions{UpgradeModalActionScope}`, and
-`GameOverActions{GameOverActionScope}`. Those scopes are issued by frame
-orchestration for a specific screen entry/run/focus generation. Screens cannot
-enumerate the whole stack, push arbitrary screen IDs, pop entries they do not
-own, or attach arbitrary payload types.
-
-Screen props are data-only field-list structs. They may contain primitive/copy
-data, owner-issued IDs, and explicitly named narrow sources/actions passed as
-separate fields. They must not contain `ClientState`, `EngineState`, raw stack
-snapshots, service bags, source/action registries, platform handles, `std::any`,
-unfiltered variants, or unrelated source/action capabilities.
-
-Every phase that touches these boundaries must include compile-fail or
-boundary-test artifacts proving that UI/client read-lane code cannot include
-mutable simulation internals, cannot call pool `resolve` helpers, cannot acquire
-mutable simulation state, and cannot route unrelated navigation/debug/settings
-work through a gameplay-only action capability. Those artifacts must also prove
-that read sources and action capabilities cannot grow into grab bags by exposing
-unrelated actor pools, unrelated subsystems, arbitrary actor enumeration, or
-dependencies broader than their declared source IDs.
-They must also prove ordinary UI cannot fabricate owner-issued tokens or call
-scoped hooks with stale, unrelated, unfocused, wrong-generation, or wrong-run
-tokens.
+- Menu navigation, options toggles, local text buffers, scroll positions, and
+  other client/UI-only changes can be direct hook actions.
+- Gameplay actions such as movement, applying an upgrade, buying/repairing,
+  changing lobby tech, or debug spawning may route through queued commands or
+  game-owned services if ordering, replay, or network authority matters.
+- Keybinding changes should use a shared keybind action/service that owns
+  validation, profile forking, save/load behavior, and persistence. The UI
+  should not reimplement that business logic inline.
 
 ### Phase exit evidence
 
@@ -181,40 +140,27 @@ test that would fail if the implementation took the easiest visible shortcut:
 
 - **Engine seam:** a frame-order transcript proves `engine_tick` completes
   before `react_begin_frame`; a negative test fails if UI reconciliation reads
-  partially-mutated simulation state.
+  a partially-mutated world.
 - **Actor model:** handle/generation tests prove stale handles resolve to null
-  after destroy/reuse; a negative test fails on raw pointer escape from pools or
-  on UI/client code including engine-internal pool resolution APIs.
+  after destroy/reuse; a negative test fails on raw pointer escape from pools.
 - **Read lane:** selector counters prove unrelated pool version changes do not
-  re-run a pure selector; a negative test fails if selectors can accept
-  `World&` / `SimulationWorld&`, call a generic world getter, or silently read
-  the whole world every frame. Additional negative tests fail if a read source
-  exposes unrelated pools/subsystems, arbitrary actor enumeration, or dependency
-  stamps broader than the declared actor/subsystem/source ID.
-- **Write lane:** command replay proves deterministic end state; a negative
-  test proves dispatching from UI cannot mutate simulation state until the next
-  engine tick drains commands. The proof must include a compile-time boundary
-  check showing UI code cannot acquire mutable simulation state, use a universal
-  command sink to bypass ownership, call engine-only mutation helpers directly,
-  or obtain actions outside its target/context scope.
+  re-run a pure selector; a negative test fails if selectors silently read the
+  whole world every frame.
+- **Write lane:** hook-action replay proves deterministic end state for
+  gameplay-affecting actions; a negative test proves queued gameplay actions
+  cannot mutate world state until the owning game/engine boundary applies them.
+  The proof must include a compile-time boundary check showing UI code cannot
+  acquire a mutable `World&`, call engine-only mutation helpers directly, or
+  access a universal command sink that bypasses the action hook.
 - **Fast lane:** reconciliation counters prove bound visuals update while the
   declaring subtree stays flat; a negative test fails if `use_bind` falls back
   to ordinary per-frame reconciliation outside the explicit disable-bindings
-  comparison mode. Source-side negative tests fail on missing sources,
-  destroyed/reused actor handles, selected-source changes, and selectors that
-  reach through to unrelated pools.
-- **Capability tokens:** compile-fail tests prove UI cannot fabricate
-  `SourceId`, `DebugPanelId`, `ScreenEntryId`, `OfferId`, `RunId`, or scoped
-  action objects; runtime tests prove stale generation/focus/run tokens are
-  rejected without mutating state.
-- **Screen stack:** an inspection test proves `ClientState` / navigation state
-  is the owner and UI only renders it; a tick-gating transcript proves gameplay
-  systems do not run or mutate gameplay pools while Pause / Title is on top; a
-  negative test fails if screen state is owned by the simulation world,
-  UI-only globals, component-local state, or a render-only pause that leaves
-  gameplay simulation running. Additional negative tests fail if ordinary
-  screens can enumerate the whole stack, push arbitrary screen IDs, pop entries
-  they do not own, or pass arbitrary payload types.
+  comparison mode.
+- **Screen stack:** an inspection test proves `World.ui_stack` is the owner and
+  UI only renders it; a tick-gating transcript proves gameplay systems do not
+  run or mutate gameplay pools while Pause / Title is on top; a negative test
+  fails if screen state is owned by UI-only globals, component-local state, or a
+  render-only pause that leaves gameplay simulation running.
 - **Screen lifecycle:** lifecycle transcripts prove deterministic enter, focus,
   blur, exit ordering; cancellation tests fail on missed cleanup, duplicate
   callbacks, or reordered events.
@@ -231,11 +177,13 @@ phase's evidence file. It must name the chosen API, owner, lifetime rules,
 failure modes, cleanup behavior, negative tests, and why the design cannot
 silently collapse into a visible-only shortcut.
 
-This is mandatory for deferred choices such as typed read/access sources,
-target/context action capabilities, `use_bind`, `ScreenStackRenderer`,
-`use_screen_lifecycle`, `ResetSimulation`, async cancellation, and any
-render-command or sidecar binding mechanism. The checkpoint does not need to be
-long, but it must exist before the implementation that depends on it.
+This is mandatory for deferred choices such as `use_game_value`, domain action
+hooks (`use_game_actions`, `use_navigation`, `use_settings_actions`,
+`use_keybind_actions`), any internal command queue they choose to use,
+`use_bind`, `ScreenStackRenderer`, `use_screen_lifecycle`, `ResetWorld`, async
+cancellation, and any render-command or sidecar binding mechanism. The
+checkpoint does not need to be long, but it must exist before the implementation
+that depends on it.
 
 ### Rendering boundary
 
@@ -266,7 +214,7 @@ Phase-level 60fps claims require a continuous 60-second scripted run unless a
 phase specifies a longer duration. Whole-plan soak requires a 30-minute
 scripted run with RSS sampled at least once per minute; pass/fail is based on
 no upward RSS trend beyond pool caps after warmup, no sanitizer findings, no
-thread leaks, and no missed lifecycle or command-replay assertions.
+thread leaks, and no missed lifecycle or action/command-replay assertions.
 
 ---
 
@@ -310,53 +258,25 @@ struct Pool {
 };
 
 template <typename T>
-class Handle {
-public:
-    static Handle null();
-    bool is_null() const;
-
-private:
+struct Handle {
     uint32_t index;
     uint32_t generation;       // 0 == null
-    uint32_t run_id;
-
-    Handle(uint32_t index, uint32_t generation, uint32_t run_id);
-    friend struct ActorHandleIssuer;
-    template <typename U, uint32_t M>
-    friend U *resolve_mutable(Pool<U,M> &pool, Handle<U> h);
-    template <typename U, uint32_t M>
-    friend const U *resolve_readonly(const Pool<U,M> &pool, Handle<U> h);
 };
 
-// Engine-internal only. Resolve returns nullptr if the slot is dead or
-// generation mismatches; raw pointers must not cross the engine boundary.
+// Resolve returns nullptr if the slot is dead or generation mismatches.
 template <typename T, uint32_t N>
-T *resolve_mutable(Pool<T,N> &pool, Handle<T> h);
-
-template <typename T, uint32_t N>
-const T *resolve_readonly(const Pool<T,N> &pool, Handle<T> h);
+T *resolve(Pool<T,N> &pool, Handle<T> h);
 ```
 
 **Why this is enough:**
 
 - Contiguous arrays per actor type → cache-friendly iteration.
-- Stable opaque handles → safe to hold across frames, across UI, across
-  worker threads. A stale handle resolves to `nullptr` inside engine-owned
-  scoped resolution, not a segfault. Handles are owner-issued capability tokens
-  with private construction, type branding, generation, and run/session
-  identity; UI cannot aggregate-initialize or synthesize them from integers.
+- Stable 64-bit handles → safe to hold across frames, across UI, across
+  worker threads. A stale handle resolves to `nullptr`, not a segfault.
 - No allocation per spawn (pools pre-sized; can grow by doubling if needed).
 - Per-pool `version` is the read-lane subscription primitive — selectors
   early-out when no pool they touched has changed since last frame.
 - Loops over actors are written by hand: explicit, debuggable, no query DSL.
-
-Raw actor pointers are a local implementation detail of engine systems. Any
-UI/client-facing API must carry owner-issued handles, copied field-list
-snapshots, or typed read sources. `std::span`, pool proxies, and actor
-enumeration views are allowed only for renderer-owned immutable DTOs and
-engine-internal loops; they are never UI props, sources, hooks, or action
-inputs. UI/client read-lane code must not include the internal pool header that
-exposes `resolve_mutable` / `resolve_readonly`.
 
 **What we give up vs ECS:**
 
@@ -393,48 +313,31 @@ previous phase's acceptance is met.** Profile at the end of each phase.
 
 **Foundations:** engine seam, actor model.
 
-**Goal:** prove the engine→snapshot/render→UI ordering and the actor-pool
-primitive.
+**Goal:** prove the engine→render→UI ordering and the actor-pool primitive.
 
 **Scope:**
-- [ ] Add `src/engine/simulation_world.h` / `simulation_world.cpp` with a
-      `SimulationWorld` struct for gameplay truth only.
+- [ ] Add `src/engine/world.h` / `world.cpp` with a `World` struct.
 - [ ] Add `src/engine/pool.h` with the `Pool<T,N>` template + `Handle<T>`.
 - [ ] Add `Player` actor type (position, hp). Spawn one on world init.
-- [ ] Add `src/engine/engine.h` / `engine.cpp` with
-      `engine_tick(SimulationWorld&, float dt)`.
-      For now: WASD updates player position directly inside tick (commands
+- [ ] Add `src/engine/engine.h` / `engine.cpp` with `engine_tick(World&, float dt)`.
+      For now: WASD updates player position directly inside tick (hook actions
       come in phase 4).
 - [ ] Wire `engine_tick` into `main.cpp` immediately before
-      the UI frame. After tick completion, build a renderer-only
-      `WorldSceneSnapshot` for the direct-SDL scene pass. The frame composition
-      layer may build an infrastructure-only `UiReadInputs` while assembling
-      providers/props, but `App()`, screens, and components must receive only
-      typed field-list props plus explicitly named owner-issued sources such as
-      `SourceToken<PlayerHudSource>`. They must not receive `UiReadInputs`,
-      a source registry, the full frame snapshot, actor-pool arrays, broad
-      dependency registries, or a mutable/const world pointer.
-- [ ] HUD: render `HP: %d` reading through a narrow
-      `SourceToken<PlayerHudSource>` provider. Do not add `WorldContext` or
-      a player/combat grab bag.
+      `react_begin_frame()`. Pass `&world` to `App()`.
+- [ ] HUD: render `HP: %d` reading the world via a `WorldContext` provider.
 - [ ] Render the player as a colored circle through the chosen world-scene pass.
       If that pass is direct SDL, Phase 1 must still prove the React/Clay HUD
-      reads the committed snapshot after `engine_tick` and uses stable Clay IDs.
+      reads the committed world after `engine_tick` and uses stable Clay IDs.
 
 **Acceptance:**
 - WASD moves the player visibly.
-- HUD shows the player's HP from the committed read capability.
+- HUD shows the player's HP from the world.
 - 60fps with vsync.
 - No leaks on clean shutdown (Valgrind / AddressSanitizer clean).
 - `Handle<Player>` resolves correctly; resolving a manually-destroyed handle
   returns `nullptr`.
 - Phase evidence includes a frame-order transcript proving `engine_tick`
-  finishes before `react_begin_frame`, a stable-ID inspection for the HUD, and
-  a boundary artifact proving UI code cannot include mutable simulation/pool
-  internals or obtain a generic world pointer.
-- Phase evidence includes negative tests proving UI cannot receive
-  `UiReadInputs`, source registries, `WorldSceneSnapshot`, a full
-  `FrameSnapshot`, actor-pool arrays, or broad dependency registries.
+  finishes before `react_begin_frame` and a stable-ID inspection for the HUD.
 
 ---
 
@@ -442,34 +345,20 @@ primitive.
 
 **Foundations:** read lane.
 
-**Goal:** components subscribe to specific actor/subsystem sources, not whole
-simulation state.
+**Goal:** components subscribe to slices of world state, not the whole world.
 
 **Scope:**
-- [ ] Add typed read hooks returning values by copy from injected source tokens,
-      such as `use_source_value<TSource, TValue>(SourceToken<TSource>, selector)`.
-      Do not add a hook that accepts `Handle<TActor>`, `SourceId`, `World&`,
-      `SimulationWorld&`, `auto&` world-shaped objects, or broad player/combat
-      grab bags to selectors.
-- [ ] Source tokens are owner-issued capability tokens with private
-      construction. UI may use only tokens injected through typed props/sources.
-      It cannot construct arbitrary `Handle<TActor>`, `SourceId`, subsystem IDs,
-      or `SourceToken<TSource>` and pass them into read hooks. A bare handle or
-      source ID cannot be upgraded into a read source by choosing a template
-      parameter at the call site.
-- [ ] Selectors receive only the target-bound or subsystem-bound source they
-      subscribe to (`const PlayerHudSource&`, `const EnemyReadSource&`,
-      `const InventorySource&`, etc.) and return a value (POD or small).
+- [ ] Add `use_game_value<T>(selector)` hook returning `T` by value.
+- [ ] Selector receives a `const World&` and returns a value (POD or small).
 - [ ] Per-pool `version` bumped on every spawn, destroy, and mutation site.
       Mutation sites go through small inline helpers (`damage()`, `move_to()`)
       that bump the version; no naked field writes from outside the engine.
-- [ ] Hook records the declared dependency versions for its source ID; if all
-      unchanged from previous frame **and** the selector is marked pure, skip
-      reinvocation and reuse the last value. (Cheap optimisation; correctness
-      must not depend on it.)
-- [ ] HUD HP text moves from the Phase 1 `PlayerHudSource` pull to
-      `use_source_value(player_hud_source,
-      [](const PlayerHudSource &player) { return player.hp(); })`.
+- [ ] Hook records which pool versions it observed; if all unchanged from
+      previous frame **and** the selector is marked pure, skip reinvocation
+      and reuse the last value. (Cheap optimisation; correctness must not
+      depend on it.)
+- [ ] HUD HP text moves from `WorldContext` raw pull to
+      `use_game_value([](auto& w){ return w.player()->hp; })`.
 
 **Acceptance:**
 - HUD reads HP via selector; flipping HP in code updates the HUD next frame.
@@ -478,18 +367,6 @@ simulation state.
 - Selector outputs are deterministic across identical world states.
 - Phase evidence includes selector invocation counters and a negative test where
   unrelated pool mutations do not re-run the HP selector.
-- Phase evidence includes compile-fail or boundary-test artifacts proving UI
-  selectors cannot accept `World&` / `SimulationWorld&`, cannot call `world()`,
-  cannot subscribe to every pool by default, and cannot receive a read source
-  that exposes fields or dependency stamps outside its declared target/subsystem.
-- Phase evidence includes compile-fail tests proving ordinary UI cannot
-  fabricate source IDs, debug panel IDs, screen entry IDs, offer IDs, run IDs,
-  actor handles, or read/action tokens. These tests must cover aggregate
-  initialization and token synthesis from raw integers.
-- Phase evidence includes compile-fail tests proving `Handle<Player>` alone
-  cannot authorize reads, `SourceToken<A>` cannot be passed as `SourceToken<B>`,
-  and callers cannot choose a source type to turn an injected ID into a broader
-  read capability.
 
 ---
 
@@ -518,56 +395,45 @@ simulation state.
 
 ---
 
-### Phase 4 — Write lane: commands
+### Phase 4 — Write lane: hook actions
 
 **Foundations:** write lane.
 
-**Goal:** UI and engine talk only through a typed command buffer.
+**Goal:** UI mutates game/client state only through named domain actions, not
+through mutable world access or a universal dispatcher.
 
 **Scope:**
-- [ ] Add engine command types (`std::variant` or tagged union) with explicit
-      sealed action scopes: `MovePlayer{PlayerPawnActionScope, dir}`,
-      `SpawnEnemies{DebugSpawnActionScope, count}`,
-      `DamagePlayer{DebugSpawnActionScope, Handle<Player>, n}`.
-- [ ] Add command queues on `EngineState` / the client-engine boundary, not on
-      `SimulationWorld`. Gameplay commands are drained at the **top** of
-      `engine_tick`; navigation/presentation commands are drained by the frame
-      orchestration path that owns `ClientState`.
-- [ ] Add target/context action hooks returning narrow capabilities:
-      `use_player_pawn_actions(PlayerPawnActionScope)` for movement and
-      `use_debug_spawn_actions(DebugSpawnActionScope)` for debug spawn/damage
-      controls.
-      Do not add `use_game_commands()`, `use_navigation_commands()`, a raw
-      dispatcher, or a global `use_dispatch()` equivalent to UI-facing code.
-- [ ] Action hooks accept only owner-issued tokens injected into the current
-      screen/panel context. The actions they return are focus/phase-scoped,
-      generation-checked, and run/session-checked where relevant. A
-      `Handle<Player>`, `PlayerHudSource`, `DebugPanelId`, or `ScreenEntryId`
-      cannot mint movement/debug actions.
-- [ ] Replace direct mutations from the input path: input handler dispatches
-      commands; engine applies them inside the tick.
+- [ ] Add UI-facing action hooks for the few mutations needed so far:
+      `use_game_actions()` with `move_player(dir)` and narrowly named debug
+      actions such as `spawn_enemies(count)` / `damage_player(n)`.
+- [ ] Implement those hook actions in the game/client boundary, not in leaf UI
+      components. The action implementation owns validation and business rules,
+      then either calls a game-owned service directly or queues an internal typed
+      command when top-of-tick ordering or replay determinism is required.
+- [ ] For gameplay mutations that must not take effect mid-frame, add an
+      internal command buffer (`std::vector<GameCommand>` or equivalent) drained
+      at the **top** of `engine_tick`. This buffer is not exposed through a
+      generic `use_dispatch()`.
+- [ ] Replace direct mutations from the input path: input handling calls the
+      same action boundary the UI uses; engine/game code applies the mutation at
+      the correct point.
 - [ ] Add a compile-time mutation boundary: UI-facing code receives only a
-      typed read view plus typed command capabilities, while non-const
-      `SimulationWorld&` and mutation helpers are engine-owned. Grep/search
-      checks may supplement this, but they cannot be the phase-exit proof.
+      read-only world view plus named action hooks, while non-const `World&`,
+      mutation helpers, and any raw command queue are engine/game-owned.
+      Grep/search checks may supplement this, but they cannot be the phase-exit
+      proof.
 
 **Acceptance:**
-- Player movement works identically to phase 1 but is now command-driven.
-- Replaying a recorded command stream against the same initial simulation state
-  produces an identical end state (smoke test for determinism / replay).
-- Mid-frame: dispatching a command does not take effect until the next tick.
+- Player movement works identically to phase 1 but is now action-driven.
+- Replaying a recorded gameplay action / internal command stream against the
+  same initial world produces an identical end state (smoke test for
+  determinism / replay).
+- Mid-frame: calling a queued gameplay action does not take effect until the
+  next tick.
 - Phase evidence includes a compile-fail or boundary-test artifact proving UI
-  code cannot acquire mutable simulation state, write simulation fields directly,
-  call engine-only mutation helpers, obtain all gameplay commands, or send
-  navigation/debug/settings work through a player-only action capability.
-- Phase evidence includes compile-fail tests proving ordinary UI cannot include
-  or call the dispatcher/queue and cannot construct command variants outside
-  its scoped action object.
-- Phase evidence includes runtime tests proving stale, blurred, wrong-generation,
-  or wrong-run action tokens reject commands without mutating simulation state.
-- Phase evidence includes compile-fail tests proving `Handle<Player>`,
-  `PlayerHudSource`, and `DebugPanelId` alone cannot obtain movement/debug
-  actions.
+  code cannot acquire a mutable `World&`, write world fields directly, call
+  engine-only mutation helpers, or bypass hooks through a universal dispatcher /
+  raw command queue.
 
 ---
 
@@ -587,10 +453,7 @@ real game logic).
       bullet despawns, enemy takes damage, dead enemy spawns an XP gem.
 - [ ] Add an `XpGem` pool (position, value). Player auto-collects within
       radius on tick.
-- [ ] HUD: add `Kills: N` and `XP: N` through typed read hooks
-      (`SourceToken<PlayerHudSource>` and
-      `SourceToken<RunCombatStatsSource>` with explicit fields), not through a
-      generic world pointer or broad combat grab bag.
+- [ ] HUD: add `Kills: N` and `XP: N` from the world.
 
 **Acceptance:**
 - 100 enemies + 100 bullets in flight at ≥60fps.
@@ -611,38 +474,24 @@ real game logic).
 the React component that owns them.
 
 **Scope:**
-- [ ] Design and add `use_bind(source, target_attribute, selector)` or the
-      equivalent access/subscription API:
-      registers a binding from a selector over a target-bound or
-      subsystem-bound source to a closed target-attribute descriptor (e.g. an
-      HP-bar fill width, a world-space label position).
-      The design checkpoint must specify source identity, target identity,
-      target attribute identity, unmount cleanup, source invalidation,
-      transition behavior, failure behavior when the source or target is
-      missing, and why the implementation cannot silently fall back to full
-      reconciliation. Source, target, and attribute identities must be opaque
-      stable IDs / handles, never raw UI pointers, component addresses, actor
-      pointers, lifetime-dependent Clay internals pointers, or arbitrary setter
-      callbacks.
-- [ ] Binding source/target IDs are owner-issued capability tokens with private
-      construction. A component can bind only sources and targets injected into
-      its current props/context; it cannot fabricate another actor's source,
-      bind to a debug/subsystem source it was not issued, or keep using a source
-      after focus/phase/run/generation invalidation. Bind accepts
-      `SourceToken<TSource>` and `TargetAttrToken<TAttr>`; a bare `Handle<T>` or
-      `SourceId` cannot authorize a binding by choosing template parameters.
+- [ ] Design and add `use_bind(target, setter, selector)`:
+      registers a binding from a selector over the world to a target
+      attribute (e.g. an HP-bar fill width, a world-space label position).
+      The design checkpoint must specify target identity, unmount cleanup,
+      transition behavior, failure behavior when the target is missing, and why
+      the implementation cannot silently fall back to full reconciliation. The
+      target identity must be an opaque stable ID / handle, never a raw UI
+      pointer, component address, or lifetime-dependent Clay internals pointer.
 - [ ] Implement binding application: after `react_end_frame()` and before
-      `SDL_RenderPresent()`, walk active source→target bindings, resolve the
-      source by its stable handle/key and generation, and apply the selector's
-      returned data only to the issued target-attribute descriptor. The exact
-      mechanism may be a parallel "instance attribute" map keyed by Clay element
-      ID and consumed during draw, or a Clay render-command patch pass — to be
-      decided in this phase, **not in advance**.
+      `SDL_RenderPresent()`, walk active bindings and apply the latest
+      selector value to the target. The exact mechanism may be a parallel
+      "instance attribute" map keyed by Clay element ID and consumed during
+      draw, or a Clay render-command patch pass — to be decided in this
+      phase, **not in advance**.
 - [ ] Convert HP bar to a binding-driven smooth fill.
-- [ ] Add world-space floating damage numbers (DamageNumber pool) whose screen
-      positions are sourced from `SourceToken<DamageNumberSource>` plus an
-      explicit `SourceToken<ActorPositionSource<TActor>>` for the entity they
-      follow. Destroy/reuse of either source must invalidate the binding.
+- [ ] Add world-space floating damage numbers (DamageNumber pool) whose
+      screen positions are bindings against the corresponding entity's
+      world position + elapsed-time tween.
 - [ ] Add a profile/log mode that proves the HUD subtree no longer
       re-reconciles each frame while the HP bar still updates visibly.
 
@@ -657,18 +506,6 @@ the React component that owns them.
   artifacts from the same deterministic HP/damage-number scenario, plus an
   unmount/remount negative test proving stale binding targets are invalidated
   instead of accidentally updating a recycled UI pointer.
-- Phase evidence includes source-side negative tests for destroyed/reused actor
-  handles, missing damage-number sources, selected enemy changes, and selectors
-  that try to read unrelated pools through a broad source.
-- Phase evidence includes compile-fail tests proving UI cannot fabricate
-  binding source/target tokens or call bind hooks outside its injected source
-  scope.
-- Phase evidence includes compile-fail tests proving `SourceToken<A>` cannot be
-  used as `SourceToken<B>` and that bind cannot use a source or target attribute
-  token not injected into the current props/context.
-- Phase evidence includes negative tests proving binding APIs do not accept
-  setter lambdas/callbacks and cannot access command queues, navigation,
-  settings, `ClientState`, or `EngineState`.
 
 ---
 
@@ -680,59 +517,35 @@ the React component that owns them.
 
 **Scope:**
 - [ ] Add `ScreenId` enum: `Title`, `Gameplay`, `Pause`.
-- [ ] Add `NavigationState` / `ClientState.ui_stack:
-      std::vector<ScreenEntry>` outside `SimulationWorld`.
-- [ ] Add internal navigation operations `PushScreen{id}`, `PopScreen{entry}`,
-      `ReplaceScreen{entry,id}` to frame orchestration. Full stack operations
-      are infrastructure-only; ordinary screens receive entry-scoped actions.
-- [ ] Frame orchestration reads the top of the stack to decide which systems run:
+- [ ] Add `ui_stack: std::vector<ScreenEntry>` on the world.
+- [ ] Add navigation actions exposed through `use_navigation()`:
+      `push_screen(id)`, `pop_screen()`, `replace_screen(id)`, plus named
+      helpers where useful (`play`, `pause`, `resume`, `quit_to_title`).
+      These may call the stack owner directly; they do not need formal command
+      objects unless transition auditing or async automation requires it.
+- [ ] Engine tick reads the top of the stack to decide which systems run:
       `Gameplay` → run combat / AI / physics; `Pause` / `Title` → skip
       gameplay systems, keep cosmetic ones (e.g. damage-number fade is
       paused too).
 - [ ] Add `<ScreenStackRenderer>` component that reads the stack via
-      an infrastructure-only stack snapshot and renders the screen component(s)
-      for each entry. Lower entries stay mounted but visually layered behind
-      upper ones. It must switch by `ScreenId` and construct typed per-screen
-      props such as `TitleProps`, `PauseProps`, `GameplayProps`,
-      `UpgradeOfferProps`, `GameOverProps`, and `SettingsProps`. Individual
-      screen components receive only their typed props, `ScreenEntryId`, and
-      entry-scoped view/actions. Props are data-only field-list structs; narrow
-      sources/actions are passed as named fields, not hidden registries or bags.
+      `use_game_value` and renders the screen component(s) for each entry.
+      Lower entries stay mounted but visually layered behind upper ones.
 - [ ] Implement `Title`, `Gameplay`, `Pause` screen components. Title has a
-      Play button through `TitleActions{TitleActionScope}`. Pause has Resume
-      and Quit through `PauseMenuActions{PauseMenuActionScope}`.
-- [ ] ESC during Gameplay asks the frame/navigation router to push Pause through
-      `GameplayScreenActions{GameplayScreenActionScope}`; gameplay UI does not
-      receive raw push/pop/replace or mint that scope from `ScreenEntryId`.
-- [ ] Entry-scoped actions are active only for focused/entered entries unless a
-      phase explicitly grants a background read-only capability. Lower mounted
-      entries behind Pause render from snapshots/sources but cannot dispatch
-      movement/navigation/reset/debug commands while blurred, exiting, exited,
-      stale, or replaced.
+      Play button that calls a navigation action. Pause has Resume and Quit
+      actions.
+- [ ] ESC during Gameplay calls the pause navigation action.
 
 **Acceptance:**
-- ESC pushes Pause; gameplay tick is frozen but the last gameplay scene remains
-  rendered behind the menu (verify by watching enemies stop moving).
+- ESC pushes Pause; gameplay tick is frozen but world remains rendered behind
+  the menu (verify by watching enemies stop moving).
 - ESC (or Resume) pops Pause; gameplay resumes seamlessly.
 - Title → Gameplay flow works on boot.
 - Stack depth of 2+ works (e.g. Pause pushed over Gameplay).
-- Phase evidence includes an inspection artifact proving `ClientState` /
-  navigation state owns the stack and screen components only render the entries.
+- Phase evidence includes an inspection artifact proving `World.ui_stack` owns
+  the stack and screen components only render the entries.
 - Phase evidence includes a pause-gating transcript with gameplay system
   counters and gameplay pool versions unchanged while Pause / Title is topmost,
   while transition clocks and other allowed non-gameplay systems continue.
-- Phase evidence includes negative tests proving ordinary screens cannot
-  enumerate the whole stack, push arbitrary screen IDs, pop entries they do not
-  own, or attach arbitrary payload types.
-- Phase evidence includes negative tests proving ordinary screens cannot receive
-  raw stack snapshots, `std::any`, unfiltered payload variants, or payload fields
-  for other screen types.
-- Phase evidence includes negative tests proving typed props cannot carry
-  `ClientState`, `EngineState`, platform handles, service bags, source/action
-  registries, or unrelated capabilities.
-- Phase evidence includes negative tests proving background/stale entries cannot
-  move, push/pop, resume, reset, or queue commands after blur, pop, replacement,
-  wrong generation, or wrong run.
 
 ---
 
@@ -744,23 +557,17 @@ the React component that owns them.
 in a deterministic order across stack changes.
 
 **Scope:**
-- [ ] Each `ScreenEntry` in `ClientState` carries a transition phase
-      (`entering`, `entered`, `exiting`, `exited`) and a phase clock (e.g.
-      200 ms enter / exit).
-- [ ] Frame orchestration advances phase clocks each tick (and does so even
-      when gameplay is paused; transitions never freeze).
+- [ ] Each `ScreenEntry` carries a transition phase (`entering`, `entered`,
+      `exiting`, `exited`) and a phase clock (e.g. 200 ms enter / exit).
+- [ ] Engine advances phase clocks each tick (and does so even when
+      gameplay is paused; transitions never freeze).
 - [ ] Add `use_screen_lifecycle({on_enter, on_exit, on_focus, on_blur})` hook.
-      Callbacks receive only a narrow lifecycle event keyed by `ScreenEntryId`
-      and separately injected lifecycle action capabilities. They must not
-      receive `ClientState`, command queues, navigation routers, platform
-      services, or mutable simulation access. Order across a push: previous-top
-      `on_blur` → new-top `on_enter` → new-top `on_focus` (after `entered`).
-      Reverse on pop.
+      Order across a push: previous-top `on_blur` → new-top `on_enter` →
+      new-top `on_focus` (after `entered`). Reverse on pop.
 - [ ] Visual transitions: backdrop fade for modals, scale-in for modals,
       crossfade for screen swaps.
 - [ ] Audio side-effect tests: dock a music-duck on Pause's `on_enter`,
-      undock on `on_exit` through `PauseLifecycleActions{PauseLifecycleActionScope}`.
-      (Audio system may be a stub that logs.)
+      undock on `on_exit`. (Audio system may be a stub that logs.)
 
 **Acceptance:**
 - Smooth animated push and pop; no popping / flashing.
@@ -770,9 +577,6 @@ in a deterministic order across stack changes.
   still `entering` — ends `exited` correctly).
 - Phase evidence includes negative transcripts for cancellation, duplicate
   callbacks, and reversed mid-flight transitions.
-- Phase evidence includes negative tests proving lifecycle callbacks cannot push
-  arbitrary screens, reset simulation, spawn/debug, or access global
-  service/state bags directly.
 
 ---
 
@@ -781,25 +585,20 @@ in a deterministic order across stack changes.
 **Foundations:** all of the above, simultaneously.
 
 **Goal:** prove the architecture under the canonical hard case — gameplay
-interrupted by a modal that pauses simulation, takes input, and applies a
+interrupted by a modal that pauses the world, takes input, and applies a
 mutation through the write lane.
 
 **Scope:**
 - [ ] Add player `level` and an XP threshold table.
-- [ ] When `player.xp >= threshold[level]`, simulation emits a deterministic
-      level-up event with 3 randomly-selected upgrade options. Frame
-      orchestration converts that event into an internal
-      `PushScreen{ChooseUpgrade, UpgradeOfferPayload{OfferId, Handle<Player>}}`;
-      the payload is owned by `ClientState` / navigation state, not by
-      `SimulationWorld`.
+- [ ] When `player.xp >= threshold[level]`: engine/game code raises the
+      level-up flow and opens `ChooseUpgrade` with a payload of 3
+      randomly-selected upgrade options through the navigation/action boundary.
 - [ ] Add `ChooseUpgrade` screen: renders the 3 options, selects one by
-      keyboard or click, and receives only
-      `SourceToken<UpgradeOfferSource>` plus
-      `UpgradeOfferActions{UpgradeOfferActionScope}`. Selecting an option queues
-      `ApplyUpgrade{UpgradeOfferActionScope, UpgradeId}` and requests close for
-      its own screen entry; it cannot reset simulation, spawn enemies, or pop
-      unrelated entries. The action scope, not `OfferId`, `Handle<Player>`, or
-      `ScreenEntryId` alone, authorizes upgrade application.
+      keyboard or click, and calls a hook action such as
+      `use_upgrade_actions().choose(id)`. The action owns the business logic:
+      validate the offer, apply the upgrade through game-owned code, and close
+      the modal. It may queue an internal gameplay command if deterministic
+      ordering/replay requires one.
 - [ ] Upgrades affect real player stats (fire rate, damage, move speed,
       max HP, etc. — small fixed catalogue).
 - [ ] Multiple level-ups in quick succession queue correctly: pop → next
@@ -813,12 +612,7 @@ mutation through the write lane.
 - Triggering a level-up while another modal is animating in/out behaves
   deterministically (queued, not dropped, not interleaved).
 - Phase evidence includes a ten-level-up scripted transcript with queued
-  modal handling and command-only upgrade application.
-- Phase evidence proves the queued modal payloads live in navigation/client
-  state while upgrade application remains a deterministic gameplay command.
-- Phase evidence includes negative tests proving an upgrade modal cannot obtain
-  reset/debug/player-movement actions, cannot apply an offer for the wrong
-  player/run, and cannot close a screen entry it does not own.
+  modal handling and hook-action-only upgrade application from UI code.
 
 ---
 
@@ -829,21 +623,14 @@ mutation through the write lane.
 **Goal:** clean boot, clean death, clean restart, no leaks.
 
 **Scope:**
-- [ ] HP ≤ 0 → simulation emits a death event; frame orchestration dispatches
-      internal `PushScreen{GameOver, GameOverPayload{RunId}}`.
-- [ ] `GameOver` screen has Restart through
-      `GameOverActions{GameOverActionScope}`. The action asks frame
-      orchestration to queue `ResetSimulation{RunId}` and replace its own
-      entry with `Gameplay`; the screen does not receive a raw reset command or
-      raw navigation router.
-- [ ] `ResetSimulation` command: clear all simulation pools and reset player.
-      Navigation reset is a separate frame-orchestration operation so
-      `SimulationWorld` never owns the stack.
-- [ ] Add Settings screen reachable from Pause (and from Title). It receives
-      `SettingsProps`, `SourceToken<SettingsSource>` with only `master_volume`
-      and `fullscreen` fields, and `SettingsActions{SettingsActionScope}` with
-      only `set_master_volume` and `request_fullscreen_toggle`. Persist nothing
-      for now. `ScreenEntryId` alone cannot mint settings access.
+- [ ] HP ≤ 0 → engine/game code opens `GameOver` through the
+      navigation/action boundary.
+- [ ] `GameOver` screen has Restart → calls a restart action that encapsulates
+      `ResetWorld` plus the navigation transition to `Gameplay`.
+- [ ] `ResetWorld` operation: clear all pools, reset player, reset stack to
+      `[Gameplay]` (or `[Title]` depending on flow choice).
+- [ ] Add Settings screen reachable from Pause (and from Title). Two
+      settings: master volume, fullscreen toggle. Persist nothing for now.
 - [ ] Boot flow: stack starts as `[Title]`.
 - [ ] Edge tests: die during a level-up modal; die during a screen
       transition; quit mid-fetch (carry over the existing Image fetch
@@ -860,13 +647,6 @@ mutation through the write lane.
   with the upgrade modal correctly torn down.
 - Phase evidence includes reset/cancellation artifacts proving no stale actors,
   UI fibers, bindings, async fetches, or lifecycle listeners survive restart.
-- Phase evidence includes negative tests proving Pause cannot damage the player,
-  an upgrade modal cannot reset simulation, GameOver cannot spawn debug enemies,
-  and commands with stale run IDs, screen entry IDs, offer IDs, or actor
-  generations are rejected.
-- Phase evidence includes negative tests proving Settings cannot acquire
-  simulation actions, debug spawn, raw navigation, platform handles, or unrelated
-  `ClientState` fields.
 
 ---
 
@@ -876,10 +656,8 @@ All ten phases meet acceptance, and:
 
 - [ ] All "Foundations under test" checkboxes ticked.
 - [ ] No phase required a hack that violated the architecture rules
-      (UI never mutates simulation state; UI never receives generic world
-      access; simulation world never owns navigation/command/presentation
-      state; simulation world never holds raw UI pointers; bindings never need
-      a re-render to update; screen lifecycle is deterministic).
+      (UI never mutates world; world never holds raw UI pointers; bindings
+      never need a re-render to update; screen lifecycle is deterministic).
 - [ ] Profiling: 1,000 enemies + 200 bullets + HUD bindings sustains ≥60fps
       on the target machine.
 - [ ] Memory: 30-minute soak test shows no growth in RSS beyond pool caps.
