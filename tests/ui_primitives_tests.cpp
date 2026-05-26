@@ -226,6 +226,22 @@ static bool pointer_press_drag_and_release_confirm_button_once(void) {
         build,
         inside);
     CHECK(confirm_count == 1);
+
+    run_primitive_frame(
+        focus,
+        { .pointer_pressed = true, .pointer_down = true, .source = UiFocusSource::Mouse },
+        build,
+        inside);
+    run_primitive_frame(
+        focus,
+        {
+            .confirm_pressed = true,
+            .pointer_released = true,
+            .source = UiFocusSource::Mouse,
+        },
+        build,
+        inside);
+    CHECK(confirm_count == 2);
     return true;
 }
 
