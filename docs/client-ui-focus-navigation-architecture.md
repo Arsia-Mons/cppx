@@ -102,6 +102,56 @@ void ui_focus_pop_scope(void);
 UiFocusableState ui_focusable(const UiFocusableDesc &desc);
 ```
 
+Runtime-owned UI lists use explicit bounded storage. The container policy is
+part of the runtime contract: focus registration, harvested layout, UI intent
+queues, and screen-stack storage do not grow through hidden allocator calls in
+the middle of a UI frame.
+
+```cpp
+// ui/UiBuffer.h
+
+template <typename T>
+struct Span {
+    T *items = nullptr;
+    int count = 0;
+
+    T *begin() const { return items; }
+    T *end() const { return items + count; }
+    T &operator[](int index) const { return items[index]; }
+};
+
+template <typename T>
+struct UiBuffer {
+    T *items = nullptr;
+    int count = 0;
+    int capacity = 0;
+
+    void clear() { count = 0; }
+    bool push(T value);
+
+    Span<T> span() {
+        return { items, count };
+    }
+
+    Span<const T> span() const {
+        return { items, count };
+    }
+};
+
+struct UiRuntimeLimits {
+    int max_focus_scopes = 16;
+    int max_focusables_per_scope = 256;
+    int max_ui_intents = 128;
+    int max_screens = 32;
+};
+```
+
+The backing memory is allocated when `ClientUi` is initialized, from either a
+UI arena or stable owned storage sized by `UiRuntimeLimits`. Overflow is a
+runtime diagnostic and a dropped registration/intent, not a surprise
+reallocation. This mirrors Clay's explicit `length`/`capacity` arrays and the
+current hook runtime's fixed-capacity tables.
+
 The important part is `ui_focus_end_layout()`: it runs after
 `Clay_EndLayout()`, when Clay knows final positions. For every focusable
 registered this frame, it calls `Clay_GetElementData(id)` and stores the
@@ -132,10 +182,14 @@ struct UiFocusScope {
     UiFocusSource source;
 
     // Built during this frame's render.
-    std::vector<UiFocusableRegistration> pending;
+    UiBuffer<UiFocusableRegistration> pending;
 
     // Last completed layout. Directional navigation uses this.
-    std::vector<UiFocusableLayout> layout;
+    UiBuffer<UiFocusableLayout> layout;
+};
+
+struct UiFocusRuntime {
+    UiBuffer<UiFocusScope> scopes;
 };
 
 static UiFocusScope *active_scope(void);
@@ -169,19 +223,23 @@ void ui_focus_end_layout(void) {
             Clay_ElementData data = Clay_GetElementData(entry.id);
             if (!data.found) continue;
 
-            scope.layout.push_back({
+            bool stored = scope.layout.push({
                 .id = entry.id,
                 .rect = data.boundingBox,
                 .disabled = entry.disabled,
                 .order = order++,
                 .nav = entry.nav,
             });
+            if (!stored) {
+                ui_focus_report_overflow(scope.id, "layout");
+                break;
+            }
         }
 
         scope.pending.clear();
 
-        if (!contains_focusable(scope.layout, scope.focused_id)) {
-            scope.focused_id = first_enabled(scope.layout);
+        if (!contains_focusable(scope.layout.span(), scope.focused_id)) {
+            scope.focused_id = first_enabled(scope.layout.span());
             scope.source = UiFocusSource::Programmatic;
         }
     }
@@ -276,15 +334,16 @@ static float perpendicular_miss(Clay_BoundingBox from,
 static Clay_ElementId resolve_spatial(UiFocusScope *scope,
                                       Clay_ElementId from_id,
                                       UiNavDir dir) {
-    const UiFocusableLayout *from = find_layout(scope->layout, from_id);
-    if (!from) return first_enabled(scope->layout);
+    Span<const UiFocusableLayout> layout = scope->layout.span();
+    const UiFocusableLayout *from = find_layout(layout, from_id);
+    if (!from) return first_enabled(layout);
 
     const UiFocusableLayout *best = nullptr;
     float best_perp = 0.0f;
     float best_primary = 0.0f;
     float best_center = 0.0f;
 
-    for (const UiFocusableLayout &candidate : scope->layout) {
+    for (const UiFocusableLayout &candidate : layout) {
         if (candidate.id.id == from_id.id || candidate.disabled) continue;
         if (!is_candidate_in_direction(from->rect, candidate.rect, dir)) continue;
 
@@ -781,7 +840,7 @@ public:
 
 private:
     uint32_t next_entry_id = 1;
-    std::vector<ScreenStackEntry> entries;
+    UiBuffer<ScreenStackEntry> entries;
 };
 
 inline void ScreenNavigator::push(std::unique_ptr<UiScreen> screen) const {
@@ -796,6 +855,11 @@ inline void ScreenNavigator::pop_current() const {
 `ScreenStack::visible_entries()` returns the first opaque screen to draw plus
 any overlays above it. A normal screen hides the entries below it. An overlay
 draws on top of the screen below it.
+
+`ScreenStack` can change screens only through `push`/`pop`, so it is allowed to
+own retained storage internally. The important production rule is that this
+storage stays behind the stack API and has explicit capacity diagnostics; the
+component tree never receives or mutates the entries buffer.
 
 `ScreenStack::build_visible()` installs the current screen context and then
 calls each screen's `build_ui()`:
@@ -838,7 +902,8 @@ public:
         screens.build_visible();
     }
 
-    std::vector<UiIntent> dispatch_input_after_layout(const UiInputFrame &input);
+    Span<const UiIntent> dispatch_input_after_layout(const UiInputFrame &input);
+    void clear_dispatched_intents();
 
 private:
     ScreenStack screens;
@@ -866,10 +931,10 @@ void GameUiPipeline::render_client_ui_frame(const GameUiFrame &frame) {
     Clay_RenderCommandArray commands = client_ui.end_frame();
     render_clay(frame.surface, commands);
 
-    std::vector<UiIntent> unhandled =
+    Span<const UiIntent> intents =
         client_ui.dispatch_input_after_layout(input);
-
-    dispatch_unhandled_game_ui_intents(unhandled);
+    dispatch_unhandled_game_ui_intents(intents);
+    client_ui.clear_dispatched_intents();
 }
 ```
 
@@ -1417,8 +1482,11 @@ struct FocusManager {
     Clay_ElementId focused_id;
     UiFocusSource source;
 
-    std::vector<UiFocusableDesc> pending;       // rebuilt during render
-    std::vector<UiFocusableLayout> layout;      // harvested after Clay layout
+    // Rebuilt during render.
+    UiBuffer<UiFocusableRegistration> pending;
+
+    // Harvested after Clay layout.
+    UiBuffer<UiFocusableLayout> layout;
 };
 ```
 
