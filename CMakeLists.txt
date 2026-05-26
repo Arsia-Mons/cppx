@@ -49,7 +49,6 @@ add_executable(hello
   src/react.cpp
   src/client/ui/client_ui.cpp
   src/client/ui/screen_stack.cpp
-  src/game/ui/demo_app_screen.cpp
   src/game/ui/game_ui_pipeline.cpp
   src/platform/control_mailbox.cpp
   src/platform/input_adapter.cpp
@@ -60,11 +59,6 @@ add_executable(hello
   src/ui/primitives/focusable.cpp
   src/ui/primitives/selectable.cpp
   src/ui/primitives/toggle.cpp
-  src/ui/components/app.cpp
-  src/ui/components/counter.cpp
-  src/ui/components/image.cpp
-  src/ui/providers/input_provider.cpp
-  src/ui/providers/theme_provider.cpp
   third_party/clay_impl.cpp
   third_party/clay/clay_renderer_SDL3.c
   third_party/stb_image_impl.cpp

@@ -283,7 +283,7 @@ def smoke(args: argparse.Namespace) -> int:
     try:
         wait_ready(control_dir, args.timeout)
         send_command(control_dir, "wait_frames", {"n": 2}, args.timeout)
-        send_command(control_dir, "key", {"key": "t", "action": "press"}, args.timeout)
+        send_command(control_dir, "key", {"key": "right", "action": "press"}, args.timeout)
         send_command(control_dir, "pointer", {"x": 96, "y": 96, "action": "move"}, args.timeout)
         send_command(control_dir, "pointer", {"x": 96, "y": 96, "action": "press"}, args.timeout)
         send_command(control_dir, "pointer", {"x": 140, "y": 140, "action": "release"}, args.timeout)

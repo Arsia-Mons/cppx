@@ -38,18 +38,6 @@ bool keycode_from_name(const char *name, SDL_Keycode *out) {
         *out = SDLK_SPACE;
         return true;
     }
-    if (equals_key_name(name, "m")) {
-        *out = SDLK_M;
-        return true;
-    }
-    if (equals_key_name(name, "t")) {
-        *out = SDLK_T;
-        return true;
-    }
-    if (equals_key_name(name, "i")) {
-        *out = SDLK_I;
-        return true;
-    }
     return false;
 }
 
@@ -86,10 +74,7 @@ bool gamepad_button_from_name(const char *name, GamepadButton *out) {
     return false;
 }
 
-void apply_key_down(SDL_Keycode key,
-                    InputState &demo_input,
-                    ::ui::UiInputFrame &ui_input,
-                    bool *running) {
+void apply_key_down(SDL_Keycode key, ::ui::UiInputFrame &ui_input, bool *running) {
     switch (key) {
         case SDLK_ESCAPE:
             ui_input.cancel_pressed = true;
@@ -98,12 +83,10 @@ void apply_key_down(SDL_Keycode key,
             if (running) *running = false;
             break;
         case SDLK_UP:
-            demo_input.increment_counter = true;
             ui_input.nav_up = true;
             ui_input.source = ::ui::UiFocusSource::Keyboard;
             break;
         case SDLK_DOWN:
-            demo_input.decrement_counter = true;
             ui_input.nav_down = true;
             ui_input.source = ::ui::UiFocusSource::Keyboard;
             break;
@@ -120,15 +103,6 @@ void apply_key_down(SDL_Keycode key,
             ui_input.confirm_pressed = true;
             ui_input.confirm_down = true;
             ui_input.source = ::ui::UiFocusSource::Keyboard;
-            break;
-        case SDLK_M:
-            demo_input.toggle_counter = true;
-            break;
-        case SDLK_T:
-            demo_input.cycle_theme = true;
-            break;
-        case SDLK_I:
-            demo_input.fetch_image = true;
             break;
         default:
             break;

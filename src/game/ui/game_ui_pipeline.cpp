@@ -10,11 +10,6 @@ const GameUiFrame *use_game_ui_frame() {
     return static_cast<const GameUiFrame *>(use_context(&GameUiFrameContext));
 }
 
-const InputState *use_demo_app_input() {
-    const GameUiFrame *frame = use_game_ui_frame();
-    return frame ? frame->demo_input : nullptr;
-}
-
 void GameUiPipeline::render_client_ui_frame(const GameUiFrame &frame,
                                             const RenderClayCommands &render_commands) {
     Clay_SetLayoutDimensions(frame.layout);

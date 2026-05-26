@@ -195,7 +195,7 @@ def main() -> int:
         if result["game"]["selected_weapon"] != 0:
             raise RuntimeError(f"disabled weapon tile confirmed unexpectedly: {result}")
 
-        run_cli(cli, control_dir, "key", "--key", "t")
+        run_cli(cli, control_dir, "key", "--key", "right")
         run_cli(cli, control_dir, "pointer", "--x", "80", "--y", "90", "--action", "move")
         run_cli(cli, control_dir, "pointer", "--x", "80", "--y", "90", "--action", "press")
         run_cli(cli, control_dir, "pointer", "--x", "120", "--y", "130", "--action", "release")

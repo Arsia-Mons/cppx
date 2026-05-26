@@ -8,7 +8,6 @@
 #include <vector>
 
 #include "../game/ui/game_ui_pipeline.h"
-#include "../input.h"
 #include "../ui/focus/ui_focus.h"
 
 namespace platform {
@@ -19,8 +18,7 @@ public:
     bool active() const { return active_; }
     void set_game_state_json_provider(std::function<std::string()> provider);
 
-    void poll(InputState &demo_input,
-              ::ui::UiInputFrame &ui_input,
+    void poll(::ui::UiInputFrame &ui_input,
               bool &running,
               SDL_Window *window,
               game::ui::GameUiPipeline &pipeline);

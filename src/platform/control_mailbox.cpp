@@ -241,8 +241,7 @@ std::string ControlMailbox::state_json(game::ui::GameUiPipeline &pipeline) {
     return body.str();
 }
 
-void ControlMailbox::poll(InputState &demo_input,
-                          ::ui::UiInputFrame &ui_input,
+void ControlMailbox::poll(::ui::UiInputFrame &ui_input,
                           bool &running,
                           SDL_Window *window,
                           game::ui::GameUiPipeline &pipeline) {
@@ -282,7 +281,7 @@ void ControlMailbox::poll(InputState &demo_input,
                 continue;
             }
             if (action == "down" || action == "press") {
-                apply_key_down(code, demo_input, ui_input, &running);
+                apply_key_down(code, ui_input, &running);
             }
             if (action == "up" || action == "release") {
                 apply_key_up(code, ui_input);

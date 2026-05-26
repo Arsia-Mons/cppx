@@ -159,8 +159,10 @@ tracker. Edit the plan only when the contract itself needs correction.
   hooks, providers, effects, refs, and cleanup runtime.
 - `src/main.cpp` is platform scaffolding until the pipeline replaces direct
   `App(&input)` rendering.
-- Demo providers/components are examples, not architecture. Do not let
-  `Counter`, `Image`, or demo `InputState` define the final UI boundary.
+- The old demo `App`, `Counter`, `Image`, theme/input providers, and demo
+  `InputState` path should stay removed from the compiled runtime now that the
+  shooter `ClientUi` path is primary. Do not reintroduce demo roots to test or
+  prove architecture behavior.
 - `src/ui/focus/` stays generic: stable focus scopes, focusable registration,
   layout harvest, spatial navigation, modal trapping, and source tracking.
 - `src/ui/primitives/` stays generic: controls derive visual state from focus

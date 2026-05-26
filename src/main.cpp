@@ -16,9 +16,7 @@
 #include <clay.h>
 #include <clay_renderer_SDL3.h>
 
-#include "app_state.h"
 #include "game/ui/game_ui_pipeline.h"
-#include "input.h"
 #include "platform/control_mailbox.h"
 #include "platform/input_adapter.h"
 #include "react.h"
@@ -34,16 +32,11 @@
 #include <string>
 
 // ----------------------------------------------------------------------------
-// Definitions for the shared globals declared in app_state.h.
-// ----------------------------------------------------------------------------
-
-SDL_Renderer *g_sdl         = nullptr;
-
-// ----------------------------------------------------------------------------
 // Local SDL/Clay/font state.
 // ----------------------------------------------------------------------------
 
 static SDL_Window           *g_window   = nullptr;
+static SDL_Renderer         *g_renderer = nullptr;
 static TTF_TextEngine       *g_text_eng = nullptr;
 static TTF_Font             *g_font     = nullptr;
 static Clay_SDL3RendererData g_clay_rd  = {};
@@ -157,18 +150,18 @@ int main(int argc, char **argv) {
 
     g_window = SDL_CreateWindow("clay + react hello-world", 800, 500, SDL_WINDOW_RESIZABLE);
     if (!g_window) { fprintf(stderr, "SDL_CreateWindow: %s\n", SDL_GetError()); return 1; }
-    g_sdl = SDL_CreateRenderer(g_window, nullptr);
-    if (!g_sdl) { fprintf(stderr, "SDL_CreateRenderer: %s\n", SDL_GetError()); return 1; }
-    SDL_SetRenderVSync(g_sdl, control_dir ? 0 : 1);
+    g_renderer = SDL_CreateRenderer(g_window, nullptr);
+    if (!g_renderer) { fprintf(stderr, "SDL_CreateRenderer: %s\n", SDL_GetError()); return 1; }
+    SDL_SetRenderVSync(g_renderer, control_dir ? 0 : 1);
 
-    g_text_eng = TTF_CreateRendererTextEngine(g_sdl);
+    g_text_eng = TTF_CreateRendererTextEngine(g_renderer);
     g_font = open_some_font(16.0f);
     if (!g_font) {
         fprintf(stderr, "no font found; tried system defaults\n");
         return 1;
     }
     TTF_Font *fonts[1] = { g_font };
-    g_clay_rd.renderer   = g_sdl;
+    g_clay_rd.renderer   = g_renderer;
     g_clay_rd.textEngine = g_text_eng;
     g_clay_rd.fonts      = fonts;
 
@@ -202,7 +195,6 @@ int main(int argc, char **argv) {
     bool running = true;
     bool previous_pointer_down = false;
     while (running) {
-        InputState input = {};
         ::ui::UiInputFrame ui_input = {};
 
         SDL_Event ev;
@@ -212,7 +204,7 @@ int main(int argc, char **argv) {
                     running = false; break;
                 case SDL_EVENT_KEY_DOWN:
                     if (ev.key.repeat) break;
-                    platform::apply_key_down(ev.key.key, input, ui_input, &running);
+                    platform::apply_key_down(ev.key.key, ui_input, &running);
                     break;
                 case SDL_EVENT_KEY_UP:
                     platform::apply_key_up(ev.key.key, ui_input);
@@ -237,7 +229,7 @@ int main(int argc, char **argv) {
         }
         previous_pointer_down = pointer_down;
 
-        control.poll(input, ui_input, running, g_window, ui_pipeline);
+        control.poll(ui_input, running, g_window, ui_pipeline);
         if (control.apply_pointer_override(mx, my, pointer_down)) {
             ui_input.pointer_down = pointer_down;
         }
@@ -249,15 +241,14 @@ int main(int argc, char **argv) {
             .input = ui_input,
             .layout = { (float)frame_w, (float)frame_h },
             .pointer = { mx, my },
-            .demo_input = nullptr,
         };
 
         ui_pipeline.render_client_ui_frame(frame, [&](Clay_RenderCommandArray &cmds) {
-            SDL_SetRenderDrawColor(g_sdl, 12, 14, 22, 255);
-            SDL_RenderClear(g_sdl);
+            SDL_SetRenderDrawColor(g_renderer, 12, 14, 22, 255);
+            SDL_RenderClear(g_renderer);
             SDL_Clay_RenderClayCommands(&g_clay_rd, &cmds);
-            control.capture_after_render(g_sdl, ui_pipeline);
-            SDL_RenderPresent(g_sdl);
+            control.capture_after_render(g_renderer, ui_pipeline);
+            SDL_RenderPresent(g_renderer);
         });
         control.finish_frame(ui_pipeline);
     }
@@ -267,7 +258,7 @@ int main(int argc, char **argv) {
     SDL_free(clay_buf);
     TTF_CloseFont(g_font);
     TTF_DestroyRendererTextEngine(g_text_eng);
-    SDL_DestroyRenderer(g_sdl);
+    SDL_DestroyRenderer(g_renderer);
     SDL_DestroyWindow(g_window);
     TTF_Quit();
     SDL_Quit();
