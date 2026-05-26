@@ -12,6 +12,7 @@ stack in source:
 - retained screen stack ownership;
 - `ClientUi` frame ownership;
 - post-layout UI write draining;
+- a runtime CLI/control harness that can drive input and capture visual proof;
 - a real shooter-style example that proves the architecture under pressure.
 
 The shooter example is a first-class deliverable. It must use the same hooks,
@@ -53,6 +54,41 @@ the skill drift behind the source or the active docs.
 This skill does not replace the architecture docs. The docs remain the
 architecture contract; the `.codex/skills/` UI skill is the authoritative
 working procedure for applying that contract correctly in this repository.
+
+## Runtime CLI and E2E Proof Harness
+
+Build a repo-local CLI/control harness as a first-class deliverable for this
+plan. The harness must let tests and agents interoperate with the running game
+instead of relying only on unit tests or manual inspection.
+
+Use `../Silencer/clients/cli` for inspiration only. Its command shape, structured
+RPC style, wait commands, input commands, and screenshot command are useful
+precedent, but Silencer is not authoritative for this repository's protocol,
+runtime ownership, command names, implementation language, or transport.
+
+Required capabilities:
+
+- launch or attach to the local `hello`/game process in a deterministic test
+  mode;
+- drive keyboard, mouse, and gamepad-style input through the same
+  platform-to-`UiInputFrame` path used by normal runtime input;
+- step frames and wait for frame counts, UI state, focus ids, screen stack
+  state, or game state predicates without sleeping blindly;
+- inspect enough runtime state to debug failures, including current screens,
+  focused element, focus source, selected game/shooter data, and pending writes;
+- resize the surface and move/click/drag/release the pointer at coordinates or
+  inspectable element targets;
+- capture screenshots to image files from the rendered frame;
+- capture a short frame sequence or video artifact for interaction regressions;
+- return machine-readable JSON for assertions and stable shell scripting;
+- fail loudly on wrong state, timeouts, missing targets, or rejected commands.
+
+E2E tests must use this harness for runtime proof. They should drive real input,
+wait for observable state, assert the state transition, and capture screenshots
+or short videos for meaningful UI flows. When visual behavior is part of the
+deliverable, send the resulting image/video proof to the user by Discord DM.
+Those artifacts are evidence for review; they do not replace source-level tests
+or architecture guardrail checks.
 
 ## Current Source Baseline
 
@@ -327,7 +363,45 @@ Required tests:
 - UI writes requested by controls are drained after layout;
 - runtime teardown still runs hook/effect cleanup and worker cleanup correctly.
 
-## Phase 6: Shooter Example
+## Phase 6: CLI and E2E Harness
+
+Add the runtime control harness before treating the shooter example as proved.
+
+Required pieces:
+
+- a CLI entrypoint under this repository, with documented commands;
+- a game-side control server or equivalent local control channel owned by the
+  platform/runtime layer, not by UI components;
+- deterministic test mode suitable for CI/local e2e runs;
+- commands for `state`, `inspect`, `wait`, `step`, `resize`, key/button input,
+  pointer input, screenshot capture, and short video/frame-sequence capture;
+- artifact paths that are predictable enough for tests and agent handoff;
+- focused tests for command parsing/protocol behavior and at least one
+  end-to-end smoke test that launches the game, drives input, captures an image,
+  and exits cleanly.
+
+Rules:
+
+- CLI-driven input must enter through the same input adaptation path as SDL
+  input. Do not add a test-only shortcut that mutates focus, screen state, or
+  shooter state behind the UI pipeline.
+- The control protocol may be simpler than Silencer's and should fit this repo,
+  but it must be structured, inspectable, and deterministic.
+- Screenshots and videos must capture the actual rendered frame, not a synthetic
+  component snapshot.
+- E2E tests should prefer waits on real state over arbitrary sleeps.
+
+Required tests:
+
+- CLI can launch or attach to the game in test mode;
+- key/gamepad-style input moves focus through the real focus runtime;
+- pointer input can hover, press, drag off, release, and be observed through the
+  real primitive/focus path;
+- screenshot capture writes a non-empty image for the current rendered frame;
+- a short video or frame-sequence capture can be produced for an interaction;
+- CLI failures report actionable wrong-state or timeout errors.
+
+## Phase 7: Shooter Example
 
 Build a real shooter-style example that exercises the architecture end to end.
 
@@ -368,7 +442,13 @@ Required runtime scenarios:
 - buying/equipping requests a real shooter-state write after layout;
 - closing options returns to pause without prop-threaded state.
 
-## Phase 7: Integration Hardening
+These scenarios must be covered by CLI-driven E2E tests where feasible. Capture
+screenshots or short videos for the flows whose correctness is visual: focus
+movement, modal trapping/restoration, grid reflow, disabled item explanation,
+and buy/equip confirmation. Send representative proof artifacts to the user by
+Discord DM during completion/review handoff.
+
+## Phase 8: Integration Hardening
 
 Once the shooter example works, remove demo-only shortcuts that no longer match
 the architecture.
@@ -402,6 +482,7 @@ Add focused tests as implementation lands. Completion requires coverage for:
 - primitive visual state derivation;
 - screen stack ownership and visible ordering;
 - post-layout write draining;
+- CLI/control harness input, waits, screenshot capture, and video/frame capture;
 - shooter example integration scenarios.
 
 Before every completion claim, inspect the repo-local `.codex/skills/` UI skill
@@ -425,6 +506,8 @@ The reviewer should check:
 - shooter-specific code stays behind shooter hooks/adapters;
 - navigation derives from Clay rectangles instead of sibling edge tables;
 - writes drain after Clay declaration.
+- CLI-driven tests use the real runtime input/pipeline path and capture actual
+  rendered frames rather than synthetic UI snapshots.
 
 Any high-confidence reviewer finding must be fixed before the plan is complete.
 
@@ -447,7 +530,11 @@ SDL/platform input
   -> focus layout harvest
   -> post-layout UI write drain
   -> shooter state update
+  -> CLI-driven E2E proof with screenshot/video artifacts
 ```
 
 The shooter example must use that path for HUD, pause/options, and loadout/buy
-flows. A working UI that bypasses this stack does not satisfy the plan.
+flows. A working UI that bypasses this stack does not satisfy the plan. Runtime
+proof must be reproducible through the CLI/control harness, with representative
+images or videos captured and sent to the user when visual behavior is part of
+the claim.
