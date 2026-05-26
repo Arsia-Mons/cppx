@@ -78,6 +78,9 @@ Shooter code must not own focus, primitive state, or screen-stack mechanics.
 - CLI/control-harness input must enter through the same platform-to-`UiInputFrame`
   adapter as normal runtime input. Screenshots and frame captures must come from
   the actual rendered frame, not a synthetic component snapshot.
+- Visual E2E proof must include opening/inspecting representative captured
+  frames. Passing component layout numbers, state assertions, or non-empty
+  image files are not enough when the final rendered result looks wrong.
 - Key retained-screen providers and screen component roots by `UiScreen` entry
   id so hook state survives rerenders and resets on unmount/new entries.
 - Route `use_screen_navigator().pop_current()` by retained screen entry id,
@@ -160,7 +163,8 @@ tracker. Edit the plan only when the contract itself needs correction.
 - Storing old-frame callbacks in retained focus records.
 - Letting a modal scope move parent focus while the modal is active.
 - Treating passing render output as proof when focus/input/write ordering is
-  unverified.
+  unverified, or treating a captured screenshot as proof without inspecting the
+  rendered pixels for unexpected layout, clipping, focus, or artifact issues.
 - Building CLI tests that bypass SDL/platform input adaptation or capture
   non-rendered component snapshots.
 
@@ -173,6 +177,11 @@ ctest --test-dir build --output-on-failure
 git diff --check
 rg -n "ScreenRoute|GridStrategy|use_local_state|OptionsState|view model|MVC" docs src tests
 ```
+
+For any slice that produces screenshots or frame captures, open representative
+captures and inspect the rendered result before claiming visual correctness.
+The harness can prove that the file was produced; it cannot by itself prove that
+the UI looks correct.
 
 Expected matches in active docs may be guardrail text. Do not treat guardrail
 mentions as source drift, but investigate any source or example that trains the

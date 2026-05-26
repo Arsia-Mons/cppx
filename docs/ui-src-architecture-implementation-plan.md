@@ -88,7 +88,10 @@ wait for observable state, assert the state transition, and capture screenshots
 or short videos for meaningful UI flows. When visual behavior is part of the
 deliverable, send the resulting image/video proof to the user by Discord DM.
 Those artifacts are evidence for review; they do not replace source-level tests
-or architecture guardrail checks.
+or architecture guardrail checks. The verification step must also open and
+inspect representative captured frames. Non-empty screenshots, plausible
+component layout numbers, or passing state assertions are not enough if the
+rendered result looks wrong.
 
 ## Current Source Baseline
 
@@ -389,6 +392,8 @@ Rules:
   but it must be structured, inspectable, and deterministic.
 - Screenshots and videos must capture the actual rendered frame, not a synthetic
   component snapshot.
+- E2E visual proof must include a rendered-frame inspection/readback step.
+  Component layout numbers can pass while the final image is visually broken.
 - E2E tests should prefer waits on real state over arbitrary sleeps.
 
 Required tests:
@@ -397,7 +402,9 @@ Required tests:
 - key/gamepad-style input moves focus through the real focus runtime;
 - pointer input can hover, press, drag off, release, and be observed through the
   real primitive/focus path;
-- screenshot capture writes a non-empty image for the current rendered frame;
+- screenshot capture writes a non-empty image for the current rendered frame,
+  and the verification process opens representative captures to check for
+  unexpected visual output;
 - a short video or frame-sequence capture can be produced for an interaction;
 - CLI failures report actionable wrong-state or timeout errors.
 
@@ -446,7 +453,9 @@ These scenarios must be covered by CLI-driven E2E tests where feasible. Capture
 screenshots or short videos for the flows whose correctness is visual: focus
 movement, modal trapping/restoration, grid reflow, disabled item explanation,
 and buy/equip confirmation. Send representative proof artifacts to the user by
-Discord DM during completion/review handoff.
+Discord DM during completion/review handoff. Before treating any visual flow as
+verified, open at least one representative capture from that flow and inspect it
+for unexpected layout, clipping, occlusion, focus, or rendering artifacts.
 
 ## Phase 8: Integration Hardening
 
@@ -483,6 +492,8 @@ Add focused tests as implementation lands. Completion requires coverage for:
 - screen stack ownership and visible ordering;
 - post-layout write draining;
 - CLI/control harness input, waits, screenshot capture, and video/frame capture;
+- rendered screenshot/video visual readback for flows where appearance is part
+  of the claim;
 - shooter example integration scenarios.
 
 Before every completion claim, inspect the repo-local `.codex/skills/` UI skill
@@ -537,4 +548,5 @@ The shooter example must use that path for HUD, pause/options, and loadout/buy
 flows. A working UI that bypasses this stack does not satisfy the plan. Runtime
 proof must be reproducible through the CLI/control harness, with representative
 images or videos captured and sent to the user when visual behavior is part of
-the claim.
+the claim. Do not call visual proof complete until a representative screenshot
+or video frame has actually been inspected for unexpected rendered output.
