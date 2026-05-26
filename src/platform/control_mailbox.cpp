@@ -27,6 +27,11 @@ static std::string json_escape(const std::string &value) {
     return out;
 }
 
+static std::string clay_string_to_std(Clay_String value) {
+    if (!value.chars || value.length <= 0) return "";
+    return std::string(value.chars, (size_t)value.length);
+}
+
 static bool write_text_atomic(const std::filesystem::path &path, const std::string &text) {
     std::filesystem::create_directories(path.parent_path());
     std::filesystem::path tmp = path;
@@ -199,6 +204,33 @@ std::string ControlMailbox::state_json(game::ui::GameUiPipeline &pipeline) {
              << "\"name\":\"" << json_escape(screen ? screen->debug_name() : "") << "\","
              << "\"overlay\":" << (screen && screen->is_overlay() ? "true" : "false")
              << "}";
+    }
+    body << "],\"focusables\":[";
+    bool first_focusable = true;
+    for (int i = 0; i < client_ui.focus_runtime().scope_count; ++i) {
+        const ::ui::UiFocusScope &scope = client_ui.focus_runtime().scopes[i];
+        if (scope.declared_frame != client_ui.focus_runtime().frame) continue;
+        std::string scope_name = clay_string_to_std(scope.id.stringId);
+        for (int j = 0; j < scope.layout_count; ++j) {
+            const ::ui::UiFocusableLayout &layout = scope.layout[j];
+            if (!first_focusable) body << ",";
+            first_focusable = false;
+            std::string name = clay_string_to_std(layout.id.stringId);
+            body << "{"
+                 << "\"scope_id\":" << scope.id.id << ","
+                 << "\"scope_name\":\"" << json_escape(scope_name) << "\","
+                 << "\"id\":" << layout.id.id << ","
+                 << "\"name\":\"" << json_escape(name) << "\","
+                 << "\"offset\":" << layout.id.offset << ","
+                 << "\"disabled\":" << (layout.disabled ? "true" : "false") << ","
+                 << "\"focused\":" << (layout.id.id == scope.focused_id.id ? "true" : "false") << ","
+                 << "\"rect\":{"
+                 << "\"x\":" << layout.rect.x << ","
+                 << "\"y\":" << layout.rect.y << ","
+                 << "\"w\":" << layout.rect.width << ","
+                 << "\"h\":" << layout.rect.height
+                 << "}}";
+        }
     }
     body << "]";
     if (game_state_json_provider_) {

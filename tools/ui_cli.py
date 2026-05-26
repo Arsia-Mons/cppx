@@ -51,6 +51,48 @@ def send_command(control_dir: Path, op: str, args: dict, timeout: float) -> dict
     return reply
 
 
+def resolve_pointer_target(control_dir: Path, args: argparse.Namespace) -> tuple[float, float, dict | None]:
+    has_xy = args.x is not None or args.y is not None
+    has_target = args.target or args.target_id is not None
+    if has_xy and (args.x is None or args.y is None):
+        raise RuntimeError("pointer coordinates require both --x and --y")
+    if has_xy and has_target:
+        raise RuntimeError("use either pointer coordinates or a target, not both")
+    if has_xy:
+        return float(args.x), float(args.y), None
+    if not has_target:
+        raise RuntimeError("pointer requires --x/--y, --target, or --target-id")
+
+    state = send_command(control_dir, "inspect", {}, args.timeout)
+    focusables = state.get("result", {}).get("focusables", [])
+    matches = []
+    for element in focusables:
+        if args.target_id is not None and int(element.get("id", 0)) != args.target_id:
+            continue
+        if args.target and element.get("name") != args.target:
+            continue
+        if args.index is not None and int(element.get("offset", 0)) != args.index:
+            continue
+        matches.append(element)
+
+    if not matches:
+        target = args.target or str(args.target_id)
+        suffix = "" if args.index is None else f" index {args.index}"
+        raise RuntimeError(f"pointer target not found: {target}{suffix}")
+    if len(matches) > 1:
+        labels = ", ".join(
+            f"{item.get('name')}#{item.get('offset')}({item.get('id')})"
+            for item in matches[:6]
+        )
+        raise RuntimeError(f"pointer target is ambiguous: {labels}")
+
+    element = matches[0]
+    rect = element.get("rect", {})
+    x = float(rect.get("x", 0.0)) + float(rect.get("w", 0.0)) * 0.5
+    y = float(rect.get("y", 0.0)) + float(rect.get("h", 0.0)) * 0.5
+    return x, y, element
+
+
 def discord_send_script() -> Path | None:
     configured = os.environ.get("DISCORD_DM_SEND")
     if configured:
@@ -177,7 +219,25 @@ def command_main(args: argparse.Namespace) -> int:
     elif op == "gamepad":
         payload = {"button": args.button, "action": args.action}
     elif op == "pointer":
-        payload = {"x": args.x, "y": args.y, "action": args.action}
+        x, y, target = resolve_pointer_target(control_dir, args)
+        if args.action == "click":
+            press = send_command(control_dir, "pointer", {"x": x, "y": y, "action": "press"}, args.timeout)
+            release = send_command(control_dir, "pointer", {"x": x, "y": y, "action": "release"}, args.timeout)
+            reply = {
+                "id": release.get("id"),
+                "ok": True,
+                "result": {
+                    "accepted": True,
+                    "x": x,
+                    "y": y,
+                    "target": target,
+                    "press": press.get("result", {}),
+                    "release": release.get("result", {}),
+                },
+            }
+            print(json.dumps(reply, sort_keys=True))
+            return 0
+        payload = {"x": x, "y": y, "action": args.action}
     elif op == "resize":
         payload = {"w": args.w, "h": args.h}
     elif op in ("wait_frames", "wait", "step"):
@@ -302,9 +362,15 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("pointer")
     add_common(p)
-    p.add_argument("--x", type=float, required=True)
-    p.add_argument("--y", type=float, required=True)
-    p.add_argument("--action", choices=["move", "press", "release"], default="move")
+    p.add_argument("--x", type=float)
+    p.add_argument("--y", type=float)
+    p.add_argument("--target",
+                   help="focusable element name from inspect output, such as GearTab")
+    p.add_argument("--target-id", type=int,
+                   help="numeric focusable element id from inspect output")
+    p.add_argument("--index", type=int,
+                   help="Clay id offset for indexed focusables, such as WeaponTile --index 3")
+    p.add_argument("--action", choices=["move", "press", "release", "click"], default="move")
     p.set_defaults(func=command_main)
 
     p = sub.add_parser("resize")

@@ -41,6 +41,16 @@ def screen_names(result: dict) -> list[str]:
     return [screen["name"] for screen in result.get("screens", [])]
 
 
+def focusable(result: dict, name: str, offset: int = 0) -> dict:
+    matches = [
+        item for item in result.get("focusables", [])
+        if item.get("name") == name and int(item.get("offset", 0)) == offset
+    ]
+    if len(matches) != 1:
+        raise RuntimeError(f"expected one focusable {name}#{offset}, got {matches}")
+    return matches[0]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--exe", required=True)
@@ -130,6 +140,60 @@ def main() -> int:
             raise RuntimeError(f"options did not return to pause: {result}")
         if screen_names(result) != ["ShooterGame", "Pause"]:
             raise RuntimeError(f"unexpected returned stack: {result}")
+
+        state = run_cli(cli, control_dir, "inspect")
+        result = state["result"]
+        loadout_button = focusable(result, "OpenLoadoutFromPauseButton")
+        rect = loadout_button.get("rect", {})
+        if rect.get("w", 0) <= 0 or rect.get("h", 0) <= 0:
+            raise RuntimeError(f"inspect did not expose focusable bounds: {loadout_button}")
+
+        run_cli(
+            cli,
+            control_dir,
+            "pointer",
+            "--target",
+            "OpenLoadoutFromPauseButton",
+            "--action",
+            "click",
+        )
+        wait_frame(cli, control_dir)
+        state = run_cli(cli, control_dir, "inspect")
+        result = state["result"]
+        if result["screen_count"] != 3 or result["top_screen"] != "Loadout":
+            raise RuntimeError(f"loadout did not open from target click: {result}")
+        if screen_names(result) != ["ShooterGame", "Pause", "Loadout"]:
+            raise RuntimeError(f"unexpected loadout stack: {result}")
+        focusable(result, "WeaponsTab")
+        focusable(result, "GearTab")
+        focusable(result, "WeaponTile", 2)
+
+        run_cli(cli, control_dir, "pointer", "--target", "GearTab", "--action", "click")
+        wait_frame(cli, control_dir)
+        state = run_cli(cli, control_dir, "inspect")
+        result = state["result"]
+        if result["game"]["selected_weapon"] != 3:
+            raise RuntimeError(f"gear tab target click did not select gear: {result}")
+        focusable(result, "WeaponTile", 3)
+
+        run_cli(cli, control_dir, "pointer", "--target", "WeaponsTab", "--action", "click")
+        wait_frame(cli, control_dir)
+        run_cli(
+            cli,
+            control_dir,
+            "pointer",
+            "--target",
+            "WeaponTile",
+            "--index",
+            "2",
+            "--action",
+            "click",
+        )
+        wait_frame(cli, control_dir)
+        state = run_cli(cli, control_dir, "inspect")
+        result = state["result"]
+        if result["game"]["selected_weapon"] != 0:
+            raise RuntimeError(f"disabled weapon tile confirmed unexpectedly: {result}")
 
         run_cli(cli, control_dir, "key", "--key", "t")
         run_cli(cli, control_dir, "pointer", "--x", "80", "--y", "90", "--action", "move")

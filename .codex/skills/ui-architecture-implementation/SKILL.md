@@ -85,6 +85,10 @@ Shooter code must not own focus, primitive state, or screen-stack mechanics.
   state, but keep the platform mailbox generic. App/game code should register a
   narrow read-only provider instead of letting `platform/` learn shooter rules or
   mutate game/UI state behind the pipeline.
+- Targeted CLI pointer commands should resolve against inspectable focusable
+  rectangles from the previous rendered frame. The CLI may translate a target
+  name/id to coordinates, but it must still send normal pointer input through
+  the platform adapter instead of mutating focus or invoking UI callbacks.
 - Visual E2E proof must include opening/inspecting representative captured
   frames. Passing component layout numbers, state assertions, or non-empty
   image files are not enough when the final rendered result looks wrong.
