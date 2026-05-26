@@ -67,7 +67,7 @@ def main() -> int:
 
         state = run_cli(cli, control_dir, "state")
         result = state["result"]
-        if result["screen_count"] != 1 or result["top_screen"] != "DemoApp":
+        if result["screen_count"] != 1 or result["top_screen"] != "ShooterGame":
             raise RuntimeError(f"unexpected state: {result}")
 
         run_cli(cli, control_dir, "key", "--key", "t")

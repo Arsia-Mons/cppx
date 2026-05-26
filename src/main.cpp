@@ -1,17 +1,13 @@
-// Hello-world demo: SDL platform shell + GameUiPipeline + a minimal
-// React-style runtime.
+// SDL platform shell + GameUiPipeline + the shooter UI example.
 //
 // What this shows:
-//   - useState        : Counter/theme state survives across frames.
-//   - useEffect       : "Counter mounted/unmounted" logged on lifecycle.
-//   - PROVIDE/useContext : GameUiPipeline provides the frame; App provides
-//     demo input; ThemeProvider provides theme.
+//   - retained screens owned by ClientUi.
+//   - hooks returning shooter values and write functions.
+//   - focus, primitives, and post-layout write draining through GameUiPipeline.
 //
 // Controls:
-//   UP / DOWN : increment / decrement the counter
-//   T         : cycle theme (App owns the index via useState, propagated via Provider)
-//   M         : mount/unmount the Counter component (triggers effect cleanup)
-//   I         : fetch a new random image (worker thread; cleanup-on-unmount)
+//   UP / DOWN / LEFT / RIGHT : focus navigation
+//   ENTER / SPACE            : confirm
 //   ESC       : quit
 
 #include <SDL3/SDL.h>
@@ -21,12 +17,13 @@
 #include <clay_renderer_SDL3.h>
 
 #include "app_state.h"
-#include "game/ui/demo_app_screen.h"
 #include "game/ui/game_ui_pipeline.h"
 #include "input.h"
 #include "platform/control_mailbox.h"
 #include "platform/input_adapter.h"
 #include "react.h"
+#include "shooter/shooter_game.h"
+#include "shooter/shooter_ui.h"
 
 #include <curl/curl.h>
 
@@ -142,7 +139,9 @@ int main(int argc, char **argv) {
     react_init(clay_ctx);
 
     game::ui::GameUiPipeline ui_pipeline;
-    ui_pipeline.client_ui().push_screen(std::make_unique<game::ui::DemoAppScreen>());
+    shooter::ShooterGame shooter_game;
+    ui_pipeline.client_ui().push_screen(
+        std::make_unique<shooter::ShooterGameScreen>(&shooter_game));
     platform::ControlMailbox control;
     if (control_dir && !control.init(control_dir)) {
         return 1;
@@ -199,7 +198,7 @@ int main(int argc, char **argv) {
             .input = ui_input,
             .layout = { (float)frame_w, (float)frame_h },
             .pointer = { mx, my },
-            .demo_input = &input,
+            .demo_input = nullptr,
         };
 
         ui_pipeline.render_client_ui_frame(frame, [&](Clay_RenderCommandArray &cmds) {
