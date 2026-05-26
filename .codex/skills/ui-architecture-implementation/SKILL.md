@@ -69,6 +69,10 @@ Shooter code must not own focus, primitive state, or screen-stack mechanics.
 - Expose shared reads through named hooks, not broad world-shaped context.
 - Request stack/game writes through hook-returned functions and drain after Clay
   declaration.
+- Shooter hooks that mutate game state should enqueue deferred writes through
+  `ClientUi`, the same post-layout drain used by screen-stack writes. Focus,
+  confirm, and toggle callbacks request writes; they do not mutate shared game
+  state directly while input is being dispatched.
 - Shooter state may be held by the game/sample owner and exposed to screens via
   a provider, but components should consume narrow hooks returning values and
   functions instead of receiving the whole game object as props.

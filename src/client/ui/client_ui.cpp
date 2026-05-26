@@ -15,8 +15,8 @@ ClientUi::ClientUi() {
 
 void ClientUi::begin_frame(const ::ui::UiInputFrame &input) {
     ::ui::ui_focus_set_current(&focus_);
-    ::ui::ui_focus_begin_frame(input);
     clear_writes();
+    ::ui::ui_focus_begin_frame(input);
 }
 
 void ClientUi::build_visible_screens() {
@@ -100,6 +100,14 @@ bool ClientUi::queue_pop_top() {
     return queue_write({ .kind = WriteKind::PopTop });
 }
 
+bool ClientUi::queue_deferred_write(UiDeferredWrite write) {
+    if (!write) return false;
+    return queue_write({
+        .kind = WriteKind::Deferred,
+        .deferred = std::move(write),
+    });
+}
+
 bool ClientUi::queue_write(QueuedWrite write) {
     if (write_count_ >= CLIENT_UI_MAX_WRITES) return false;
     writes_[write_count_++] = std::move(write);
@@ -118,6 +126,9 @@ void ClientUi::drain_writes() {
                 break;
             case WriteKind::PopTop:
                 screens_.pop_top();
+                break;
+            case WriteKind::Deferred:
+                if (write.deferred) write.deferred();
                 break;
         }
     }
@@ -149,6 +160,17 @@ ScreenNavigator use_screen_navigator() {
         .pop_top = [client_ui] {
             client_ui->queue_pop_top();
         },
+    };
+}
+
+QueueUiWrite use_ui_write_queue() {
+    ScreenContext *context =
+        static_cast<ScreenContext *>(use_context(&ScreenContextValue));
+    if (!context || !context->client_ui) return {};
+
+    ClientUi *client_ui = context->client_ui;
+    return [client_ui](UiDeferredWrite write) {
+        client_ui->queue_deferred_write(std::move(write));
     };
 }
 

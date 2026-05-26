@@ -12,6 +12,9 @@ namespace client::ui {
 
 constexpr int CLIENT_UI_MAX_WRITES = 128;
 
+using UiDeferredWrite = std::function<void()>;
+using QueueUiWrite = std::function<void(UiDeferredWrite)>;
+
 struct ScreenNavigator {
     UiScreenEntryId current_entry_id = 0;
     std::function<void(std::unique_ptr<UiScreen>)> push = {};
@@ -37,6 +40,7 @@ public:
     bool queue_push_screen(std::unique_ptr<UiScreen> screen);
     bool queue_pop_current(UiScreenEntryId entry_id);
     bool queue_pop_top();
+    bool queue_deferred_write(UiDeferredWrite write);
     int pending_write_count() const { return write_count_; }
     void drain_writes();
 
@@ -45,12 +49,14 @@ private:
         Push,
         PopCurrent,
         PopTop,
+        Deferred,
     };
 
     struct QueuedWrite {
         WriteKind kind = WriteKind::PopTop;
         UiScreenEntryId entry_id = 0;
         std::unique_ptr<UiScreen> screen = nullptr;
+        UiDeferredWrite deferred = {};
     };
 
     bool queue_write(QueuedWrite write);
@@ -63,5 +69,6 @@ private:
 };
 
 ScreenNavigator use_screen_navigator();
+QueueUiWrite use_ui_write_queue();
 
 } // namespace client::ui

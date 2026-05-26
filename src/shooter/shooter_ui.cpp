@@ -59,22 +59,37 @@ static ShooterHudRead use_shooter_hud(void) {
 
 static std::function<void()> use_select_weapon(int index) {
     ShooterGame *game = use_shooter_game();
-    return [game, index] {
-        if (game) game->select_weapon(index);
+    client::ui::QueueUiWrite queue_write = client::ui::use_ui_write_queue();
+    return [game, index, queue_write] {
+        if (game && queue_write) {
+            queue_write([game, index] {
+                game->select_weapon(index);
+            });
+        }
     };
 }
 
 static std::function<void()> use_buy_weapon(int index) {
     ShooterGame *game = use_shooter_game();
-    return [game, index] {
-        if (game) game->buy_weapon(index);
+    client::ui::QueueUiWrite queue_write = client::ui::use_ui_write_queue();
+    return [game, index, queue_write] {
+        if (game && queue_write) {
+            queue_write([game, index] {
+                game->buy_weapon(index);
+            });
+        }
     };
 }
 
 static std::function<void()> use_equip_weapon(int index) {
     ShooterGame *game = use_shooter_game();
-    return [game, index] {
-        if (game) game->equip_weapon(index);
+    client::ui::QueueUiWrite queue_write = client::ui::use_ui_write_queue();
+    return [game, index, queue_write] {
+        if (game && queue_write) {
+            queue_write([game, index] {
+                game->equip_weapon(index);
+            });
+        }
     };
 }
 
@@ -85,8 +100,13 @@ static bool use_compare_enabled(void) {
 
 static std::function<void(bool)> use_set_compare_enabled(void) {
     ShooterGame *game = use_shooter_game();
-    return [game](bool enabled) {
-        if (game) game->set_compare_enabled(enabled);
+    client::ui::QueueUiWrite queue_write = client::ui::use_ui_write_queue();
+    return [game, queue_write](bool enabled) {
+        if (game && queue_write) {
+            queue_write([game, enabled] {
+                game->set_compare_enabled(enabled);
+            });
+        }
     };
 }
 
@@ -485,6 +505,10 @@ static void LoadoutScreenView(void) {
         const WeaponState &selected = game->weapon(*selected_index);
         bool can_buy = game->can_buy_weapon(*selected_index);
         bool can_equip = game->can_equip_weapon(*selected_index) && !selected.equipped;
+        std::function<void()> select_weapons_tab_weapon =
+            use_select_weapon(first_weapon_for_tab(LOADOUT_TAB_WEAPONS));
+        std::function<void()> select_gear_tab_weapon =
+            use_select_weapon(first_weapon_for_tab(LOADOUT_TAB_GEAR));
 
         static char details[160];
         snprintf(details, sizeof(details), "%s: %s, cost %d, ammo %d",
@@ -517,20 +541,20 @@ static void LoadoutScreenView(void) {
                     .id = CLAY_ID("WeaponsTab"),
                     .label = "Weapons",
                     .selected = *active_tab == LOADOUT_TAB_WEAPONS,
-                    .on_select = [active_tab, selected_index, game] {
+                    .on_select = [active_tab, selected_index, select_weapons_tab_weapon] {
                         if (active_tab) *active_tab = LOADOUT_TAB_WEAPONS;
                         if (selected_index) *selected_index = first_weapon_for_tab(LOADOUT_TAB_WEAPONS);
-                        if (game && selected_index) game->select_weapon(*selected_index);
+                        if (select_weapons_tab_weapon) select_weapons_tab_weapon();
                     },
                 });
                 ::ui::Selectable({
                     .id = CLAY_ID("GearTab"),
                     .label = "Gear",
                     .selected = *active_tab == LOADOUT_TAB_GEAR,
-                    .on_select = [active_tab, selected_index, game] {
+                    .on_select = [active_tab, selected_index, select_gear_tab_weapon] {
                         if (active_tab) *active_tab = LOADOUT_TAB_GEAR;
                         if (selected_index) *selected_index = first_weapon_for_tab(LOADOUT_TAB_GEAR);
-                        if (game && selected_index) game->select_weapon(*selected_index);
+                        if (select_gear_tab_weapon) select_gear_tab_weapon();
                     },
                 });
             }
