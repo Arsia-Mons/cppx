@@ -74,6 +74,9 @@ Shooter code must not own focus, primitive state, or screen-stack mechanics.
   target.
 - Keep callbacks frame-local. Persist ids, layout, and state, not stale function
   objects from older frames.
+- Capture confirm targets before current-layout fallback repair. If a focused
+  control becomes disabled or disappears during the current declaration, do not
+  retarget the same-frame confirm press to the newly selected fallback element.
 - Keep bounded runtime storage honest. Overflow is a diagnostic and dropped
   registration/write, not hidden allocation in the middle of a UI frame.
 

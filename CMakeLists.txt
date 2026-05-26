@@ -46,6 +46,7 @@ enable_testing()
 add_executable(hello
   src/main.cpp
   src/react.cpp
+  src/ui/focus/ui_focus.cpp
   src/ui/components/app.cpp
   src/ui/components/counter.cpp
   src/ui/components/image.cpp
@@ -92,3 +93,21 @@ target_compile_options(react_runtime_tests PRIVATE
 )
 
 add_test(NAME react_runtime_tests COMMAND react_runtime_tests)
+
+add_executable(ui_focus_tests
+  tests/ui_focus_tests.cpp
+  src/ui/focus/ui_focus.cpp
+  third_party/clay_impl.cpp
+)
+
+target_include_directories(ui_focus_tests PRIVATE
+  src
+  third_party
+  third_party/clay
+)
+
+target_compile_options(ui_focus_tests PRIVATE
+  $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall -Wextra -Wno-missing-field-initializers -Wno-c99-designator -Wno-unused-parameter>
+)
+
+add_test(NAME ui_focus_tests COMMAND ui_focus_tests)
