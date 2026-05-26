@@ -1,4 +1,4 @@
-# UI source gap audit
+# UI source architecture audit
 
 This audit compares the current `src/` tree to the active UI architecture docs:
 
@@ -7,77 +7,71 @@ This audit compares the current `src/` tree to the active UI architecture docs:
 - `docs/ui-focus-stress-test.md`
 - `docs/engine-ui-boundary-plan.md`
 
-It is a working implementation audit. It does not reduce the target architecture.
+It is a source/readiness audit, not a replacement architecture proposal.
 
-## Missing source layers
+## Implemented source layers
 
-- `src/ui/focus/`: no focus scopes, focusable registration, layout harvest,
-  spatial resolver, focus source tracking, modal trapping, initial focus, or
-  bounded diagnostics exist in source.
-- `src/ui/primitives/`: no `Focusable`, `Button`, `Toggle`, `Selectable`,
-  richer tile primitive, control-state layering, pointer press/release handling,
-  or primitive tests exist.
-- `src/client/ui/`: no retained `UiScreen`, `ScreenStack`, visible-screen
-  ordering, `ScreenNavigator` hook, `ClientUi`, UI write queue, or post-layout
-  drain point exists.
-- `src/game/ui/`: no `UiInputFrame`, `GameUiPipeline`, platform-to-UI input
-  adaptation, presentation providers, or game/UI write adapter exists.
-- `src/shooter/`: no shooter state, presentation builders, shooter hooks, HUD,
-  pause/options, loadout/buy flow, modal dialogs, or end-to-end stress example
-  exists.
+- `src/ui/focus/` owns generic focus scopes, focusable registration, modal
+  trapping, focus source tracking, previous-frame layout harvest, spatial
+  navigation, initial focus, disabled-control skipping, overflow diagnostics,
+  pointer press/release confirmation, and bounded frame-local storage.
+- `src/ui/primitives/` owns generic focusable primitives: `Focusable`,
+  `Button`, `Toggle`, and `Selectable`, with visual state derived from focus
+  and caller-owned control state.
+- `src/client/ui/` owns retained `UiScreen` entries, `ScreenStack`,
+  visible-screen ordering, overlay frames, `ScreenNavigator`, `ClientUi`, and a
+  bounded post-layout write queue for stack and game writes.
+- `src/game/ui/` owns the `GameUiPipeline` frame boundary around React, Clay,
+  `ClientUi`, focus/layout dispatch, rendering, and post-render write draining.
+- `src/platform/` owns SDL/key/gamepad/pointer adaptation plus the local control
+  mailbox used by the CLI and E2E tests.
+- `src/shooter/` is the pressure-test example with HUD, pause/options, loadout
+  tabs, weapon/gear grid, details, equipment slots, compare toggle, modal
+  confirmation, disabled item behavior, and hooks returning reads/functions.
 
-## Current demo shortcuts that conflict with the target
+## Removed demo shortcuts
 
-- `src/main.cpp` owns the whole UI frame and directly calls `App(&input)`.
-  The documented path requires platform input to flow through a game/UI pipeline
-  into `ClientUi`, with writes drained after Clay declaration.
-- `InputState` is a demo key-edge struct for counter/theme/image behavior. It
-  does not represent normalized navigation, confirm/cancel, pointer, or source
-  data for a focus runtime.
-- `App` is the root UI and owns demo-local composition directly. There is no
-  retained screen stack or visible-screen ordering.
-- `Counter` mutates hook state while reading demo input directly from
-  `InputContext`. The final control path needs focusable primitives and
-  hook-returned functions that request writes through the UI boundary.
-- `Image` reaches SDL renderer globals through `app_state.h`. That is acceptable
-  as a temporary sample resource path, but it is not the documented client UI
-  boundary and should not shape the shooter example.
-- Theme and input providers are useful provider examples, but they are demo
-  providers. The final stack needs named presentation and write hooks for the
-  client and shooter domains.
+- The old direct `App(&input)` root is no longer compiled into `hello`.
+- Demo-only `Counter`, `Image`, theme provider, input provider, `InputState`,
+  and demo app screen sources have been removed from the active runtime.
+- The primary runtime path is now:
 
-## Runtime pieces to keep as foundations
+```text
+SDL/platform input
+  -> UiInputFrame
+  -> GameUiPipeline
+  -> ClientUi
+  -> ScreenStack / UiScreen
+  -> screen component roots
+  -> hooks and primitives
+  -> Clay layout/render
+  -> post-layout/post-render write drain
+```
 
-- `src/react.h` and `src/react.cpp` already provide component identity, keyed
-  identity, hook storage, providers, effects, refs, frame boundaries, hook drift
-  diagnostics, unmount cleanup, and shutdown cleanup.
-- `REACT_COMPONENT_BEGIN`, `REACT_COMPONENT_BEGIN_KEY`, and provider macros are
-  the existing C++ component boundary. New UI layers should compose through
-  them instead of creating a second component model.
-- `use_state_int`, `use_ref`, `use_effect`, and `use_context` are the current
-  hook primitives. Local UI state for screens and dialogs should stay on this
-  path.
-- `tests/react_runtime_tests.cpp` is the existing regression harness for hook
-  identity, providers, lifecycle, and cleanup. New architecture tests should
-  extend the test suite rather than bypass it.
-- The existing SDL/Clay initialization in `src/main.cpp` is useful platform
-  scaffolding, but the primary app call must move behind the documented
-  pipeline and `ClientUi` ownership.
+## Current proof surface
 
-## First vertical slice
+- Unit tests cover React hook/provider/runtime behavior, focus navigation,
+  primitive interaction, retained screen stack ownership, visible overlay
+  ordering, and game/UI pipeline write ordering.
+- Shooter UI tests cover pause/options stack flow, loadout modal focus
+  restoration, loadout tab/equipment targets, deferred shooter writes, and real
+  shooter buy/equip state transitions.
+- CLI tests launch the runtime, drive keyboard/gamepad/pointer input through the
+  platform adapter, inspect screens/focus/game state/focusable rectangles,
+  target-click focusables, capture screenshots, capture frame sequences, and
+  validate wrong-state/error reporting.
+- The repo-local UI implementation skill under `.codex/skills/` is part of the
+  working contract for future implementation and review passes.
 
-The first source slice should implement the generic focus runtime under
-`src/ui/focus/` with tests that do not depend on the shooter example:
+## Remaining review focus
 
-1. Bounded focus runtime storage and explicit overflow diagnostics.
-2. Focus scopes with stable ids, modal scope selection, initial focus requests,
-   and parent focus preservation.
-3. Focusable registration during declaration with current-frame callbacks.
-4. Layout harvest from `Clay_GetElementData()` after `Clay_EndLayout()`.
-5. Frame-N directional navigation using frame-N-1 rectangles.
-6. Disabled-control skipping for navigation and confirm.
-7. Stable spatial resolver tie-breaks and local boundary rules.
+Before claiming the full plan complete, reviewers should inspect:
 
-That slice proves the most architecture-critical invariant: screen code can
-declare focusable UI in Clay order while navigation is derived from harvested
-layout rectangles, not screen-authored neighbor tables.
+- that ordinary screen components continue to use hooks for game/UI reads and
+  write functions instead of prop-drilled state bundles;
+- that `ui/` stays shooter-agnostic and `platform/` stays free of shooter
+  mutation shortcuts;
+- that new visual flows are proven by CLI captures and opened screenshots, not
+  only state assertions;
+- that the repo-local UI skill remains current with any new source or reviewer
+  findings.
