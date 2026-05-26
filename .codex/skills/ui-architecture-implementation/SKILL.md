@@ -69,6 +69,9 @@ Shooter code must not own focus, primitive state, or screen-stack mechanics.
 - Expose shared reads through named hooks, not broad world-shaped context.
 - Request stack/game writes through hook-returned functions and drain after Clay
   declaration.
+- Shooter state may be held by the game/sample owner and exposed to screens via
+  a provider, but components should consume narrow hooks returning values and
+  functions instead of receiving the whole game object as props.
 - `GameUiPipeline` owns React/Clay frame lifecycle around `ClientUi`: begin,
   declare, end layout, dispatch focus/input, render Clay commands, then drain
   queued UI writes.
@@ -105,6 +108,9 @@ Shooter code must not own focus, primitive state, or screen-stack mechanics.
   frame.
 - Keep bounded runtime storage honest. Overflow is a diagnostic and dropped
   registration/write, not hidden allocation in the middle of a UI frame.
+- When a Clay config field has a narrow type, compute dynamic values into a
+  typed local such as `uint16_t border_width` before using Clay macros inside
+  designated initializers.
 
 ## Implementation Workflow
 

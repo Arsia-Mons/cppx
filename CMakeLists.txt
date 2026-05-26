@@ -53,6 +53,8 @@ add_executable(hello
   src/game/ui/game_ui_pipeline.cpp
   src/platform/control_mailbox.cpp
   src/platform/input_adapter.cpp
+  src/shooter/shooter_game.cpp
+  src/shooter/shooter_ui.cpp
   src/ui/focus/ui_focus.cpp
   src/ui/primitives/button.cpp
   src/ui/primitives/focusable.cpp
@@ -190,6 +192,32 @@ target_compile_options(game_ui_pipeline_tests PRIVATE
 )
 
 add_test(NAME game_ui_pipeline_tests COMMAND game_ui_pipeline_tests)
+
+add_executable(shooter_ui_tests
+  tests/shooter_ui_tests.cpp
+  src/react.cpp
+  src/client/ui/client_ui.cpp
+  src/client/ui/screen_stack.cpp
+  src/shooter/shooter_game.cpp
+  src/shooter/shooter_ui.cpp
+  src/ui/focus/ui_focus.cpp
+  src/ui/primitives/button.cpp
+  src/ui/primitives/focusable.cpp
+  src/ui/primitives/toggle.cpp
+  third_party/clay_impl.cpp
+)
+
+target_include_directories(shooter_ui_tests PRIVATE
+  src
+  third_party
+  third_party/clay
+)
+
+target_compile_options(shooter_ui_tests PRIVATE
+  $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall -Wextra -Wno-missing-field-initializers -Wno-c99-designator -Wno-unused-parameter>
+)
+
+add_test(NAME shooter_ui_tests COMMAND shooter_ui_tests)
 
 add_test(
   NAME ui_cli_smoke
