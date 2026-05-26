@@ -18,7 +18,7 @@ The snippets are implementation-shaped C++. They define the ownership model and
 the intended shape of client screen code.
 
 `{Name}ScreenView` means the root component tree for a screen. It is not an MVC
-view, and it does not get a companion screen-wide data object.
+view, and it does not get a companion screen-wide container.
 
 ---
 
@@ -98,6 +98,7 @@ void ui_focus_end_layout(void);
 
 void ui_focus_push_scope(const UiFocusScopeDesc &desc);
 void ui_focus_pop_scope(void);
+void ui_focus_request_initial_focus(Clay_ElementId id);
 
 UiFocusableState ui_focusable(const UiFocusableDesc &desc);
 ```
@@ -180,6 +181,7 @@ struct UiFocusScope {
     bool wrap;
     Clay_ElementId focused_id;
     UiFocusSource source;
+    Clay_ElementId requested_initial_focus;
 
     // Built during this frame's render.
     UiBuffer<UiFocusableRegistration> pending;
@@ -239,10 +241,34 @@ void ui_focus_end_layout(void) {
         scope.pending.clear();
 
         if (!contains_focusable(scope.layout.span(), scope.focused_id)) {
-            scope.focused_id = first_enabled(scope.layout.span());
+            Clay_ElementId next = first_enabled(scope.layout.span());
+            if (contains_enabled_focusable(scope.layout.span(),
+                                           scope.requested_initial_focus)) {
+                next = scope.requested_initial_focus;
+            }
+
+            scope.focused_id = next;
             scope.source = UiFocusSource::Programmatic;
         }
+
+        scope.requested_initial_focus = {};
     }
+}
+```
+
+`ui_focus_request_initial_focus(id)` is scoped to the currently active focus
+scope and applies only when that scope has no valid focused element in the
+current harvested layout. The requested id is matched against the layout just
+harvested by `ui_focus_end_layout()`. If the requested id is missing or
+disabled, focus falls back to the first enabled focusable in declaration order.
+Nested modal scopes keep their own request and do not overwrite the parent
+scope's stored focus.
+
+Component code can expose this as a hook-shaped helper:
+
+```cpp
+inline void use_initial_focus(Clay_ElementId id) {
+    ui_focus_request_initial_focus(id);
 }
 ```
 
@@ -376,7 +402,7 @@ static Clay_ElementId resolve_spatial(UiFocusScope *scope,
 }
 ```
 
-This is not a "grid strategy." It works for:
+This is not a screen-authored traversal policy. It works for:
 
 - one column of categories,
 - a 4-column item grid,
@@ -430,7 +456,7 @@ void Focusable(const FocusableProps &props,
 }
 ```
 
-This version intentionally uses a capturing lambda-friendly shape. If a later
+This shape intentionally uses a capturing lambda-friendly API. If a later
 profiling pass needs to remove `std::function`, the implementation can switch
 to a template or `FunctionRef` without changing how `Button` is written.
 The focus system should store only stable registration data between layout and
@@ -525,10 +551,10 @@ void Button(const ButtonProps &props) {
 }
 ```
 
-The callback lambdas are used during the current UI declaration pass. A
-production write lane should enqueue a typed UI intent from `on_confirm` and
-drain it after layout, rather than mutating the screen stack or game state from
-inside `Button`.
+The callback lambdas are captured during the current UI declaration pass and
+invoked by current-frame input dispatch. A production write lane should enqueue
+a typed UI intent from `on_confirm` and drain it after layout, rather than
+mutating the screen stack or game state from inside `Button`.
 
 ### First place `Button` is consumed
 
@@ -893,6 +919,7 @@ class ClientUi {
 public:
     void begin_frame(const UiInputFrame &input);
     Clay_RenderCommandArray end_frame();
+    void end_layout(const UiInputFrame &input);
 
     void push_screen(std::unique_ptr<UiScreen> screen) {
         screens.push(std::move(screen));
@@ -902,7 +929,7 @@ public:
         screens.build_visible();
     }
 
-    Span<const UiIntent> dispatch_input_after_layout(const UiInputFrame &input);
+    Span<const UiIntent> drain_ui_intents();
     void clear_dispatched_intents();
 
 private:
@@ -929,10 +956,10 @@ void GameUiPipeline::render_client_ui_frame(const GameUiFrame &frame) {
     client_ui.build_visible_screens();
 
     Clay_RenderCommandArray commands = client_ui.end_frame();
+    client_ui.end_layout(input);
     render_clay(frame.surface, commands);
 
-    Span<const UiIntent> intents =
-        client_ui.dispatch_input_after_layout(input);
+    Span<const UiIntent> intents = client_ui.drain_ui_intents();
     dispatch_unhandled_game_ui_intents(intents);
     client_ui.clear_dispatched_intents();
 }
@@ -999,8 +1026,8 @@ Focusable
 ```
 
 Lower components receive narrow props, and screen components read generic UI
-services through hooks. The whole screen state object, stack, and game stay out
-of the primitive/component layer.
+services through hooks. Screen-wide bundles, the stack, and the game stay out of
+the primitive/component layer.
 
 ---
 
@@ -1021,8 +1048,7 @@ client/ui/overlays/buy_menu/
 
 The overlay and its descendants read game data and write functions through
 hooks. The focus runtime only sees ids, disabled flags, callbacks, and Clay
-rectangles. There is no screen-wide data object or action bundle to pass
-through the component tree.
+rectangles. There is no screen-wide bundle to pass through the component tree.
 
 ```cpp
 // client/ui/overlays/buy_menu/buy_menu_hooks.h
@@ -1123,7 +1149,9 @@ void BuyMenuOverlay(void) {
 }
 ```
 
-There is no `use_focus_traversal(GridStrategy{cols = 4})`.
+The overlay does not declare a separate traversal policy. It renders focusable
+components with stable ids and lets the focus runtime derive neighbors from the
+final Clay rectangles.
 
 ### Category list
 
@@ -1209,7 +1237,7 @@ void BuyItemGrid(std::function<void()> open_confirmation) {
 }
 ```
 
-The value `columns = 4` is used only to make rows. If a responsive version
+The value `columns = 4` is used only to make rows. If a responsive layout
 changes this to 3 columns at a smaller width, navigation still works because it
 will see different rectangles after layout.
 
@@ -1469,13 +1497,10 @@ manual jumps between siblings.
 
 ---
 
-## 8. What this changes in the focus plan
+## 8. Focus contract summary
 
-The existing plan says `FocusManager` owns a flat `focusable_list` and that
-2D screens override via `use_focus_traversal(strategy)`. That is the wrong
-default for real client UI.
-
-Replace that with:
+The focus manager keeps both the registrations from the in-progress frame and
+the harvested rectangles from the completed layout:
 
 ```cpp
 struct FocusManager {
@@ -1490,18 +1515,15 @@ struct FocusManager {
 };
 ```
 
-And replace screen-level traversal with:
+Screen code renders the component tree:
 
 ```cpp
-// Bad default: the screen author manually says this region is a grid.
-use_focus_traversal(GridStrategy{ .cols = 4 });
-
-// Better default: the screen only renders focusable components.
 BuyCategoryList();
 BuyItemGrid(open_confirmation);
 BuyDetailsPanel();
 ```
 
-The runtime infers directional neighbors from the laid-out focusable
-rectangles. The client UI controls semantics; the focus layer controls
-navigation mechanics.
+The runtime infers directional neighbors from the laid-out focusable rectangles.
+The client UI controls semantics; the focus layer controls navigation mechanics.
+Explicit rules remain local boundary exceptions such as `Stop`, `Wrap`, or a
+single explicit target.
