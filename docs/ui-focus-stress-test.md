@@ -296,8 +296,6 @@ void LoadoutScreenView(void) {
             });
         }
 
-        ui_focus_pop_scope();
-
         if (loadout.has_pending_confirm) {
             EquipConfirmDialog({
                 .item_id = loadout.pending_confirm_item,
@@ -321,6 +319,8 @@ void LoadoutScreenView(void) {
                 },
             });
         }
+
+        ui_focus_pop_scope();
     } REACT_COMPONENT_END();
 }
 ```
