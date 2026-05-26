@@ -1,6 +1,6 @@
 ---
 name: ui-architecture-implementation
-description: Implement, extend, review, or correct this repo's React-style Clay UI architecture from the game loop through GameUiPipeline, ClientUi, ScreenStack, UiScreen, screen component roots, hooks/providers, focus runtime, and primitives. Use when working in /Users/hv/repos/sdl3-clay on src/ui/focus, src/ui/primitives, src/client/ui, src/game/ui, src/shooter, docs/ui-src-architecture-implementation-plan.md, or any task that risks drifting into MVC, broad state bundles, route-table renderers, prop drilling, manual focus graphs, or demo-only UI shortcuts.
+description: Implement, extend, review, or correct this repo's React-style Clay UI architecture from the game loop through GameUiPipeline, ClientUi, ScreenStack, UiScreen, screen component roots, hooks/providers, focus runtime, window system, and primitives. Use when working in /Users/hv/repos/sdl3-clay on src/ui/focus, src/ui/primitives, src/client/ui, src/game/ui, src/shooter, docs/eve-window-system-functional-requirements.md, or any task that risks drifting into MVC, broad state bundles, route-table renderers, prop drilling, manual focus graphs, or demo-only UI shortcuts.
 ---
 
 # UI Architecture Implementation
@@ -11,14 +11,14 @@ Use this skill to implement the active UI architecture in source. The goal is a
 React-style UI stack on Clay, not MVC, not route tables, not view models, and not
 a demo component tree with nicer names.
 
-Read these files before changing architecture:
+Read these files before changing window-system architecture:
 
-- `docs/ui-src-architecture-implementation-plan.md`
-- `docs/client-ui-focus-navigation-architecture.md`
-- `docs/ui-focus-interaction-plan.md`
-- `docs/ui-focus-stress-test.md`
-- `docs/engine-ui-boundary-plan.md`
+- `docs/eve-window-system-functional-requirements.md`
+- `docs/eve-window-system-planning-process.md`
 - `AGENTS.md`
+
+Historical UI planning documents live under `docs/archive/`. They are context,
+not the active window-system contract.
 
 Inspect current source before relying on memory. The source is the authority for
 what has already landed.
@@ -145,7 +145,7 @@ Shooter code must not own focus, primitive state, or screen-stack mechanics.
 
 ## Implementation Workflow
 
-1. Re-read the active plan and the relevant architecture doc section.
+1. Re-read the active functional requirements and any relevant archived context.
 2. Inspect current `src/`, `tests/`, and existing uncommitted changes.
 3. Implement one coherent slice.
 4. Add focused tests that prove the slice's real invariant.
@@ -154,8 +154,8 @@ Shooter code must not own focus, primitive state, or screen-stack mechanics.
 7. Run a read-only review pass and fix every high-confidence finding.
 8. Update this skill when the slice exposes a new rule, trap, or correction.
 
-Do not use `docs/ui-src-architecture-implementation-plan.md` as a progress
-tracker. Edit the plan only when the contract itself needs correction.
+Do not use archived planning docs as progress trackers. Edit the active
+functional requirements only when the contract itself needs correction.
 
 ## Source-Specific Guidance
 
