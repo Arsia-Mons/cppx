@@ -273,6 +273,70 @@ static bool local_boundary_rules_stop_wrap_and_explicit_targets(void) {
     return true;
 }
 
+static bool focus_callbacks_use_current_frame_registration(void) {
+    UiFocusRuntime focus;
+    ui_focus_init(&focus);
+
+    Clay_ElementId scope = test_id("CallbackScope");
+    Clay_ElementId a = test_id("CallbackA");
+    Clay_ElementId b = test_id("CallbackB");
+    int callback_value = 0;
+
+    auto build = [&](int version, Clay_ElementId initial = {}) {
+        ui_focus_push_scope({ .id = scope });
+        if (initial.id != 0) {
+            ui_focus_request_initial_focus(initial);
+        }
+        focus_box(a, false, {}, {}, [&, version] {
+            callback_value = version * 10 + 1;
+        });
+        focus_box(b, false, {}, {}, [&, version] {
+            callback_value = version * 10 + 2;
+        });
+        ui_focus_pop_scope();
+    };
+
+    run_focus_frame(focus, {}, [&] {
+        build(1, b);
+    });
+    CHECK(same_id(ui_focus_focused_id_for_scope(scope), b));
+    CHECK(callback_value == 12);
+
+    run_focus_frame(focus, { .nav_up = true }, [&] {
+        build(2);
+    });
+    CHECK(same_id(ui_focus_focused_id_for_scope(scope), a));
+    CHECK(callback_value == 21);
+    return true;
+}
+
+static bool focus_source_tracks_mouse_and_touch_inputs(void) {
+    UiFocusRuntime focus;
+    ui_focus_init(&focus);
+
+    Clay_ElementId scope = test_id("SourceScope");
+    Clay_ElementId a = test_id("SourceA");
+    Clay_ElementId b = test_id("SourceB");
+
+    run_focus_frame(focus, {}, [&] {
+        simple_stack_scope(scope, a, b, test_id("SourceC"));
+    });
+    CHECK(same_id(ui_focus_focused_id_for_scope(scope), a));
+
+    run_focus_frame(focus, { .nav_down = true, .source = UiFocusSource::Mouse }, [&] {
+        simple_stack_scope(scope, a, b, test_id("SourceC"));
+    });
+    CHECK(same_id(ui_focus_focused_id_for_scope(scope), b));
+    CHECK(ui_focus_source_for_scope(scope) == UiFocusSource::Mouse);
+
+    run_focus_frame(focus, { .nav_up = true, .source = UiFocusSource::Touch }, [&] {
+        simple_stack_scope(scope, a, b, test_id("SourceC"));
+    });
+    CHECK(same_id(ui_focus_focused_id_for_scope(scope), a));
+    CHECK(ui_focus_source_for_scope(scope) == UiFocusSource::Touch);
+    return true;
+}
+
 static bool initial_focus_chooses_requested_enabled_element(void) {
     UiFocusRuntime focus;
     ui_focus_init(&focus);
@@ -403,6 +467,8 @@ int main(void) {
     if (!grid_navigation_uses_geometry_without_neighbor_tables()) return 1;
     if (!disabled_controls_are_skipped_for_navigation_and_confirm()) return 1;
     if (!local_boundary_rules_stop_wrap_and_explicit_targets()) return 1;
+    if (!focus_callbacks_use_current_frame_registration()) return 1;
+    if (!focus_source_tracks_mouse_and_touch_inputs()) return 1;
     if (!initial_focus_chooses_requested_enabled_element()) return 1;
     if (!modal_scope_traps_navigation_and_parent_resumes()) return 1;
     if (!focus_survives_reflow_and_next_navigation_uses_new_rectangles()) return 1;
