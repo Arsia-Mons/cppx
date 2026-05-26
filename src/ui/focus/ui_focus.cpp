@@ -577,6 +577,12 @@ Clay_ElementId ui_focus_focused_id(void) {
     return scope ? scope->focused_id : Clay_ElementId{};
 }
 
+UiFocusSource ui_focus_source(void) {
+    UiFocusRuntime *runtime = g_current;
+    UiFocusScope *scope = active_declared_scope(runtime, runtime ? runtime->frame : 0);
+    return scope ? scope->source : UiFocusSource::None;
+}
+
 UiFocusSource ui_focus_source_for_scope(Clay_ElementId scope_id) {
     UiFocusScope *scope = find_scope(g_current, scope_id);
     return scope ? scope->source : UiFocusSource::None;

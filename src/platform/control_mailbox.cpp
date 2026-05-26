@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <fstream>
 #include <sstream>
+#include <utility>
 
 namespace platform {
 
@@ -110,6 +111,18 @@ static float json_float_value(const std::string &json, const char *key, float fa
     return end == json.c_str() + pos ? fallback : value;
 }
 
+static const char *focus_source_name(::ui::UiFocusSource source) {
+    switch (source) {
+        case ::ui::UiFocusSource::None: return "None";
+        case ::ui::UiFocusSource::Keyboard: return "Keyboard";
+        case ::ui::UiFocusSource::Gamepad: return "Gamepad";
+        case ::ui::UiFocusSource::Mouse: return "Mouse";
+        case ::ui::UiFocusSource::Touch: return "Touch";
+        case ::ui::UiFocusSource::Programmatic: return "Programmatic";
+    }
+    return "None";
+}
+
 bool ControlMailbox::init(const char *dir) {
     if (!dir || !*dir) return false;
     dir_ = dir;
@@ -127,6 +140,10 @@ bool ControlMailbox::init(const char *dir) {
     active_ = true;
     write_ready();
     return true;
+}
+
+void ControlMailbox::set_game_state_json_provider(std::function<std::string()> provider) {
+    game_state_json_provider_ = std::move(provider);
 }
 
 void ControlMailbox::write_ready(void) {
@@ -163,6 +180,7 @@ std::string ControlMailbox::state_json(game::ui::GameUiPipeline &pipeline) {
     client::ui::UiScreen *top = client_ui.screens().top();
     ::ui::ui_focus_set_current(&client_ui.focus_runtime());
     Clay_ElementId focused = ::ui::ui_focus_focused_id();
+    ::ui::UiFocusSource focus_source = ::ui::ui_focus_source();
 
     std::ostringstream body;
     body << "\"result\":{"
@@ -170,8 +188,24 @@ std::string ControlMailbox::state_json(game::ui::GameUiPipeline &pipeline) {
          << "\"screen_count\":" << client_ui.screens().count() << ","
          << "\"top_screen\":\"" << json_escape(top ? top->debug_name() : "") << "\","
          << "\"pending_writes\":" << client_ui.pending_write_count() << ","
-         << "\"focused_id\":" << focused.id
-         << "}";
+         << "\"focused_id\":" << focused.id << ","
+         << "\"focus_source\":\"" << focus_source_name(focus_source) << "\","
+         << "\"screens\":[";
+    for (int i = 0; i < client_ui.screens().count(); ++i) {
+        client::ui::UiScreen *screen = client_ui.screens().at(i);
+        if (i) body << ",";
+        body << "{"
+             << "\"entry_id\":" << (screen ? screen->entry_id() : 0) << ","
+             << "\"name\":\"" << json_escape(screen ? screen->debug_name() : "") << "\","
+             << "\"overlay\":" << (screen && screen->is_overlay() ? "true" : "false")
+             << "}";
+    }
+    body << "]";
+    if (game_state_json_provider_) {
+        std::string game_json = game_state_json_provider_();
+        body << ",\"game\":" << (game_json.empty() ? "null" : game_json);
+    }
+    body << "}";
     return body.str();
 }
 
@@ -253,7 +287,7 @@ void ControlMailbox::poll(InputState &demo_input,
             }
             write_reply(id, true, "\"result\":{\"w\":" + std::to_string(w) +
                                       ",\"h\":" + std::to_string(h) + "}");
-        } else if (op == "wait_frames") {
+        } else if (op == "wait_frames" || op == "wait" || op == "step") {
             int n = std::max(0, json_int_value(raw, "n", 1));
             pending_waits_.push_back({ .id = id, .target_frame = frame_index_ + (uint64_t)n });
         } else if (op == "screenshot") {

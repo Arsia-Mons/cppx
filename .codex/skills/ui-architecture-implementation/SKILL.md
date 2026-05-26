@@ -78,6 +78,10 @@ Shooter code must not own focus, primitive state, or screen-stack mechanics.
 - CLI/control-harness input must enter through the same platform-to-`UiInputFrame`
   adapter as normal runtime input. Screenshots and frame captures must come from
   the actual rendered frame, not a synthetic component snapshot.
+- CLI/control-harness inspection can expose read-only runtime and game debug
+  state, but keep the platform mailbox generic. App/game code should register a
+  narrow read-only provider instead of letting `platform/` learn shooter rules or
+  mutate game/UI state behind the pipeline.
 - Visual E2E proof must include opening/inspecting representative captured
   frames. Passing component layout numbers, state assertions, or non-empty
   image files are not enough when the final rendered result looks wrong.

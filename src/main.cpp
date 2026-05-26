@@ -28,8 +28,10 @@
 #include <curl/curl.h>
 
 #include <memory>
+#include <sstream>
 #include <stdio.h>
 #include <string.h>
+#include <string>
 
 // ----------------------------------------------------------------------------
 // Definitions for the shared globals declared in app_state.h.
@@ -83,6 +85,52 @@ static Clay_Dimensions measure_text(Clay_StringSlice text,
 
 static void on_clay_error(Clay_ErrorData err) {
     fprintf(stderr, "clay: %.*s\n", (int)err.errorText.length, err.errorText.chars);
+}
+
+static std::string json_escape(const char *value) {
+    std::string out;
+    if (!value) return out;
+    for (const char *p = value; *p; ++p) {
+        switch (*p) {
+            case '\\': out += "\\\\"; break;
+            case '"': out += "\\\""; break;
+            case '\n': out += "\\n"; break;
+            case '\r': out += "\\r"; break;
+            case '\t': out += "\\t"; break;
+            default: out += *p; break;
+        }
+    }
+    return out;
+}
+
+static std::string shooter_state_json(const shooter::ShooterGame &game) {
+    std::ostringstream out;
+    out << "{"
+        << "\"health\":" << game.health() << ","
+        << "\"armor\":" << game.armor() << ","
+        << "\"ammo\":" << game.ammo() << ","
+        << "\"credits\":" << game.credits() << ","
+        << "\"selected_weapon\":" << game.selected_weapon() << ","
+        << "\"compare_enabled\":" << (game.compare_enabled() ? "true" : "false")
+        << ",\"weapons\":[";
+    for (int i = 0; i < game.weapon_count(); ++i) {
+        const shooter::WeaponState &weapon = game.weapon(i);
+        if (i) out << ",";
+        out << "{"
+            << "\"index\":" << i << ","
+            << "\"name\":\"" << json_escape(weapon.spec.name) << "\","
+            << "\"role\":\"" << json_escape(weapon.spec.role) << "\","
+            << "\"cost\":" << weapon.spec.cost << ","
+            << "\"damage\":" << weapon.spec.damage << ","
+            << "\"ammo\":" << weapon.spec.ammo << ","
+            << "\"owned\":" << (weapon.owned ? "true" : "false") << ","
+            << "\"equipped\":" << (weapon.equipped ? "true" : "false") << ","
+            << "\"can_buy\":" << (game.can_buy_weapon(i) ? "true" : "false") << ","
+            << "\"can_equip\":" << (game.can_equip_weapon(i) ? "true" : "false")
+            << "}";
+    }
+    out << "]}";
+    return out.str();
 }
 
 // ----------------------------------------------------------------------------
@@ -143,6 +191,9 @@ int main(int argc, char **argv) {
     ui_pipeline.client_ui().push_screen(
         std::make_unique<shooter::ShooterGameScreen>(&shooter_game));
     platform::ControlMailbox control;
+    control.set_game_state_json_provider([&shooter_game] {
+        return shooter_state_json(shooter_game);
+    });
     if (control_dir && !control.init(control_dir)) {
         return 1;
     }

@@ -3,6 +3,7 @@
 #include <SDL3/SDL.h>
 
 #include <filesystem>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -16,6 +17,7 @@ class ControlMailbox {
 public:
     bool init(const char *dir);
     bool active() const { return active_; }
+    void set_game_state_json_provider(std::function<std::string()> provider);
 
     void poll(InputState &demo_input,
               ::ui::UiInputFrame &ui_input,
@@ -60,6 +62,7 @@ private:
     std::filesystem::path requests_dir_;
     std::filesystem::path replies_dir_;
     std::filesystem::path artifacts_dir_;
+    std::function<std::string()> game_state_json_provider_ = {};
 
     bool pointer_override_ = false;
     float pointer_x_ = -1000.0f;

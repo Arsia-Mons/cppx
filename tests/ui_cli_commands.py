@@ -34,7 +34,11 @@ def run_cli(cli: Path, control_dir: Path, *args: str, expect_ok: bool = True) ->
 
 
 def wait_frame(cli: Path, control_dir: Path) -> dict:
-    return run_cli(cli, control_dir, "wait_frames", "--n", "1")
+    return run_cli(cli, control_dir, "step", "--frames", "1")
+
+
+def screen_names(result: dict) -> list[str]:
+    return [screen["name"] for screen in result.get("screens", [])]
 
 
 def main() -> int:
@@ -69,10 +73,21 @@ def main() -> int:
     try:
         wait_ready(control_dir, 10)
 
-        state = run_cli(cli, control_dir, "state")
+        run_cli(cli, control_dir, "wait", "--frames", "1")
+        state = run_cli(cli, control_dir, "inspect")
         result = state["result"]
         if result["screen_count"] != 1 or result["top_screen"] != "ShooterGame":
             raise RuntimeError(f"unexpected state: {result}")
+        if screen_names(result) != ["ShooterGame"]:
+            raise RuntimeError(f"unexpected screen stack: {result}")
+        if result["focus_source"] != "Programmatic":
+            raise RuntimeError(f"unexpected focus source: {result}")
+        game = result["game"]
+        if game["credits"] != 450 or game["selected_weapon"] != 0:
+            raise RuntimeError(f"unexpected shooter state: {game}")
+        weapons = game["weapons"]
+        if not weapons[0]["equipped"] or weapons[1]["owned"]:
+            raise RuntimeError(f"unexpected weapon state: {weapons}")
 
         run_cli(cli, control_dir, "key", "--key", "enter")
         wait_frame(cli, control_dir)
@@ -80,6 +95,8 @@ def main() -> int:
         result = state["result"]
         if result["screen_count"] != 2 or result["top_screen"] != "Pause":
             raise RuntimeError(f"pause did not open: {result}")
+        if screen_names(result) != ["ShooterGame", "Pause"]:
+            raise RuntimeError(f"unexpected pause stack: {result}")
 
         run_cli(cli, control_dir, "key", "--key", "down")
         wait_frame(cli, control_dir)
@@ -89,6 +106,8 @@ def main() -> int:
         result = state["result"]
         if result["screen_count"] != 3 or result["top_screen"] != "Options":
             raise RuntimeError(f"options did not open from pause: {result}")
+        if screen_names(result) != ["ShooterGame", "Pause", "Options"]:
+            raise RuntimeError(f"unexpected options stack: {result}")
 
         run_cli(cli, control_dir, "key", "--key", "down")
         wait_frame(cli, control_dir)
@@ -100,6 +119,8 @@ def main() -> int:
         result = state["result"]
         if result["screen_count"] != 2 or result["top_screen"] != "Pause":
             raise RuntimeError(f"options did not return to pause: {result}")
+        if screen_names(result) != ["ShooterGame", "Pause"]:
+            raise RuntimeError(f"unexpected returned stack: {result}")
 
         run_cli(cli, control_dir, "key", "--key", "t")
         run_cli(cli, control_dir, "pointer", "--x", "80", "--y", "90", "--action", "move")

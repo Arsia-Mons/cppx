@@ -173,6 +173,7 @@ UiFocusableState ui_focusable(const UiFocusableDesc &desc);
 
 Clay_ElementId ui_focus_focused_id(void);
 Clay_ElementId ui_focus_focused_id_for_scope(Clay_ElementId scope_id);
+UiFocusSource ui_focus_source(void);
 UiFocusSource ui_focus_source_for_scope(Clay_ElementId scope_id);
 int ui_focus_error_count(void);
 

@@ -170,6 +170,7 @@ def maybe_attach_dm_result(reply: dict,
 def command_main(args: argparse.Namespace) -> int:
     control_dir = Path(args.control_dir)
     op = args.command
+    wire_op = op
     payload: dict = {}
     if op == "key":
         payload = {"key": args.key, "action": args.action}
@@ -177,13 +178,14 @@ def command_main(args: argparse.Namespace) -> int:
         payload = {"x": args.x, "y": args.y, "action": args.action}
     elif op == "resize":
         payload = {"w": args.w, "h": args.h}
-    elif op == "wait_frames":
+    elif op in ("wait_frames", "wait", "step"):
+        wire_op = op
         payload = {"n": args.n}
     elif op == "screenshot":
         payload = {"out": args.out}
     elif op == "capture_frames":
         payload = {"out_dir": args.out_dir, "count": args.count}
-    reply = send_command(control_dir, op, payload, args.timeout)
+    reply = send_command(control_dir, wire_op, payload, args.timeout)
     if op == "screenshot":
         out = Path(reply.get("result", {}).get("out", args.out))
         reply = maybe_attach_dm_result(
@@ -307,6 +309,12 @@ def build_parser() -> argparse.ArgumentParser:
     add_common(p)
     p.add_argument("--n", type=int, default=1)
     p.set_defaults(func=command_main)
+
+    for name in ("wait", "step"):
+        p = sub.add_parser(name)
+        add_common(p)
+        p.add_argument("--frames", "--n", dest="n", type=int, default=1)
+        p.set_defaults(func=command_main)
 
     p = sub.add_parser("screenshot")
     add_common(p)
