@@ -73,6 +73,9 @@ Shooter code must not own focus, primitive state, or screen-stack mechanics.
   id so hook state survives rerenders and resets on unmount/new entries.
 - Route `use_screen_navigator().pop_current()` by retained screen entry id,
   not by whichever screen happens to be top when writes drain.
+- Route `use_screen_navigator().push(...)` through the same bounded
+  post-layout write queue. Queued screen objects are owned by the queue until
+  drain and must be cleared, not orphaned, if the queue is reset.
 - Let screen authors declare components. Do not make them author sibling
   navigation edges.
 - Derive directional navigation from harvested Clay rectangles from the previous

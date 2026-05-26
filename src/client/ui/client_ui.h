@@ -14,6 +14,7 @@ constexpr int CLIENT_UI_MAX_WRITES = 128;
 
 struct ScreenNavigator {
     UiScreenEntryId current_entry_id = 0;
+    std::function<void(std::unique_ptr<UiScreen>)> push = {};
     std::function<void()> pop_current = {};
     std::function<void()> pop_top = {};
 };
@@ -33,6 +34,7 @@ public:
 
     bool push_screen(std::unique_ptr<UiScreen> screen);
     bool replace_top(std::unique_ptr<UiScreen> screen);
+    bool queue_push_screen(std::unique_ptr<UiScreen> screen);
     bool queue_pop_current(UiScreenEntryId entry_id);
     bool queue_pop_top();
     int pending_write_count() const { return write_count_; }
@@ -40,6 +42,7 @@ public:
 
 private:
     enum class WriteKind {
+        Push,
         PopCurrent,
         PopTop,
     };
@@ -47,9 +50,11 @@ private:
     struct QueuedWrite {
         WriteKind kind = WriteKind::PopTop;
         UiScreenEntryId entry_id = 0;
+        std::unique_ptr<UiScreen> screen = nullptr;
     };
 
     bool queue_write(QueuedWrite write);
+    void clear_writes();
 
     ScreenStack screens_;
     ::ui::UiFocusRuntime focus_ = {};

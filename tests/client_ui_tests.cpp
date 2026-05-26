@@ -86,6 +86,40 @@ private:
     int *build_count_;
 };
 
+class PushScreen final : public UiScreen {
+public:
+    explicit PushScreen(int *build_count) : build_count_(build_count) {}
+
+    const char *debug_name() const override { return "PushScreen"; }
+
+    void build_ui() override {
+        if (build_count_) {
+            *build_count_ += 1;
+        }
+        ScreenNavigator nav = use_screen_navigator();
+        nav.push(std::make_unique<RecordingScreen>("Pushed", false, nullptr));
+    }
+
+private:
+    int *build_count_;
+};
+
+class DestroyCountingScreen final : public UiScreen {
+public:
+    explicit DestroyCountingScreen(int *destroy_count) : destroy_count_(destroy_count) {}
+    ~DestroyCountingScreen() override {
+        if (destroy_count_) {
+            *destroy_count_ += 1;
+        }
+    }
+
+    const char *debug_name() const override { return "DestroyCounting"; }
+    void build_ui() override {}
+
+private:
+    int *destroy_count_;
+};
+
 class HookStateScreen final : public UiScreen {
 public:
     explicit HookStateScreen(int *observed) : observed_(observed) {}
@@ -202,6 +236,48 @@ static bool screen_navigator_pop_current_drains_after_layout(void) {
     return true;
 }
 
+static bool screen_navigator_push_drains_after_layout(void) {
+    react_init(g_clay);
+    ClientUi client_ui;
+    int build_count = 0;
+
+    CHECK(client_ui.push_screen(std::make_unique<PushScreen>(&build_count)));
+
+    Clay_SetLayoutDimensions({ 640, 480 });
+    Clay_SetPointerState({ -1000.0f, -1000.0f }, false);
+    client_ui.begin_frame({});
+    react_begin_frame();
+    Clay_BeginLayout();
+    client_ui.build_visible_screens();
+    CHECK(client_ui.screens().count() == 1);
+    CHECK(client_ui.pending_write_count() == 1);
+    (void)Clay_EndLayout();
+    client_ui.end_layout({});
+    react_end_frame();
+
+    CHECK(client_ui.screens().count() == 1);
+    client_ui.drain_writes();
+    CHECK(client_ui.screens().count() == 2);
+    CHECK(strcmp(client_ui.screens().top()->debug_name(), "Pushed") == 0);
+    CHECK(build_count == 1);
+    return true;
+}
+
+static bool queued_push_screen_releases_if_frame_resets_before_drain(void) {
+    react_init(g_clay);
+    ClientUi client_ui;
+    int destroy_count = 0;
+
+    CHECK(client_ui.queue_push_screen(std::make_unique<DestroyCountingScreen>(&destroy_count)));
+    CHECK(client_ui.pending_write_count() == 1);
+    CHECK(destroy_count == 0);
+
+    client_ui.begin_frame({});
+    CHECK(client_ui.pending_write_count() == 0);
+    CHECK(destroy_count == 1);
+    return true;
+}
+
 static bool screen_local_hook_state_survives_rerender_and_resets_on_unmount(void) {
     react_init(g_clay);
     ClientUi client_ui;
@@ -227,6 +303,8 @@ int main(void) {
     if (!screen_stack_push_pop_replace_and_visible_ordering()) return 1;
     if (!client_ui_builds_visible_screens_in_order()) return 1;
     if (!screen_navigator_pop_current_drains_after_layout()) return 1;
+    if (!screen_navigator_push_drains_after_layout()) return 1;
+    if (!queued_push_screen_releases_if_frame_resets_before_drain()) return 1;
     if (!screen_local_hook_state_survives_rerender_and_resets_on_unmount()) return 1;
 
     react_shutdown();

@@ -16,7 +16,7 @@ ClientUi::ClientUi() {
 void ClientUi::begin_frame(const ::ui::UiInputFrame &input) {
     ::ui::ui_focus_set_current(&focus_);
     ::ui::ui_focus_begin_frame(input);
-    write_count_ = 0;
+    clear_writes();
 }
 
 void ClientUi::build_visible_screens() {
@@ -48,6 +48,14 @@ bool ClientUi::replace_top(std::unique_ptr<UiScreen> screen) {
     return screens_.replace_top(std::move(screen));
 }
 
+bool ClientUi::queue_push_screen(std::unique_ptr<UiScreen> screen) {
+    if (!screen) return false;
+    return queue_write({
+        .kind = WriteKind::Push,
+        .screen = std::move(screen),
+    });
+}
+
 bool ClientUi::queue_pop_current(UiScreenEntryId entry_id) {
     return queue_write({
         .kind = WriteKind::PopCurrent,
@@ -61,14 +69,17 @@ bool ClientUi::queue_pop_top() {
 
 bool ClientUi::queue_write(QueuedWrite write) {
     if (write_count_ >= CLIENT_UI_MAX_WRITES) return false;
-    writes_[write_count_++] = write;
+    writes_[write_count_++] = std::move(write);
     return true;
 }
 
 void ClientUi::drain_writes() {
     for (int i = 0; i < write_count_; ++i) {
-        const QueuedWrite &write = writes_[i];
+        QueuedWrite &write = writes_[i];
         switch (write.kind) {
+            case WriteKind::Push:
+                screens_.push(std::move(write.screen));
+                break;
             case WriteKind::PopCurrent:
                 screens_.pop_entry(write.entry_id);
                 break;
@@ -76,6 +87,13 @@ void ClientUi::drain_writes() {
                 screens_.pop_top();
                 break;
         }
+    }
+    clear_writes();
+}
+
+void ClientUi::clear_writes() {
+    for (int i = 0; i < write_count_; ++i) {
+        writes_[i] = {};
     }
     write_count_ = 0;
 }
@@ -89,6 +107,9 @@ ScreenNavigator use_screen_navigator() {
     UiScreenEntryId entry_id = context->current_entry_id;
     return {
         .current_entry_id = entry_id,
+        .push = [client_ui](std::unique_ptr<UiScreen> screen) {
+            client_ui->queue_push_screen(std::move(screen));
+        },
         .pop_current = [client_ui, entry_id] {
             client_ui->queue_pop_current(entry_id);
         },
