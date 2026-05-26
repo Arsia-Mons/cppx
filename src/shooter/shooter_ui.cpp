@@ -120,7 +120,7 @@ static void ShooterGameScreenView(void) {
         client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
         ShooterGame *game = use_shooter_game();
         ::ui::ui_focus_push_scope({ .id = CLAY_ID("ShooterGameScope") });
-        ::ui::ui_focus_request_initial_focus(CLAY_ID("OpenLoadoutButton"));
+        ::ui::ui_focus_request_initial_focus(CLAY_ID("OpenPauseButton"));
 
         CLAY({
             .id = CLAY_ID("ShooterGameRoot"),
@@ -142,20 +142,69 @@ static void ShooterGameScreenView(void) {
                 },
             }) {
                 ::ui::Button({
+                    .id = CLAY_ID("OpenPauseButton"),
+                    .label = "Pause",
+                    .on_confirm = [nav, game] {
+                        if (nav.push && game) nav.push(std::make_unique<PauseScreen>(game));
+                    },
+                });
+                ::ui::Button({
                     .id = CLAY_ID("OpenLoadoutButton"),
                     .label = "Loadout",
                     .on_confirm = [nav, game] {
                         if (nav.push && game) nav.push(std::make_unique<LoadoutScreen>(game));
                     },
                 });
-                ::ui::Button({
-                    .id = CLAY_ID("OpenOptionsButton"),
-                    .label = "Options",
-                    .on_confirm = [nav, game] {
-                        if (nav.push && game) nav.push(std::make_unique<OptionsScreen>(game));
-                    },
-                });
             }
+        }
+
+        ::ui::ui_focus_pop_scope();
+    } REACT_COMPONENT_END();
+}
+
+static void PauseScreenView(void) {
+    REACT_COMPONENT_BEGIN("PauseScreenView") {
+        client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
+        ShooterGame *game = use_shooter_game();
+        ::ui::ui_focus_push_scope({ .id = CLAY_ID("PauseScope"), .modal = true });
+        ::ui::ui_focus_request_initial_focus(CLAY_ID("ResumeButton"));
+
+        CLAY({
+            .id = CLAY_ID("PauseRoot"),
+            .layout = {
+                .sizing = { CLAY_SIZING_FIXED(220), CLAY_SIZING_FIT(0) },
+                .padding = CLAY_PADDING_ALL(18),
+                .childGap = 12,
+                .layoutDirection = CLAY_TOP_TO_BOTTOM,
+            },
+            .backgroundColor = { 17, 24, 30, 255 },
+            .border = {
+                .width = CLAY_BORDER_OUTSIDE(1),
+                .color = { 78, 96, 108, 255 },
+            },
+            .cornerRadius = CLAY_CORNER_RADIUS(4),
+        }) {
+            CLAY_TEXT(::ui::clay_text("Paused"),
+                CLAY_TEXT_CONFIG({ .textColor = { 236, 246, 242, 255 }, .fontSize = 28 }));
+            ::ui::Button({
+                .id = CLAY_ID("ResumeButton"),
+                .label = "Resume",
+                .on_confirm = nav.pop_current,
+            });
+            ::ui::Button({
+                .id = CLAY_ID("OpenOptionsFromPauseButton"),
+                .label = "Options",
+                .on_confirm = [nav, game] {
+                    if (nav.push && game) nav.push(std::make_unique<OptionsScreen>(game));
+                },
+            });
+            ::ui::Button({
+                .id = CLAY_ID("OpenLoadoutFromPauseButton"),
+                .label = "Loadout",
+                .on_confirm = [nav, game] {
+                    if (nav.push && game) nav.push(std::make_unique<LoadoutScreen>(game));
+                },
+            });
         }
 
         ::ui::ui_focus_pop_scope();
@@ -378,6 +427,14 @@ void ShooterGameScreen::build_ui() {
     ShooterProvider(game_, [this] {
         REACT_COMPONENT_BEGIN_KEY("ShooterGameScreen", entry_id()) {
             ShooterGameScreenView();
+        } REACT_COMPONENT_END();
+    });
+}
+
+void PauseScreen::build_ui() {
+    ShooterProvider(game_, [this] {
+        REACT_COMPONENT_BEGIN_KEY("PauseScreen", entry_id()) {
+            PauseScreenView();
         } REACT_COMPONENT_END();
     });
 }

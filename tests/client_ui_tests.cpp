@@ -206,6 +206,39 @@ static bool client_ui_builds_visible_screens_in_order(void) {
     return true;
 }
 
+static bool overlay_screens_float_over_base_screen_area(void) {
+    react_init(g_clay);
+    ClientUi client_ui;
+    int base_builds = 0;
+    int overlay_builds = 0;
+
+    CHECK(client_ui.push_screen(std::make_unique<RecordingScreen>("Base", false, &base_builds)));
+    CHECK(client_ui.push_screen(
+        std::make_unique<RecordingScreen>("Overlay", true, &overlay_builds)));
+    UiScreenEntryId base_id = client_ui.screens().at(0)->entry_id();
+    UiScreenEntryId overlay_id = client_ui.screens().at(1)->entry_id();
+
+    run_client_frame(client_ui);
+
+    Clay_ElementData base_frame =
+        Clay_GetElementData(CLAY_IDI("ClientUiScreenFrame", base_id));
+    Clay_ElementData overlay_frame =
+        Clay_GetElementData(CLAY_IDI("ClientUiOverlayScreenFrame", overlay_id));
+    CHECK(base_frame.found);
+    CHECK(overlay_frame.found);
+    CHECK(base_frame.boundingBox.x == 0.0f);
+    CHECK(base_frame.boundingBox.y == 0.0f);
+    CHECK(base_frame.boundingBox.width == 640.0f);
+    CHECK(base_frame.boundingBox.height == 480.0f);
+    CHECK(overlay_frame.boundingBox.x == 0.0f);
+    CHECK(overlay_frame.boundingBox.y == 0.0f);
+    CHECK(overlay_frame.boundingBox.width == 640.0f);
+    CHECK(overlay_frame.boundingBox.height == 480.0f);
+    CHECK(base_builds == 1);
+    CHECK(overlay_builds == 1);
+    return true;
+}
+
 static bool screen_navigator_pop_current_drains_after_layout(void) {
     react_init(g_clay);
     ClientUi client_ui;
@@ -302,6 +335,7 @@ int main(void) {
 
     if (!screen_stack_push_pop_replace_and_visible_ordering()) return 1;
     if (!client_ui_builds_visible_screens_in_order()) return 1;
+    if (!overlay_screens_float_over_base_screen_area()) return 1;
     if (!screen_navigator_pop_current_drains_after_layout()) return 1;
     if (!screen_navigator_push_drains_after_layout()) return 1;
     if (!queued_push_screen_releases_if_frame_resets_before_drain()) return 1;

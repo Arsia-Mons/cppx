@@ -88,6 +88,10 @@ Shooter code must not own focus, primitive state, or screen-stack mechanics.
 - Route `use_screen_navigator().push(...)` through the same bounded
   post-layout write queue. Queued screen objects are owned by the queue until
   drain and must be cleared, not orphaned, if the queue is reset.
+- Render retained overlay screens through `ClientUi`-owned Clay floating frames
+  attached to the root. Emitting visible screens as ordinary siblings can make
+  layout/state tests pass while overlays render beside, rather than over, the
+  gameplay screen.
 - Let screen authors declare components. Do not make them author sibling
   navigation edges.
 - Derive directional navigation from harvested Clay rectangles from the previous
@@ -157,6 +161,8 @@ tracker. Edit the plan only when the contract itself needs correction.
 - Passing a broad state object through component trees instead of using hooks.
 - Replacing retained `UiScreen` objects with enums, route tables, or switch
   renderers.
+- Rendering overlay screens as normal Clay siblings instead of root-attached
+  floating frames owned by `ClientUi`.
 - Putting navigation graphs in screen code for ordinary lists/grids.
 - Reading raw shooter/world state directly from ordinary UI components.
 - Mutating game, stack, or shared state during Clay declaration.

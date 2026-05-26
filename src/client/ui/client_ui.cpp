@@ -21,17 +21,50 @@ void ClientUi::begin_frame(const ::ui::UiInputFrame &input) {
 
 void ClientUi::build_visible_screens() {
     ::ui::Span<UiScreen *> visible = screens_.visible_screens();
-    for (UiScreen *screen : visible) {
+    for (int i = 0; i < visible.count; ++i) {
+        UiScreen *screen = visible[i];
         if (!screen) continue;
-        ScreenContext context = {
-            .client_ui = this,
-            .current_entry_id = screen->entry_id(),
+        auto build_screen = [&] {
+            ScreenContext context = {
+                .client_ui = this,
+                .current_entry_id = screen->entry_id(),
+            };
+            REACT_PROVIDER_ENTER_KEY("ScreenProvider", screen->entry_id());
+            PROVIDE(&ScreenContextValue, &context) {
+                screen->build_ui();
+            }
+            REACT_PROVIDER_EXIT();
         };
-        REACT_PROVIDER_ENTER_KEY("ScreenProvider", screen->entry_id());
-        PROVIDE(&ScreenContextValue, &context) {
-            screen->build_ui();
+
+        if (!screen->is_overlay()) {
+            CLAY({
+                .id = CLAY_IDI("ClientUiScreenFrame", screen->entry_id()),
+                .layout = {
+                    .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0) },
+                    .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                },
+            }) {
+                build_screen();
+            }
+            continue;
         }
-        REACT_PROVIDER_EXIT();
+
+        CLAY({
+            .id = CLAY_IDI("ClientUiOverlayScreenFrame", screen->entry_id()),
+            .layout = {
+                .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0) },
+                .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                .childAlignment = { CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER },
+            },
+            .backgroundColor = { 5, 8, 10, 218 },
+            .floating = {
+                .zIndex = static_cast<int16_t>(100 + i),
+                .pointerCaptureMode = CLAY_POINTER_CAPTURE_MODE_CAPTURE,
+                .attachTo = CLAY_ATTACH_TO_ROOT,
+            },
+        }) {
+            build_screen();
+        }
     }
 }
 

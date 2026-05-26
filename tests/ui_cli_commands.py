@@ -33,6 +33,10 @@ def run_cli(cli: Path, control_dir: Path, *args: str, expect_ok: bool = True) ->
     return json.loads(completed.stdout)
 
 
+def wait_frame(cli: Path, control_dir: Path) -> dict:
+    return run_cli(cli, control_dir, "wait_frames", "--n", "1")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--exe", required=True)
@@ -69,6 +73,33 @@ def main() -> int:
         result = state["result"]
         if result["screen_count"] != 1 or result["top_screen"] != "ShooterGame":
             raise RuntimeError(f"unexpected state: {result}")
+
+        run_cli(cli, control_dir, "key", "--key", "enter")
+        wait_frame(cli, control_dir)
+        state = run_cli(cli, control_dir, "state")
+        result = state["result"]
+        if result["screen_count"] != 2 or result["top_screen"] != "Pause":
+            raise RuntimeError(f"pause did not open: {result}")
+
+        run_cli(cli, control_dir, "key", "--key", "down")
+        wait_frame(cli, control_dir)
+        run_cli(cli, control_dir, "key", "--key", "enter")
+        wait_frame(cli, control_dir)
+        state = run_cli(cli, control_dir, "state")
+        result = state["result"]
+        if result["screen_count"] != 3 or result["top_screen"] != "Options":
+            raise RuntimeError(f"options did not open from pause: {result}")
+
+        run_cli(cli, control_dir, "key", "--key", "down")
+        wait_frame(cli, control_dir)
+        run_cli(cli, control_dir, "key", "--key", "down")
+        wait_frame(cli, control_dir)
+        run_cli(cli, control_dir, "key", "--key", "enter")
+        wait_frame(cli, control_dir)
+        state = run_cli(cli, control_dir, "state")
+        result = state["result"]
+        if result["screen_count"] != 2 or result["top_screen"] != "Pause":
+            raise RuntimeError(f"options did not return to pause: {result}")
 
         run_cli(cli, control_dir, "key", "--key", "t")
         run_cli(cli, control_dir, "pointer", "--x", "80", "--y", "90", "--action", "move")

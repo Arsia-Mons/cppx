@@ -68,6 +68,21 @@ static void run_client_frame(client::ui::ClientUi &client_ui,
     client_ui.drain_writes();
 }
 
+static ::ui::UiInputFrame keyboard_confirm(void) {
+    return {
+        .confirm_pressed = true,
+        .confirm_down = true,
+        .source = ::ui::UiFocusSource::Keyboard,
+    };
+}
+
+static ::ui::UiInputFrame keyboard_down(void) {
+    return {
+        .nav_down = true,
+        .source = ::ui::UiFocusSource::Keyboard,
+    };
+}
+
 static bool shooter_game_buy_and_equip_are_real_state_writes(void) {
     shooter::ShooterGame game;
 
@@ -83,7 +98,7 @@ static bool shooter_game_buy_and_equip_are_real_state_writes(void) {
     return true;
 }
 
-static bool shooter_screen_pushes_loadout_after_confirm(void) {
+static bool shooter_screen_pushes_pause_after_confirm(void) {
     react_init(g_clay);
     shooter::ShooterGame game;
     client::ui::ClientUi client_ui;
@@ -93,14 +108,37 @@ static bool shooter_screen_pushes_loadout_after_confirm(void) {
     CHECK(client_ui.screens().count() == 1);
     CHECK(strcmp(client_ui.screens().top()->debug_name(), "ShooterGame") == 0);
 
-    ::ui::UiInputFrame confirm = {};
-    confirm.confirm_pressed = true;
-    confirm.confirm_down = true;
-    confirm.source = ::ui::UiFocusSource::Keyboard;
-    run_client_frame(client_ui, confirm);
+    run_client_frame(client_ui, keyboard_confirm());
 
     CHECK(client_ui.screens().count() == 2);
-    CHECK(strcmp(client_ui.screens().top()->debug_name(), "Loadout") == 0);
+    CHECK(strcmp(client_ui.screens().top()->debug_name(), "Pause") == 0);
+    return true;
+}
+
+static bool pause_options_returns_to_pause_through_screen_stack(void) {
+    react_init(g_clay);
+    shooter::ShooterGame game;
+    client::ui::ClientUi client_ui;
+    CHECK(client_ui.push_screen(std::make_unique<shooter::ShooterGameScreen>(&game)));
+
+    run_client_frame(client_ui);
+    run_client_frame(client_ui, keyboard_confirm());
+    CHECK(client_ui.screens().count() == 2);
+    CHECK(strcmp(client_ui.screens().top()->debug_name(), "Pause") == 0);
+
+    run_client_frame(client_ui);
+    run_client_frame(client_ui, keyboard_down());
+    run_client_frame(client_ui, keyboard_confirm());
+    CHECK(client_ui.screens().count() == 3);
+    CHECK(strcmp(client_ui.screens().at(1)->debug_name(), "Pause") == 0);
+    CHECK(strcmp(client_ui.screens().top()->debug_name(), "Options") == 0);
+
+    run_client_frame(client_ui);
+    run_client_frame(client_ui, keyboard_down());
+    run_client_frame(client_ui, keyboard_down());
+    run_client_frame(client_ui, keyboard_confirm());
+    CHECK(client_ui.screens().count() == 2);
+    CHECK(strcmp(client_ui.screens().top()->debug_name(), "Pause") == 0);
     return true;
 }
 
@@ -108,7 +146,8 @@ int main(void) {
     if (!init_clay_once()) return 1;
 
     if (!shooter_game_buy_and_equip_are_real_state_writes()) return 1;
-    if (!shooter_screen_pushes_loadout_after_confirm()) return 1;
+    if (!shooter_screen_pushes_pause_after_confirm()) return 1;
+    if (!pause_options_returns_to_pause_through_screen_stack()) return 1;
 
     react_shutdown();
     free(g_clay_memory);

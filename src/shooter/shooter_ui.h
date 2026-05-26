@@ -16,6 +16,18 @@ private:
     ShooterGame *game_ = nullptr;
 };
 
+class PauseScreen final : public client::ui::UiScreen {
+public:
+    explicit PauseScreen(ShooterGame *game) : game_(game) {}
+
+    const char *debug_name() const override { return "Pause"; }
+    bool is_overlay() const override { return true; }
+    void build_ui() override;
+
+private:
+    ShooterGame *game_ = nullptr;
+};
+
 class LoadoutScreen final : public client::ui::UiScreen {
 public:
     explicit LoadoutScreen(ShooterGame *game) : game_(game) {}
