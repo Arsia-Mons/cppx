@@ -81,6 +81,14 @@ static UiFocusScope *create_scope(UiFocusRuntime *runtime, const UiFocusScopeDes
     return scope;
 }
 
+static void clear_pending_registrations(UiFocusScope *scope) {
+    if (!scope) return;
+    for (int i = 0; i < scope->pending_count; ++i) {
+        scope->pending[i] = {};
+    }
+    scope->pending_count = 0;
+}
+
 static UiFocusScope *scope_for_declaration(UiFocusRuntime *runtime, const UiFocusScopeDesc &desc) {
     UiFocusScope *scope = find_scope(runtime, desc.id);
     if (!scope) scope = create_scope(runtime, desc);
@@ -91,7 +99,7 @@ static UiFocusScope *scope_for_declaration(UiFocusRuntime *runtime, const UiFocu
     if (scope->declared_frame != runtime->frame) {
         scope->declared_frame = runtime->frame;
         scope->declaration_order = runtime->next_declaration_order++;
-        scope->pending_count = 0;
+        clear_pending_registrations(scope);
     }
     return scope;
 }
@@ -492,7 +500,7 @@ void ui_focus_end_layout(const UiInputFrame &input) {
     for (int i = 0; i < runtime->scope_count; ++i) {
         UiFocusScope *scope = &runtime->scopes[i];
         if (scope->declared_frame != runtime->frame) continue;
-        scope->pending_count = 0;
+        clear_pending_registrations(scope);
     }
 }
 

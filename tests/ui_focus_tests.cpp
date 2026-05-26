@@ -2,6 +2,7 @@
 
 #include <clay.h>
 
+#include <memory>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -310,6 +311,26 @@ static bool focus_callbacks_use_current_frame_registration(void) {
     return true;
 }
 
+static bool frame_local_callbacks_are_released_after_dispatch(void) {
+    UiFocusRuntime focus;
+    ui_focus_init(&focus);
+
+    Clay_ElementId scope = test_id("CallbackLifetimeScope");
+    Clay_ElementId a = test_id("CallbackLifetimeA");
+    std::weak_ptr<int> callback_capture;
+
+    run_focus_frame(focus, {}, [&] {
+        std::shared_ptr<int> captured = std::make_shared<int>(42);
+        callback_capture = captured;
+        ui_focus_push_scope({ .id = scope });
+        focus_box(a, false, {}, [captured] {}, [captured] {});
+        ui_focus_pop_scope();
+    });
+
+    CHECK(callback_capture.expired());
+    return true;
+}
+
 static bool focus_source_tracks_mouse_and_touch_inputs(void) {
     UiFocusRuntime focus;
     ui_focus_init(&focus);
@@ -468,6 +489,7 @@ int main(void) {
     if (!disabled_controls_are_skipped_for_navigation_and_confirm()) return 1;
     if (!local_boundary_rules_stop_wrap_and_explicit_targets()) return 1;
     if (!focus_callbacks_use_current_frame_registration()) return 1;
+    if (!frame_local_callbacks_are_released_after_dispatch()) return 1;
     if (!focus_source_tracks_mouse_and_touch_inputs()) return 1;
     if (!initial_focus_chooses_requested_enabled_element()) return 1;
     if (!modal_scope_traps_navigation_and_parent_resumes()) return 1;
