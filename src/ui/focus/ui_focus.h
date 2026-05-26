@@ -74,6 +74,10 @@ struct UiInputFrame {
     bool cancel_down = false;
     bool cancel_released = false;
 
+    bool pointer_pressed = false;
+    bool pointer_down = false;
+    bool pointer_released = false;
+
     UiFocusSource source = UiFocusSource::Keyboard;
 };
 
@@ -124,6 +128,7 @@ struct UiFocusScope {
     bool modal = false;
     bool wrap = false;
     Clay_ElementId focused_id = {};
+    Clay_ElementId pointer_press_origin = {};
     UiFocusSource source = UiFocusSource::None;
     Clay_ElementId requested_initial_focus = {};
     uint32_t declared_frame = 0;
@@ -149,6 +154,8 @@ struct UiFocusRuntime {
     int error_count = 0;
 
     Clay_ElementId pending_focus_callback_id = {};
+    Clay_ElementId pending_pointer_confirm_id = {};
+    bool pointer_down = false;
 };
 
 void ui_focus_init(UiFocusRuntime *runtime, UiRuntimeLimits limits = {});

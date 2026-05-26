@@ -78,11 +78,12 @@ template <typename Build>
 static void run_focus_frame(UiFocusRuntime &focus,
                             const UiInputFrame &input,
                             Build build,
-                            Clay_Dimensions dimensions = { 640, 480 }) {
+                            Clay_Dimensions dimensions = { 640, 480 },
+                            Clay_Vector2 pointer = { -1000.0f, -1000.0f }) {
     ui_focus_set_current(&focus);
-    ui_focus_begin_frame(input);
     Clay_SetLayoutDimensions(dimensions);
-    Clay_SetPointerState(Clay_Vector2{ -1000.0f, -1000.0f }, false);
+    Clay_SetPointerState(pointer, input.pointer_down);
+    ui_focus_begin_frame(input);
     Clay_BeginLayout();
     CLAY({
         .id = test_id("TestRoot"),
@@ -358,6 +359,89 @@ static bool focus_source_tracks_mouse_and_touch_inputs(void) {
     return true;
 }
 
+static bool pointer_release_confirms_only_original_hovered_target(void) {
+    UiFocusRuntime focus;
+    ui_focus_init(&focus);
+
+    Clay_ElementId scope = test_id("PointerScope");
+    Clay_ElementId a = test_id("PointerA");
+    Clay_ElementId b = test_id("PointerB");
+    int confirm_count = 0;
+
+    auto build = [&] {
+        ui_focus_push_scope({ .id = scope });
+        focus_box(a, false, {}, [&] { confirm_count++; });
+        focus_box(b, false, {}, [&] { confirm_count++; });
+        ui_focus_pop_scope();
+    };
+
+    run_focus_frame(focus, {}, build);
+    Clay_ElementData a_data = Clay_GetElementData(a);
+    CHECK(a_data.found);
+    Clay_Vector2 inside_a = {
+        a_data.boundingBox.x + a_data.boundingBox.width * 0.5f,
+        a_data.boundingBox.y + a_data.boundingBox.height * 0.5f,
+    };
+    Clay_Vector2 outside = {
+        a_data.boundingBox.x + a_data.boundingBox.width + 140.0f,
+        a_data.boundingBox.y + a_data.boundingBox.height + 140.0f,
+    };
+
+    run_focus_frame(
+        focus,
+        { .pointer_pressed = true, .pointer_down = true, .source = UiFocusSource::Mouse },
+        build,
+        { 640, 480 },
+        inside_a);
+    CHECK(confirm_count == 0);
+    CHECK(same_id(ui_focus_focused_id_for_scope(scope), a));
+    CHECK(ui_focus_source_for_scope(scope) == UiFocusSource::Mouse);
+
+    run_focus_frame(
+        focus,
+        { .pointer_down = true, .source = UiFocusSource::Mouse },
+        build,
+        { 640, 480 },
+        outside);
+    CHECK(confirm_count == 0);
+
+    run_focus_frame(
+        focus,
+        { .pointer_released = true, .source = UiFocusSource::Mouse },
+        build,
+        { 640, 480 },
+        outside);
+    CHECK(confirm_count == 0);
+
+    run_focus_frame(
+        focus,
+        { .pointer_pressed = true, .pointer_down = true, .source = UiFocusSource::Touch },
+        build,
+        { 640, 480 },
+        inside_a);
+    run_focus_frame(
+        focus,
+        { .pointer_down = true, .source = UiFocusSource::Touch },
+        build,
+        { 640, 480 },
+        outside);
+    run_focus_frame(
+        focus,
+        { .pointer_down = true, .source = UiFocusSource::Touch },
+        build,
+        { 640, 480 },
+        inside_a);
+    run_focus_frame(
+        focus,
+        { .pointer_released = true, .source = UiFocusSource::Touch },
+        build,
+        { 640, 480 },
+        inside_a);
+    CHECK(confirm_count == 1);
+    CHECK(ui_focus_source_for_scope(scope) == UiFocusSource::Touch);
+    return true;
+}
+
 static bool initial_focus_chooses_requested_enabled_element(void) {
     UiFocusRuntime focus;
     ui_focus_init(&focus);
@@ -491,6 +575,7 @@ int main(void) {
     if (!focus_callbacks_use_current_frame_registration()) return 1;
     if (!frame_local_callbacks_are_released_after_dispatch()) return 1;
     if (!focus_source_tracks_mouse_and_touch_inputs()) return 1;
+    if (!pointer_release_confirms_only_original_hovered_target()) return 1;
     if (!initial_focus_chooses_requested_enabled_element()) return 1;
     if (!modal_scope_traps_navigation_and_parent_resumes()) return 1;
     if (!focus_survives_reflow_and_next_navigation_uses_new_rectangles()) return 1;

@@ -47,6 +47,10 @@ add_executable(hello
   src/main.cpp
   src/react.cpp
   src/ui/focus/ui_focus.cpp
+  src/ui/primitives/button.cpp
+  src/ui/primitives/focusable.cpp
+  src/ui/primitives/selectable.cpp
+  src/ui/primitives/toggle.cpp
   src/ui/components/app.cpp
   src/ui/components/counter.cpp
   src/ui/components/image.cpp
@@ -111,3 +115,26 @@ target_compile_options(ui_focus_tests PRIVATE
 )
 
 add_test(NAME ui_focus_tests COMMAND ui_focus_tests)
+
+add_executable(ui_primitives_tests
+  tests/ui_primitives_tests.cpp
+  src/react.cpp
+  src/ui/focus/ui_focus.cpp
+  src/ui/primitives/button.cpp
+  src/ui/primitives/focusable.cpp
+  src/ui/primitives/selectable.cpp
+  src/ui/primitives/toggle.cpp
+  third_party/clay_impl.cpp
+)
+
+target_include_directories(ui_primitives_tests PRIVATE
+  src
+  third_party
+  third_party/clay
+)
+
+target_compile_options(ui_primitives_tests PRIVATE
+  $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall -Wextra -Wno-missing-field-initializers -Wno-c99-designator -Wno-unused-parameter>
+)
+
+add_test(NAME ui_primitives_tests COMMAND ui_primitives_tests)

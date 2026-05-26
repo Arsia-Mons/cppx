@@ -147,6 +147,10 @@ static const UiFocusableLayout *find_layout(const UiFocusScope *scope, Clay_Elem
     return nullptr;
 }
 
+static bool pointer_over(Clay_ElementId id) {
+    return id.id != 0 && Clay_PointerOver(id);
+}
+
 static bool contains_enabled(const UiFocusScope *scope, Clay_ElementId id) {
     const UiFocusableLayout *layout = find_layout(scope, id);
     return layout && !layout->disabled;
@@ -156,6 +160,17 @@ static Clay_ElementId first_enabled(const UiFocusScope *scope) {
     if (!scope) return {};
     for (int i = 0; i < scope->layout_count; ++i) {
         if (!scope->layout[i].disabled) return scope->layout[i].id;
+    }
+    return {};
+}
+
+static Clay_ElementId hovered_enabled(const UiFocusScope *scope) {
+    if (!scope) return {};
+    for (int i = scope->layout_count - 1; i >= 0; --i) {
+        const UiFocusableLayout &layout = scope->layout[i];
+        if (!layout.disabled && pointer_over(layout.id)) {
+            return layout.id;
+        }
     }
     return {};
 }
@@ -343,6 +358,12 @@ static UiFocusSource navigation_source(const UiInputFrame &input) {
     return UiFocusSource::Keyboard;
 }
 
+static UiFocusSource pointer_source(const UiInputFrame &input) {
+    return input.source == UiFocusSource::Touch
+        ? UiFocusSource::Touch
+        : UiFocusSource::Mouse;
+}
+
 void ui_focus_begin_frame(const UiInputFrame &input) {
     UiFocusRuntime *runtime = g_current;
     if (!runtime) return;
@@ -351,16 +372,42 @@ void ui_focus_begin_frame(const UiInputFrame &input) {
     runtime->scope_stack_count = 0;
     runtime->next_declaration_order = 0;
     runtime->pending_focus_callback_id = {};
+    runtime->pending_pointer_confirm_id = {};
+    runtime->pointer_down = input.pointer_down;
 
     UiFocusScope *scope = active_declared_scope(runtime, runtime->frame - 1);
     UiNavDir dir;
-    if (!scope || !read_nav_dir(input, &dir)) return;
+    if (!scope) return;
 
-    Clay_ElementId next = resolve_navigation(scope, scope->focused_id, dir);
-    if (next.id != 0 && !same_id(next, scope->focused_id)) {
-        scope->focused_id = next;
-        scope->source = navigation_source(input);
-        runtime->pending_focus_callback_id = next;
+    if (read_nav_dir(input, &dir)) {
+        Clay_ElementId next = resolve_navigation(scope, scope->focused_id, dir);
+        if (next.id != 0 && !same_id(next, scope->focused_id)) {
+            scope->focused_id = next;
+            scope->source = navigation_source(input);
+            runtime->pending_focus_callback_id = next;
+        }
+    }
+
+    if (input.pointer_pressed) {
+        Clay_ElementId hovered = hovered_enabled(scope);
+        scope->pointer_press_origin = hovered;
+        if (hovered.id != 0) {
+            if (!same_id(scope->focused_id, hovered)) {
+                runtime->pending_focus_callback_id = hovered;
+            }
+            scope->focused_id = hovered;
+            scope->source = pointer_source(input);
+        }
+    }
+
+    if (input.pointer_released) {
+        Clay_ElementId hovered = hovered_enabled(scope);
+        if (same_id(scope->pointer_press_origin, hovered)) {
+            runtime->pending_pointer_confirm_id = hovered;
+        }
+        scope->pointer_press_origin = {};
+    } else if (!input.pointer_down) {
+        scope->pointer_press_origin = {};
     }
 }
 
@@ -401,7 +448,7 @@ UiFocusableState ui_focusable(const UiFocusableDesc &desc) {
     UiFocusableState state = {};
     state.id = desc.id;
     state.disabled = desc.disabled;
-    state.hovered = desc.id.id != 0 && Clay_PointerOver(desc.id);
+    state.hovered = pointer_over(desc.id);
 
     if (!runtime || !scope || desc.id.id == 0) return state;
     if (scope->pending_count >= runtime->limits.max_focusables_per_scope) {
@@ -422,7 +469,10 @@ UiFocusableState ui_focusable(const UiFocusableDesc &desc) {
         (scope->source == UiFocusSource::Keyboard ||
          scope->source == UiFocusSource::Gamepad ||
          scope->source == UiFocusSource::Programmatic);
-    state.pressed = false;
+    state.pressed = runtime->pointer_down &&
+        !desc.disabled &&
+        state.hovered &&
+        same_id(scope->pointer_press_origin, desc.id);
     return state;
 }
 
@@ -489,9 +539,21 @@ void ui_focus_end_layout(const UiInputFrame &input) {
     }
 
     UiFocusScope *active = active_declared_scope(runtime, runtime->frame);
+    bool confirm_dispatched = false;
     if (active && input.confirm_pressed && contains_enabled(active, confirm_target)) {
         const UiFocusableRegistration *registration =
             find_registration(active, confirm_target);
+        if (registration && !registration->disabled && registration->on_confirm) {
+            registration->on_confirm();
+            confirm_dispatched = true;
+        }
+    }
+    if (active &&
+        runtime->pending_pointer_confirm_id.id != 0 &&
+        (!confirm_dispatched || !same_id(runtime->pending_pointer_confirm_id, confirm_target)) &&
+        contains_enabled(active, runtime->pending_pointer_confirm_id)) {
+        const UiFocusableRegistration *registration =
+            find_registration(active, runtime->pending_pointer_confirm_id);
         if (registration && !registration->disabled && registration->on_confirm) {
             registration->on_confirm();
         }

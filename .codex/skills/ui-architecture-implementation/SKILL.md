@@ -77,6 +77,9 @@ Shooter code must not own focus, primitive state, or screen-stack mechanics.
 - Capture confirm targets before current-layout fallback repair. If a focused
   control becomes disabled or disappears during the current declaration, do not
   retarget the same-frame confirm press to the newly selected fallback element.
+- Suppress duplicate pointer/key confirms only after one path actually
+  dispatched. A pointer release on the already-focused target must still confirm
+  when no keyboard/gamepad confirm edge fired.
 - When clearing bounded frame-local registration arrays, reset the entries, not
   only the count. Callback objects must release captures at the end of the UI
   frame.
