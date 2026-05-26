@@ -66,6 +66,9 @@ Shooter code must not own focus, primitive state, or screen-stack mechanics.
 - Expose shared reads through named hooks, not broad world-shaped context.
 - Request stack/game writes through hook-returned functions and drain after Clay
   declaration.
+- `GameUiPipeline` owns React/Clay frame lifecycle around `ClientUi`: begin,
+  declare, end layout, dispatch focus/input, render Clay commands, then drain
+  queued UI writes.
 - Key retained-screen providers and screen component roots by `UiScreen` entry
   id so hook state survives rerenders and resets on unmount/new entries.
 - Route `use_screen_navigator().pop_current()` by retained screen entry id,
@@ -84,6 +87,10 @@ Shooter code must not own focus, primitive state, or screen-stack mechanics.
 - Suppress duplicate pointer/key confirms only after one path actually
   dispatched. A pointer release on the already-focused target must still confirm
   when no keyboard/gamepad confirm edge fired.
+- In platform-to-`UiInputFrame` adapters, use current key/button state for
+  `*_down` fields and edge events for `*_pressed`/`*_released`. A held pointer
+  alone must not overwrite the source for a same-frame keyboard/gamepad
+  navigation edge.
 - When clearing bounded frame-local registration arrays, reset the entries, not
   only the count. Callback objects must release captures at the end of the UI
   frame.
