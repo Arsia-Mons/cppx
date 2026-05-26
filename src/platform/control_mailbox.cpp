@@ -256,6 +256,21 @@ void ControlMailbox::poll(InputState &demo_input,
                 apply_key_up(code, ui_input);
             }
             write_reply(id, true, "\"result\":{\"accepted\":true}");
+        } else if (op == "gamepad") {
+            std::string button_name = json_string_value(raw, "button");
+            std::string action = json_string_value(raw, "action", "press");
+            GamepadButton button = GamepadButton::Confirm;
+            if (!gamepad_button_from_name(button_name.c_str(), &button)) {
+                write_error(id, "BAD_GAMEPAD_BUTTON", "unknown gamepad button: " + button_name);
+                continue;
+            }
+            if (action == "down" || action == "press") {
+                apply_gamepad_button_down(button, ui_input);
+            }
+            if (action == "up" || action == "release") {
+                apply_gamepad_button_up(button, ui_input);
+            }
+            write_reply(id, true, "\"result\":{\"accepted\":true}");
         } else if (op == "pointer") {
             std::string action = json_string_value(raw, "action", "move");
             pointer_override_ = true;

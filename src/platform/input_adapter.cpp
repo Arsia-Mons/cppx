@@ -53,6 +53,39 @@ bool keycode_from_name(const char *name, SDL_Keycode *out) {
     return false;
 }
 
+bool gamepad_button_from_name(const char *name, GamepadButton *out) {
+    if (!name || !out) return false;
+    if (equals_key_name(name, "up") || equals_key_name(name, "dpad_up")) {
+        *out = GamepadButton::Up;
+        return true;
+    }
+    if (equals_key_name(name, "down") || equals_key_name(name, "dpad_down")) {
+        *out = GamepadButton::Down;
+        return true;
+    }
+    if (equals_key_name(name, "left") || equals_key_name(name, "dpad_left")) {
+        *out = GamepadButton::Left;
+        return true;
+    }
+    if (equals_key_name(name, "right") || equals_key_name(name, "dpad_right")) {
+        *out = GamepadButton::Right;
+        return true;
+    }
+    if (equals_key_name(name, "a") ||
+        equals_key_name(name, "south") ||
+        equals_key_name(name, "confirm")) {
+        *out = GamepadButton::Confirm;
+        return true;
+    }
+    if (equals_key_name(name, "b") ||
+        equals_key_name(name, "east") ||
+        equals_key_name(name, "cancel")) {
+        *out = GamepadButton::Cancel;
+        return true;
+    }
+    return false;
+}
+
 void apply_key_down(SDL_Keycode key,
                     InputState &demo_input,
                     ::ui::UiInputFrame &ui_input,
@@ -114,6 +147,49 @@ void apply_key_up(SDL_Keycode key, ::ui::UiInputFrame &ui_input) {
             ui_input.source = ::ui::UiFocusSource::Keyboard;
             break;
         default:
+            break;
+    }
+}
+
+void apply_gamepad_button_down(GamepadButton button, ::ui::UiInputFrame &ui_input) {
+    ui_input.source = ::ui::UiFocusSource::Gamepad;
+    switch (button) {
+        case GamepadButton::Up:
+            ui_input.nav_up = true;
+            break;
+        case GamepadButton::Down:
+            ui_input.nav_down = true;
+            break;
+        case GamepadButton::Left:
+            ui_input.nav_left = true;
+            break;
+        case GamepadButton::Right:
+            ui_input.nav_right = true;
+            break;
+        case GamepadButton::Confirm:
+            ui_input.confirm_pressed = true;
+            ui_input.confirm_down = true;
+            break;
+        case GamepadButton::Cancel:
+            ui_input.cancel_pressed = true;
+            ui_input.cancel_down = true;
+            break;
+    }
+}
+
+void apply_gamepad_button_up(GamepadButton button, ::ui::UiInputFrame &ui_input) {
+    ui_input.source = ::ui::UiFocusSource::Gamepad;
+    switch (button) {
+        case GamepadButton::Confirm:
+            ui_input.confirm_released = true;
+            break;
+        case GamepadButton::Cancel:
+            ui_input.cancel_released = true;
+            break;
+        case GamepadButton::Up:
+        case GamepadButton::Down:
+        case GamepadButton::Left:
+        case GamepadButton::Right:
             break;
     }
 }

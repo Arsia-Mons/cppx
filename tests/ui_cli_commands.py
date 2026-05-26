@@ -89,7 +89,16 @@ def main() -> int:
         if not weapons[0]["equipped"] or weapons[1]["owned"]:
             raise RuntimeError(f"unexpected weapon state: {weapons}")
 
-        run_cli(cli, control_dir, "key", "--key", "enter")
+        run_cli(cli, control_dir, "gamepad", "--button", "right")
+        wait_frame(cli, control_dir)
+        state = run_cli(cli, control_dir, "inspect")
+        result = state["result"]
+        if result["focus_source"] != "Gamepad":
+            raise RuntimeError(f"gamepad did not set focus source: {result}")
+
+        run_cli(cli, control_dir, "gamepad", "--button", "left")
+        wait_frame(cli, control_dir)
+        run_cli(cli, control_dir, "gamepad", "--button", "a")
         wait_frame(cli, control_dir)
         state = run_cli(cli, control_dir, "state")
         result = state["result"]
@@ -157,6 +166,17 @@ def main() -> int:
         error = run_cli(cli, control_dir, "key", "--key", "not-a-key", expect_ok=False)
         if "BAD_KEY" not in error.get("error", "") and "BAD_KEY" not in error.get("code", ""):
             raise RuntimeError(f"bad key did not report BAD_KEY: {error}")
+        error = run_cli(
+            cli,
+            control_dir,
+            "gamepad",
+            "--button",
+            "not-a-button",
+            expect_ok=False,
+        )
+        if ("BAD_GAMEPAD_BUTTON" not in error.get("error", "") and
+                "BAD_GAMEPAD_BUTTON" not in error.get("code", "")):
+            raise RuntimeError(f"bad gamepad button did not report BAD_GAMEPAD_BUTTON: {error}")
 
         run_cli(cli, control_dir, "quit")
         proc.wait(timeout=10)

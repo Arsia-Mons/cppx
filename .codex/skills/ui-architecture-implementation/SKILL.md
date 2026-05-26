@@ -78,6 +78,9 @@ Shooter code must not own focus, primitive state, or screen-stack mechanics.
 - CLI/control-harness input must enter through the same platform-to-`UiInputFrame`
   adapter as normal runtime input. Screenshots and frame captures must come from
   the actual rendered frame, not a synthetic component snapshot.
+- Gamepad-style harness input should set `UiFocusSource::Gamepad` through the
+  platform input adapter so focus visibility/source behavior is tested
+  separately from keyboard shortcuts.
 - CLI/control-harness inspection can expose read-only runtime and game debug
   state, but keep the platform mailbox generic. App/game code should register a
   narrow read-only provider instead of letting `platform/` learn shooter rules or
