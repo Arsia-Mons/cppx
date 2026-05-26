@@ -76,6 +76,10 @@ Shooter code must not own focus, primitive state, or screen-stack mechanics.
 - Shooter state may be held by the game/sample owner and exposed to screens via
   a provider, but components should consume narrow hooks returning values and
   functions instead of receiving the whole game object as props.
+- Keep `use_shooter_game()` as a private hook-building primitive. Screen and
+  control component bodies should call narrow hooks such as HUD/weapon reads,
+  screen-opening functions, and queued write functions instead of reading the
+  raw `ShooterGame` pointer directly.
 - `GameUiPipeline` owns React/Clay frame lifecycle around `ClientUi`: begin,
   declare, end layout, dispatch focus/input, render Clay commands, then drain
   queued UI writes.

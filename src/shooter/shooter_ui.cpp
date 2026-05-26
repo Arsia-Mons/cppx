@@ -31,6 +31,20 @@ struct ShooterHudRead {
     const char *weapon = "";
 };
 
+struct ShooterWeaponRead {
+    bool valid = false;
+    const char *name = "";
+    const char *role = "";
+    int cost = 0;
+    int damage = 0;
+    int ammo = 0;
+    bool owned = false;
+    bool equipped = false;
+    bool can_buy = false;
+    bool can_equip = false;
+    bool disabled = true;
+};
+
 constexpr int LOADOUT_ACTION_NONE = 0;
 constexpr int LOADOUT_ACTION_BUY = 1;
 constexpr int LOADOUT_ACTION_EQUIP = 2;
@@ -54,6 +68,37 @@ static ShooterHudRead use_shooter_hud(void) {
         .ammo = game->ammo(),
         .credits = game->credits(),
         .weapon = game->weapon(game->selected_weapon()).spec.name,
+    };
+}
+
+static int use_shooter_weapon_count(void) {
+    ShooterGame *game = use_shooter_game();
+    return game ? game->weapon_count() : 0;
+}
+
+static int use_selected_weapon_index(void) {
+    ShooterGame *game = use_shooter_game();
+    return game ? game->selected_weapon() : 0;
+}
+
+static ShooterWeaponRead use_weapon_read(int index) {
+    ShooterGame *game = use_shooter_game();
+    if (!game || index < 0 || index >= game->weapon_count()) return {};
+    const WeaponState &weapon = game->weapon(index);
+    bool can_buy = game->can_buy_weapon(index);
+    bool can_equip = game->can_equip_weapon(index);
+    return {
+        .valid = true,
+        .name = weapon.spec.name,
+        .role = weapon.spec.role,
+        .cost = weapon.spec.cost,
+        .damage = weapon.spec.damage,
+        .ammo = weapon.spec.ammo,
+        .owned = weapon.owned,
+        .equipped = weapon.equipped,
+        .can_buy = can_buy,
+        .can_equip = can_equip,
+        .disabled = !weapon.owned && !can_buy,
     };
 }
 
@@ -90,6 +135,30 @@ static std::function<void()> use_equip_weapon(int index) {
                 game->equip_weapon(index);
             });
         }
+    };
+}
+
+static std::function<void()> use_push_pause_screen(void) {
+    ShooterGame *game = use_shooter_game();
+    client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
+    return [game, nav] {
+        if (nav.push && game) nav.push(std::make_unique<PauseScreen>(game));
+    };
+}
+
+static std::function<void()> use_push_loadout_screen(void) {
+    ShooterGame *game = use_shooter_game();
+    client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
+    return [game, nav] {
+        if (nav.push && game) nav.push(std::make_unique<LoadoutScreen>(game));
+    };
+}
+
+static std::function<void()> use_push_options_screen(void) {
+    ShooterGame *game = use_shooter_game();
+    client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
+    return [game, nav] {
+        if (nav.push && game) nav.push(std::make_unique<OptionsScreen>(game));
     };
 }
 
@@ -159,8 +228,8 @@ static void HudBand(void) {
 
 static void ShooterGameScreenView(void) {
     REACT_COMPONENT_BEGIN("ShooterGameScreenView") {
-        client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
-        ShooterGame *game = use_shooter_game();
+        std::function<void()> open_pause = use_push_pause_screen();
+        std::function<void()> open_loadout = use_push_loadout_screen();
         ::ui::ui_focus_push_scope({ .id = CLAY_ID("ShooterGameScope") });
         ::ui::ui_focus_request_initial_focus(CLAY_ID("OpenPauseButton"));
 
@@ -186,16 +255,12 @@ static void ShooterGameScreenView(void) {
                 ::ui::Button({
                     .id = CLAY_ID("OpenPauseButton"),
                     .label = "Pause",
-                    .on_confirm = [nav, game] {
-                        if (nav.push && game) nav.push(std::make_unique<PauseScreen>(game));
-                    },
+                    .on_confirm = open_pause,
                 });
                 ::ui::Button({
                     .id = CLAY_ID("OpenLoadoutButton"),
                     .label = "Loadout",
-                    .on_confirm = [nav, game] {
-                        if (nav.push && game) nav.push(std::make_unique<LoadoutScreen>(game));
-                    },
+                    .on_confirm = open_loadout,
                 });
             }
         }
@@ -207,7 +272,8 @@ static void ShooterGameScreenView(void) {
 static void PauseScreenView(void) {
     REACT_COMPONENT_BEGIN("PauseScreenView") {
         client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
-        ShooterGame *game = use_shooter_game();
+        std::function<void()> open_options = use_push_options_screen();
+        std::function<void()> open_loadout = use_push_loadout_screen();
         ::ui::ui_focus_push_scope({ .id = CLAY_ID("PauseScope"), .modal = true });
         ::ui::ui_focus_request_initial_focus(CLAY_ID("ResumeButton"));
 
@@ -236,16 +302,12 @@ static void PauseScreenView(void) {
             ::ui::Button({
                 .id = CLAY_ID("OpenOptionsFromPauseButton"),
                 .label = "Options",
-                .on_confirm = [nav, game] {
-                    if (nav.push && game) nav.push(std::make_unique<OptionsScreen>(game));
-                },
+                .on_confirm = open_options,
             });
             ::ui::Button({
                 .id = CLAY_ID("OpenLoadoutFromPauseButton"),
                 .label = "Loadout",
-                .on_confirm = [nav, game] {
-                    if (nav.push && game) nav.push(std::make_unique<LoadoutScreen>(game));
-                },
+                .on_confirm = open_loadout,
             });
         }
 
@@ -267,17 +329,16 @@ static int first_weapon_for_tab(int tab) {
 }
 
 static void WeaponTile(int index, int *selected_index) {
-    ShooterGame *game = use_shooter_game();
-    if (!game || index < 0 || index >= game->weapon_count()) return;
-    const WeaponState &weapon = game->weapon(index);
+    ShooterWeaponRead weapon = use_weapon_read(index);
+    if (!weapon.valid) return;
     bool selected = selected_index && *selected_index == index;
-    bool disabled = !weapon.owned && !game->can_buy_weapon(index);
+    bool disabled = weapon.disabled;
     std::function<void()> select = use_select_weapon(index);
 
     static char detail[SHOOTER_WEAPON_COUNT][96];
     snprintf(detail[index], sizeof(detail[index]), "%s  DMG %d  %s",
-             weapon.spec.role,
-             weapon.spec.damage,
+             weapon.role,
+             weapon.damage,
              weapon.owned ? (weapon.equipped ? "equipped" : "owned") :
                  (disabled ? "locked" : "available"));
 
@@ -317,7 +378,7 @@ static void WeaponTile(int index, int *selected_index) {
             },
             .cornerRadius = CLAY_CORNER_RADIUS(4),
         }) {
-            CLAY_TEXT(::ui::clay_text(weapon.spec.name),
+            CLAY_TEXT(::ui::clay_text(weapon.name),
                 CLAY_TEXT_CONFIG({ .textColor = { 238, 246, 244, 255 }, .fontSize = 16 }));
             CLAY_TEXT(::ui::clay_text(detail[index]),
                 CLAY_TEXT_CONFIG({
@@ -334,9 +395,8 @@ static void EquipmentSlot(Clay_ElementId id,
                           const char *label,
                           int weapon_index,
                           int *selected_index) {
-    ShooterGame *game = use_shooter_game();
-    if (!game || weapon_index < 0 || weapon_index >= game->weapon_count()) return;
-    const WeaponState &weapon = game->weapon(weapon_index);
+    ShooterWeaponRead weapon = use_weapon_read(weapon_index);
+    if (!weapon.valid) return;
     bool selected = selected_index && *selected_index == weapon_index;
     std::function<void()> select = use_select_weapon(weapon_index);
 
@@ -344,7 +404,7 @@ static void EquipmentSlot(Clay_ElementId id,
     int slot = weapon_index == 3 ? 1 : 0;
     snprintf(slot_text[slot], sizeof(slot_text[slot]), "%s: %s",
              label,
-             weapon.owned ? weapon.spec.name : "empty");
+             weapon.owned ? weapon.name : "empty");
 
     ::ui::Focusable({
         .id = id,
@@ -390,24 +450,21 @@ static void LoadoutConfirmDialog(int action,
                                  int serial,
                                  int *pending_action) {
     REACT_COMPONENT_BEGIN_KEY("LoadoutConfirmDialog", (uint32_t)((serial << 8) | action)) {
-        ShooterGame *game = use_shooter_game();
+        ShooterWeaponRead weapon = use_weapon_read(weapon_index);
         std::function<void()> buy = use_buy_weapon(weapon_index);
         std::function<void()> equip = use_equip_weapon(weapon_index);
-        bool valid = game && action != LOADOUT_ACTION_NONE &&
-            weapon_index >= 0 && weapon_index < game->weapon_count();
+        bool valid = weapon.valid && action != LOADOUT_ACTION_NONE;
         if (valid) {
-            const WeaponState &weapon = game->weapon(weapon_index);
-
             static char title[64];
             static char message[128];
             if (action == LOADOUT_ACTION_BUY) {
                 snprintf(title, sizeof(title), "Confirm Buy");
                 snprintf(message, sizeof(message), "Buy %s for %d credits?",
-                         weapon.spec.name, weapon.spec.cost);
+                         weapon.name, weapon.cost);
             } else {
                 snprintf(title, sizeof(title), "Confirm Equip");
                 snprintf(message, sizeof(message), "Equip %s as active weapon?",
-                         weapon.spec.name);
+                         weapon.name);
             }
 
             auto close = [pending_action] {
@@ -490,21 +547,22 @@ static void LoadoutConfirmDialog(int action,
 static void LoadoutScreenView(void) {
     REACT_COMPONENT_BEGIN("LoadoutScreenView") {
         client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
-        ShooterGame *game = use_shooter_game();
-        int *selected_index = use_state_int(game ? game->selected_weapon() : 0);
+        int weapon_count = use_shooter_weapon_count();
+        int *selected_index = use_state_int(use_selected_weapon_index());
         int *pending_action = use_state_int(LOADOUT_ACTION_NONE);
         int *pending_weapon_index = use_state_int(*selected_index);
         int *pending_serial = use_state_int(0);
         int *active_tab = use_state_int(LOADOUT_TAB_WEAPONS);
-        if (game && (*selected_index < 0 || *selected_index >= game->weapon_count())) {
+        if (*selected_index < 0 || *selected_index >= weapon_count) {
             *selected_index = 0;
         }
-        if (game && !weapon_in_tab(*selected_index, *active_tab)) {
+        if (!weapon_in_tab(*selected_index, *active_tab)) {
             *selected_index = first_weapon_for_tab(*active_tab);
         }
-        const WeaponState &selected = game->weapon(*selected_index);
-        bool can_buy = game->can_buy_weapon(*selected_index);
-        bool can_equip = game->can_equip_weapon(*selected_index) && !selected.equipped;
+        ShooterWeaponRead selected = use_weapon_read(*selected_index);
+        if (!selected.valid) return;
+        bool can_buy = selected.can_buy;
+        bool can_equip = selected.can_equip && !selected.equipped;
         std::function<void()> select_weapons_tab_weapon =
             use_select_weapon(first_weapon_for_tab(LOADOUT_TAB_WEAPONS));
         std::function<void()> select_gear_tab_weapon =
@@ -512,7 +570,7 @@ static void LoadoutScreenView(void) {
 
         static char details[160];
         snprintf(details, sizeof(details), "%s: %s, cost %d, ammo %d",
-                 selected.spec.name, selected.spec.role, selected.spec.cost, selected.spec.ammo);
+                 selected.name, selected.role, selected.cost, selected.ammo);
 
         ::ui::ui_focus_push_scope({ .id = CLAY_ID("LoadoutScope"), .modal = true });
         ::ui::ui_focus_request_initial_focus(weapon_tile_id(*selected_index));
