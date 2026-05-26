@@ -31,6 +31,29 @@ The docs are the contract. If source and docs disagree, change source to match
 the docs unless implementation proves a doc requirement impossible or wrong. If a
 doc must change, update the doc and the code in the same correction pass.
 
+## Authoritative Repo UI Skill
+
+Build and maintain a repo-local UI skill under `.codex/skills/` as part of this
+implementation. The skill is a first-class deliverable for this work, not a
+nice-to-have summary after the fact.
+
+The skill must make an agent expert in how this UI works from the game loop down
+to the primitives. It should encode the current React-style hooks boundary,
+game/UI pipeline, `ClientUi` frame order, retained screen stack, screen
+component conventions, hook/provider data and write patterns, focus/runtime
+invariants, primitive rules, shooter example constraints, verification gates,
+and recurring failure modes.
+
+Keep correcting, editing, and tightening the skill while implementing the plan.
+When a hiccup exposes a better rule, a misleading instruction, a missing
+boundary, or a reviewer finding that future agents must not repeat, update the
+repo-local skill in the same correction pass as the code/docs change. Do not let
+the skill drift behind the source or the active docs.
+
+This skill does not replace the architecture docs. The docs remain the
+architecture contract; the `.codex/skills/` UI skill is the authoritative
+working procedure for applying that contract correctly in this repository.
+
 ## Current Source Baseline
 
 The current source tree is a React/Clay runtime sample:
@@ -159,6 +182,11 @@ The audit must identify:
 
 This is a working audit, not a new architecture proposal. Do not rewrite the
 docs into a smaller target.
+
+Also create or update the repo-local `.codex/skills/` UI skill with the
+implementation rules learned from this audit. The skill should capture the first
+vertical slice, the existing demo shortcuts that must not become architecture,
+and the React-style hook/provider mechanics that remain the foundation.
 
 Verification:
 
@@ -375,6 +403,10 @@ Add focused tests as implementation lands. Completion requires coverage for:
 - screen stack ownership and visible ordering;
 - post-layout write draining;
 - shooter example integration scenarios.
+
+Before every completion claim, inspect the repo-local `.codex/skills/` UI skill
+and confirm it reflects the current source/docs/reviewer findings. If it is
+stale or incomplete, update it before claiming the slice or full plan is done.
 
 If a check is too broad and reports archive or legacy docs, scope it to active
 docs and current source before treating it as a blocker.
