@@ -8,6 +8,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+from typing import Optional
 
 
 _next_id = int(time.time() * 1000) % 1_000_000_000
@@ -51,7 +52,7 @@ def send_command(control_dir: Path, op: str, args: dict, timeout: float) -> dict
     return reply
 
 
-def resolve_pointer_target(control_dir: Path, args: argparse.Namespace) -> tuple[float, float, dict | None]:
+def resolve_pointer_target(control_dir: Path, args: argparse.Namespace) -> tuple[float, float, Optional[dict]]:
     has_xy = args.x is not None or args.y is not None
     has_target = args.target or args.target_id is not None
     if has_xy and (args.x is None or args.y is None):
