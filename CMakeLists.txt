@@ -203,6 +203,7 @@ add_executable(shooter_ui_tests
   src/ui/focus/ui_focus.cpp
   src/ui/primitives/button.cpp
   src/ui/primitives/focusable.cpp
+  src/ui/primitives/selectable.cpp
   src/ui/primitives/toggle.cpp
   third_party/clay_impl.cpp
 )

@@ -56,9 +56,10 @@ static bool init_clay_once(void) {
 }
 
 static void run_client_frame(client::ui::ClientUi &client_ui,
-                             const ::ui::UiInputFrame &input = {}) {
+                             const ::ui::UiInputFrame &input = {},
+                             Clay_Vector2 pointer = { -1000.0f, -1000.0f }) {
     Clay_SetLayoutDimensions({ 800, 500 });
-    Clay_SetPointerState({ -1000.0f, -1000.0f }, input.pointer_down);
+    Clay_SetPointerState(pointer, input.pointer_down);
     client_ui.begin_frame(input);
     react_begin_frame();
     Clay_BeginLayout();
@@ -74,6 +75,15 @@ static void run_client_frame(client::ui::ClientUi &client_ui,
     client_ui.end_layout(input);
     react_end_frame();
     client_ui.drain_writes();
+}
+
+static Clay_Vector2 center_of(Clay_ElementId id) {
+    Clay_ElementData data = Clay_GetElementData(id);
+    if (!data.found) return { -1000.0f, -1000.0f };
+    return {
+        data.boundingBox.x + data.boundingBox.width * 0.5f,
+        data.boundingBox.y + data.boundingBox.height * 0.5f,
+    };
 }
 
 static ::ui::UiInputFrame keyboard_confirm(void) {
@@ -95,6 +105,21 @@ static ::ui::UiInputFrame keyboard_right(void) {
     return {
         .nav_right = true,
         .source = ::ui::UiFocusSource::Keyboard,
+    };
+}
+
+static ::ui::UiInputFrame pointer_press(void) {
+    return {
+        .pointer_pressed = true,
+        .pointer_down = true,
+        .source = ::ui::UiFocusSource::Mouse,
+    };
+}
+
+static ::ui::UiInputFrame pointer_release(void) {
+    return {
+        .pointer_released = true,
+        .source = ::ui::UiFocusSource::Mouse,
     };
 }
 
@@ -220,6 +245,38 @@ static bool loadout_buy_uses_confirm_dialog_and_restores_parent_focus(void) {
     return true;
 }
 
+static bool loadout_tabs_and_equipment_slots_are_real_focus_targets(void) {
+    react_init(g_clay);
+    shooter::ShooterGame game;
+    client::ui::ClientUi client_ui;
+    CHECK(client_ui.push_screen(std::make_unique<shooter::LoadoutScreen>(&game)));
+
+    run_client_frame(client_ui);
+    CHECK(Clay_GetElementData(test_id("WeaponsTab")).found);
+    CHECK(Clay_GetElementData(test_id("GearTab")).found);
+    CHECK(Clay_GetElementData(test_id("PrimarySlot")).found);
+    CHECK(Clay_GetElementData(test_id("GearSlot")).found);
+
+    Clay_Vector2 gear_tab = center_of(test_id("GearTab"));
+    run_client_frame(client_ui, pointer_press(), gear_tab);
+    run_client_frame(client_ui, pointer_release(), gear_tab);
+    CHECK(game.selected_weapon() == 3);
+
+    run_client_frame(client_ui);
+    CHECK(Clay_GetElementData(CLAY_IDI("WeaponTile", 3)).found);
+
+    Clay_Vector2 primary_slot = center_of(test_id("PrimarySlot"));
+    run_client_frame(client_ui, pointer_press(), primary_slot);
+    run_client_frame(client_ui, pointer_release(), primary_slot);
+    CHECK(game.selected_weapon() == 0);
+
+    Clay_Vector2 gear_slot = center_of(test_id("GearSlot"));
+    run_client_frame(client_ui, pointer_press(), gear_slot);
+    run_client_frame(client_ui, pointer_release(), gear_slot);
+    CHECK(game.selected_weapon() == 3);
+    return true;
+}
+
 int main(void) {
     if (!init_clay_once()) return 1;
 
@@ -227,6 +284,7 @@ int main(void) {
     if (!shooter_screen_pushes_pause_after_confirm()) return 1;
     if (!pause_options_returns_to_pause_through_screen_stack()) return 1;
     if (!loadout_buy_uses_confirm_dialog_and_restores_parent_focus()) return 1;
+    if (!loadout_tabs_and_equipment_slots_are_real_focus_targets()) return 1;
 
     react_shutdown();
     free(g_clay_memory);

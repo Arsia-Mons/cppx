@@ -13,6 +13,7 @@
 #include "../ui/primitives/button.h"
 #include "../ui/primitives/clay_text.h"
 #include "../ui/primitives/focusable.h"
+#include "../ui/primitives/selectable.h"
 #include "../ui/primitives/toggle.h"
 #include "../ui/primitives/visual_state.h"
 
@@ -33,6 +34,8 @@ struct ShooterHudRead {
 constexpr int LOADOUT_ACTION_NONE = 0;
 constexpr int LOADOUT_ACTION_BUY = 1;
 constexpr int LOADOUT_ACTION_EQUIP = 2;
+constexpr int LOADOUT_TAB_WEAPONS = 0;
+constexpr int LOADOUT_TAB_GEAR = 1;
 
 static ReactContext ShooterContextValue = {};
 
@@ -234,6 +237,15 @@ static Clay_ElementId weapon_tile_id(int index) {
     return CLAY_IDI("WeaponTile", index);
 }
 
+static bool weapon_in_tab(int index, int tab) {
+    if (tab == LOADOUT_TAB_GEAR) return index == 3;
+    return index >= 0 && index < 3;
+}
+
+static int first_weapon_for_tab(int tab) {
+    return tab == LOADOUT_TAB_GEAR ? 3 : 0;
+}
+
 static void WeaponTile(int index, int *selected_index) {
     ShooterGame *game = use_shooter_game();
     if (!game || index < 0 || index >= game->weapon_count()) return;
@@ -294,6 +306,61 @@ static void WeaponTile(int index, int *selected_index) {
                         : Clay_Color{ 184, 204, 204, 255 },
                     .fontSize = 12,
                 }));
+        }
+    });
+}
+
+static void EquipmentSlot(Clay_ElementId id,
+                          const char *label,
+                          int weapon_index,
+                          int *selected_index) {
+    ShooterGame *game = use_shooter_game();
+    if (!game || weapon_index < 0 || weapon_index >= game->weapon_count()) return;
+    const WeaponState &weapon = game->weapon(weapon_index);
+    bool selected = selected_index && *selected_index == weapon_index;
+    std::function<void()> select = use_select_weapon(weapon_index);
+
+    static char slot_text[2][96];
+    int slot = weapon_index == 3 ? 1 : 0;
+    snprintf(slot_text[slot], sizeof(slot_text[slot]), "%s: %s",
+             label,
+             weapon.owned ? weapon.spec.name : "empty");
+
+    ::ui::Focusable({
+        .id = id,
+        .on_confirm = [selected_index, weapon_index, select] {
+            if (selected_index) *selected_index = weapon_index;
+            if (select) select();
+        },
+        .on_focus = [selected_index, weapon_index, select] {
+            if (selected_index) *selected_index = weapon_index;
+            if (select) select();
+        },
+    }, [&](const ::ui::UiFocusableState &focus) {
+        ::ui::VisualState visual = ::ui::derive_visual_state(focus, {
+            .selected = selected,
+        });
+        uint16_t border_width = visual.targeted ? 2 : 1;
+        CLAY({
+            .id = focus.id,
+            .layout = {
+                .sizing = { CLAY_SIZING_FIXED(232), CLAY_SIZING_FIXED(38) },
+                .padding = { 10, 10, 8, 8 },
+                .childAlignment = { CLAY_ALIGN_X_LEFT, CLAY_ALIGN_Y_CENTER },
+            },
+            .backgroundColor = visual.chosen
+                ? Clay_Color{ 35, 72, 62, 255 }
+                : Clay_Color{ 24, 28, 36, 255 },
+            .border = {
+                .width = CLAY_BORDER_OUTSIDE(border_width),
+                .color = visual.targeted
+                    ? Clay_Color{ 122, 176, 238, 255 }
+                    : Clay_Color{ 78, 88, 104, 255 },
+            },
+            .cornerRadius = CLAY_CORNER_RADIUS(4),
+        }) {
+            CLAY_TEXT(::ui::clay_text(slot_text[slot]),
+                CLAY_TEXT_CONFIG({ .textColor = { 226, 238, 236, 255 }, .fontSize = 14 }));
         }
     });
 }
@@ -408,8 +475,12 @@ static void LoadoutScreenView(void) {
         int *pending_action = use_state_int(LOADOUT_ACTION_NONE);
         int *pending_weapon_index = use_state_int(*selected_index);
         int *pending_serial = use_state_int(0);
+        int *active_tab = use_state_int(LOADOUT_TAB_WEAPONS);
         if (game && (*selected_index < 0 || *selected_index >= game->weapon_count())) {
             *selected_index = 0;
+        }
+        if (game && !weapon_in_tab(*selected_index, *active_tab)) {
+            *selected_index = first_weapon_for_tab(*active_tab);
         }
         const WeaponState &selected = game->weapon(*selected_index);
         bool can_buy = game->can_buy_weapon(*selected_index);
@@ -435,6 +506,35 @@ static void LoadoutScreenView(void) {
             CLAY_TEXT(::ui::clay_text("Loadout"),
                 CLAY_TEXT_CONFIG({ .textColor = { 236, 246, 242, 255 }, .fontSize = 26 }));
             CLAY({
+                .id = CLAY_ID("LoadoutTabs"),
+                .layout = {
+                    .sizing = { CLAY_SIZING_FIT(0), CLAY_SIZING_FIT(0) },
+                    .childGap = 10,
+                    .layoutDirection = CLAY_LEFT_TO_RIGHT,
+                },
+            }) {
+                ::ui::Selectable({
+                    .id = CLAY_ID("WeaponsTab"),
+                    .label = "Weapons",
+                    .selected = *active_tab == LOADOUT_TAB_WEAPONS,
+                    .on_select = [active_tab, selected_index, game] {
+                        if (active_tab) *active_tab = LOADOUT_TAB_WEAPONS;
+                        if (selected_index) *selected_index = first_weapon_for_tab(LOADOUT_TAB_WEAPONS);
+                        if (game && selected_index) game->select_weapon(*selected_index);
+                    },
+                });
+                ::ui::Selectable({
+                    .id = CLAY_ID("GearTab"),
+                    .label = "Gear",
+                    .selected = *active_tab == LOADOUT_TAB_GEAR,
+                    .on_select = [active_tab, selected_index, game] {
+                        if (active_tab) *active_tab = LOADOUT_TAB_GEAR;
+                        if (selected_index) *selected_index = first_weapon_for_tab(LOADOUT_TAB_GEAR);
+                        if (game && selected_index) game->select_weapon(*selected_index);
+                    },
+                });
+            }
+            CLAY({
                 .id = CLAY_ID("LoadoutBody"),
                 .layout = {
                     .sizing = { CLAY_SIZING_FIT(0), CLAY_SIZING_FIT(0) },
@@ -450,17 +550,32 @@ static void LoadoutScreenView(void) {
                         .layoutDirection = CLAY_TOP_TO_BOTTOM,
                     },
                 }) {
-                    for (int row = 0; row < 2; ++row) {
+                    if (*active_tab == LOADOUT_TAB_WEAPONS) {
+                        for (int row = 0; row < 2; ++row) {
+                            CLAY({
+                                .id = CLAY_IDI("WeaponGridRow", row),
+                                .layout = {
+                                    .sizing = { CLAY_SIZING_FIT(0), CLAY_SIZING_FIT(0) },
+                                    .childGap = 10,
+                                    .layoutDirection = CLAY_LEFT_TO_RIGHT,
+                                },
+                            }) {
+                                WeaponTile(row * 2, selected_index);
+                                if (row == 0) {
+                                    WeaponTile(row * 2 + 1, selected_index);
+                                }
+                            }
+                        }
+                    } else {
                         CLAY({
-                            .id = CLAY_IDI("WeaponGridRow", row),
+                            .id = CLAY_ID("GearGridRow"),
                             .layout = {
                                 .sizing = { CLAY_SIZING_FIT(0), CLAY_SIZING_FIT(0) },
                                 .childGap = 10,
                                 .layoutDirection = CLAY_LEFT_TO_RIGHT,
                             },
                         }) {
-                            WeaponTile(row * 2, selected_index);
-                            WeaponTile(row * 2 + 1, selected_index);
+                            WeaponTile(3, selected_index);
                         }
                     }
                 }
@@ -518,6 +633,10 @@ static void LoadoutScreenView(void) {
                         .label = "Back",
                         .on_confirm = nav.pop_current,
                     });
+                    CLAY_TEXT(::ui::clay_text("Equipment Slots"),
+                        CLAY_TEXT_CONFIG({ .textColor = { 202, 218, 216, 255 }, .fontSize = 14 }));
+                    EquipmentSlot(CLAY_ID("PrimarySlot"), "Primary", 0, selected_index);
+                    EquipmentSlot(CLAY_ID("GearSlot"), "Gear", 3, selected_index);
                 }
             }
         }
