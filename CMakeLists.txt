@@ -201,3 +201,14 @@ add_test(
     --capture-dir ${CMAKE_CURRENT_BINARY_DIR}/ui_cli_capture
     --control-dir ${CMAKE_CURRENT_BINARY_DIR}/ui_cli_control
 )
+
+add_test(
+  NAME ui_cli_commands
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/ui_cli_commands.py
+    --exe $<TARGET_FILE:hello>
+    --cli ${CMAKE_CURRENT_SOURCE_DIR}/tools/ui_cli.py
+    --control-dir ${CMAKE_CURRENT_BINARY_DIR}/ui_cli_commands_control
+    --out ${CMAKE_CURRENT_BINARY_DIR}/ui_cli_commands.bmp
+    --capture-dir ${CMAKE_CURRENT_BINARY_DIR}/ui_cli_commands_capture
+)
