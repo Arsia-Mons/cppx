@@ -38,6 +38,7 @@ def main() -> int:
         "dummy",
         "--render-driver",
         "software",
+        "--no-dm",
     ]
     completed = subprocess.run(cmd, text=True, capture_output=True)
     if completed.returncode != 0:

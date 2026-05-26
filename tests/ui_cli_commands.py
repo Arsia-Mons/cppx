@@ -110,7 +110,7 @@ def main() -> int:
         if waited["result"]["frame"] < result["frame"] + 1:
             raise RuntimeError(f"wait_frames did not advance: {waited}")
 
-        shot = run_cli(cli, control_dir, "screenshot", "--out", str(out))
+        shot = run_cli(cli, control_dir, "screenshot", "--out", str(out), "--no-dm")
         shot_path = Path(shot["result"]["out"])
         if not shot_path.exists() or shot_path.stat().st_size <= 0:
             raise RuntimeError(f"screenshot missing: {shot_path}")
@@ -123,6 +123,7 @@ def main() -> int:
             str(capture_dir),
             "--count",
             "2",
+            "--no-dm",
         )
         frames = capture["result"]["frames"]
         if len(frames) != 2:

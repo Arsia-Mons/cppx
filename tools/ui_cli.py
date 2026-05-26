@@ -51,9 +51,120 @@ def send_command(control_dir: Path, op: str, args: dict, timeout: float) -> dict
     return reply
 
 
+def discord_send_script() -> Path | None:
+    configured = os.environ.get("DISCORD_DM_SEND")
+    if configured:
+        path = Path(configured).expanduser()
+        return path if path.exists() else None
+
+    candidates: list[Path] = []
+    plugin_root = os.environ.get("CLAUDE_PLUGIN_ROOT")
+    if plugin_root:
+        candidates.append(Path(plugin_root).expanduser() / "skills" / "discord-dm" / "send.ts")
+    codex_home = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expanduser()
+    candidates.append(codex_home / "skills" / "discord-dm" / "send.ts")
+    candidates.append(Path("/Users/hv/repos/hv-skills/discord-dm/skills/discord-dm/send.ts"))
+
+    for path in candidates:
+        if path.exists():
+            return path
+    return None
+
+
+def dm_disabled_by_env() -> bool:
+    value = os.environ.get("SDL3_CLAY_UI_CLI_DM", "1").strip().lower()
+    return value in {"0", "false", "no", "off"}
+
+
+def should_auto_dm(args: argparse.Namespace) -> bool:
+    return not getattr(args, "no_dm", False) and not dm_disabled_by_env()
+
+
+def convert_bmp_for_discord(path: Path) -> Path:
+    if path.suffix.lower() != ".bmp":
+        return path
+    sips = shutil.which("sips")
+    if not sips:
+        return path
+    out = path.with_suffix(".png")
+    completed = subprocess.run(
+        [sips, "-s", "format", "png", str(path), "--out", str(out)],
+        text=True,
+        capture_output=True,
+    )
+    return out if completed.returncode == 0 and out.exists() else path
+
+
+def send_artifacts_to_discord(paths: list[Path],
+                              message: str,
+                              timeout: float,
+                              require: bool = False) -> dict:
+    existing = [path for path in paths if path.exists() and path.stat().st_size > 0]
+    if not existing:
+        result = {"ok": False, "skipped": True, "reason": "no artifact files"}
+        if require:
+            raise RuntimeError(result["reason"])
+        return result
+
+    script = discord_send_script()
+    bun = os.environ.get("BUN") or shutil.which("bun")
+    if not script or not bun:
+        result = {
+            "ok": False,
+            "skipped": True,
+            "reason": "discord sender is not configured",
+        }
+        if require:
+            raise RuntimeError(result["reason"])
+        return result
+
+    attachments = [convert_bmp_for_discord(path) for path in existing]
+    cmd = [bun, str(script), message, *[str(path) for path in attachments]]
+    completed = subprocess.run(cmd, text=True, capture_output=True, timeout=timeout)
+    stdout = completed.stdout.strip()
+    stderr = completed.stderr.strip()
+    if completed.returncode != 0:
+        result = {"ok": False, "error": stderr or stdout or "discord send failed"}
+        if require:
+            raise RuntimeError(result["error"])
+        return result
+
+    message_id = ""
+    parts = stdout.split()
+    if len(parts) >= 2 and parts[0] == "sent":
+        message_id = parts[1]
+    return {
+        "ok": True,
+        "message_id": message_id,
+        "attachments": [str(path) for path in attachments],
+    }
+
+
 def add_common(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--control-dir", required=True)
     parser.add_argument("--timeout", type=float, default=5.0)
+
+
+def add_dm_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--no-dm", action="store_true",
+                        help="do not send generated artifacts to Discord")
+    parser.add_argument("--require-dm", action="store_true",
+                        help="fail if generated artifacts cannot be sent to Discord")
+    parser.add_argument("--dm-message", default="",
+                        help="message to send with generated artifacts")
+    parser.add_argument("--dm-timeout", type=float, default=20.0)
+
+
+def maybe_attach_dm_result(reply: dict,
+                           args: argparse.Namespace,
+                           paths: list[Path],
+                           default_message: str) -> dict:
+    if not should_auto_dm(args):
+        return reply
+    message = args.dm_message or default_message
+    dm = send_artifacts_to_discord(paths, message, args.dm_timeout, args.require_dm)
+    reply.setdefault("result", {})["discord_dm"] = dm
+    return reply
 
 
 def command_main(args: argparse.Namespace) -> int:
@@ -73,6 +184,14 @@ def command_main(args: argparse.Namespace) -> int:
     elif op == "capture_frames":
         payload = {"out_dir": args.out_dir, "count": args.count}
     reply = send_command(control_dir, op, payload, args.timeout)
+    if op == "screenshot":
+        out = Path(reply.get("result", {}).get("out", args.out))
+        reply = maybe_attach_dm_result(
+            reply, args, [out], f"sdl3-clay UI screenshot: {out.name}")
+    elif op == "capture_frames":
+        frames = [Path(path) for path in reply.get("result", {}).get("frames", [])]
+        reply = maybe_attach_dm_result(
+            reply, args, frames, f"sdl3-clay UI frame capture: {len(frames)} frame(s)")
     print(json.dumps(reply, sort_keys=True))
     return 0
 
@@ -128,14 +247,23 @@ def smoke(args: argparse.Namespace) -> int:
             if not frame_path.exists() or frame_path.stat().st_size <= 0:
                 raise RuntimeError(f"capture frame was not written: {frame_path}")
 
-        print(json.dumps({
+        result = {
             "ok": True,
             "control_dir": str(control_dir),
             "state": state.get("result", {}),
             "screenshot": shot.get("result", {}).get("out", str(out)),
             "frames": frame_paths,
             "exit_code": proc.returncode,
-        }, sort_keys=True))
+        }
+        if should_auto_dm(args):
+            paths = [Path(result["screenshot"]), *[Path(path) for path in frame_paths]]
+            result["discord_dm"] = send_artifacts_to_discord(
+                paths,
+                args.dm_message or "sdl3-clay UI smoke proof",
+                args.dm_timeout,
+                args.require_dm,
+            )
+        print(json.dumps(result, sort_keys=True))
         return 0
     except Exception:
         if proc.poll() is None:
@@ -183,12 +311,14 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("screenshot")
     add_common(p)
     p.add_argument("--out", required=True)
+    add_dm_options(p)
     p.set_defaults(func=command_main)
 
     p = sub.add_parser("capture_frames")
     add_common(p)
     p.add_argument("--out-dir", required=True)
     p.add_argument("--count", type=int, default=3)
+    add_dm_options(p)
     p.set_defaults(func=command_main)
 
     p = sub.add_parser("smoke")
@@ -201,6 +331,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--video-driver", default="")
     p.add_argument("--render-driver", default="")
     p.add_argument("--clean", action="store_true")
+    add_dm_options(p)
     p.set_defaults(func=smoke)
     return parser
 

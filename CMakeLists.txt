@@ -231,6 +231,12 @@ add_test(
 )
 
 add_test(
+  NAME ui_cli_dm
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/ui_cli_dm.py
+)
+
+add_test(
   NAME ui_cli_commands
   COMMAND ${Python3_EXECUTABLE}
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/ui_cli_commands.py
