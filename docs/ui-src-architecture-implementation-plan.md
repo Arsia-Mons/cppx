@@ -1,0 +1,421 @@
+# UI source architecture implementation plan
+
+## Objective
+
+Implement the active `docs/` UI architecture in `src/`.
+
+This is not a demo polish pass. The end result is the complete documented UI
+stack in source:
+
+- the focus system;
+- the interaction and primitive control system;
+- retained screen stack ownership;
+- `ClientUi` frame ownership;
+- post-layout UI write draining;
+- a real shooter-style example that proves the architecture under pressure.
+
+The shooter example is a first-class deliverable. It must use the same hooks,
+focus runtime, primitives, retained screens, `ClientUi`, and frame pipeline that
+the docs prescribe.
+
+## Source of Truth
+
+Implement from the active architecture docs:
+
+- `docs/client-ui-focus-navigation-architecture.md`
+- `docs/ui-focus-interaction-plan.md`
+- `docs/ui-focus-stress-test.md`
+- `docs/engine-ui-boundary-plan.md`
+
+The docs are the contract. If source and docs disagree, change source to match
+the docs unless implementation proves a doc requirement impossible or wrong. If a
+doc must change, update the doc and the code in the same correction pass.
+
+## Current Source Baseline
+
+The current source tree is a React/Clay runtime sample:
+
+- `src/react.h` and `src/react.cpp` provide component identity, hooks,
+  providers, effects, refs, and shutdown cleanup.
+- `src/ui/components/` contains demo components.
+- `src/ui/providers/` contains input and theme providers.
+- `src/main.cpp` owns the SDL/Clay loop and directly renders `App(&input)`.
+- `tests/react_runtime_tests.cpp` covers hook/provider/runtime behavior.
+
+That runtime is the foundation. Keep it React-style and extend it into the
+documented UI architecture instead of replacing it with a separate framework.
+
+## Non-Negotiables
+
+- This is React-style architecture. Use hooks.
+- Hooks return values and functions.
+- Local UI state stays in hook state inside the component tree.
+- Do not introduce MVC.
+- Do not introduce view models.
+- Do not introduce route-table renderers.
+- Do not pass screen-wide state bundles through component trees.
+- Do not prop drill when a hook is the right boundary.
+- Clay owns layout and render commands only.
+- Screen authors declare components, not sibling navigation edges.
+- Directional navigation is derived from harvested Clay rectangles.
+- Stack and game writes are requested through hook-returned functions and are
+  applied after Clay declaration.
+
+## Required Source Shape
+
+The implementation should land these layers in source. Exact filenames may vary,
+but the ownership boundaries must stay intact.
+
+```text
+src/react.*
+  React-style component, hook, provider, effect, and ref runtime
+
+src/ui/focus/
+  generic focus scopes, focusable registration, layout harvest, spatial nav
+
+src/ui/primitives/
+  Focusable, Button, Toggle, Selectable, TextInput/Stepper as needed
+
+src/client/ui/
+  screen components, UiScreen, ScreenStack, ScreenNavigator hook, ClientUi
+
+src/game/ui/
+  GameUiPipeline, platform/game input adaptation, presentation providers
+
+src/shooter/
+  shooter sample state, presentation builders, and UI hook adapters
+```
+
+The folder names are less important than the dependency direction:
+
+```text
+shooter/game code
+  -> game/ui presentation and write adapters
+  -> client/ui hooks, screens, ClientUi
+  -> ui/primitives
+  -> ui/focus
+  -> Clay
+```
+
+`ui/` must not know shooter rules. Shooter code must not own the generic focus
+runtime, primitive visual state, or retained screen stack.
+
+## Workflow
+
+Use an implementation/review loop for this plan. Do not wait until the end of
+the whole architecture build to review it.
+
+The outer loop is:
+
+```text
+implement one coherent slice
+commit that slice
+run the review/address loop until clean
+move to the next slice
+```
+
+The review/address loop is:
+
+```text
+read-only reviewer pass
+address every high-confidence finding
+commit the fixes
+repeat review/address/commit until the reviewer is clean
+```
+
+Rules:
+
+- This document is an instruction contract, not a progress tracker. Do not mark
+  items complete here as the work proceeds unless the plan itself is wrong and
+  needs a real correction.
+- Each implementation slice should leave the repo in a coherent state with tests
+  or focused verification for that slice.
+- Commit the implementation slice before asking for review, so the reviewer can
+  inspect a stable diff. The commit message should be detailed enough to explain
+  what changed, what docs requirement it satisfies, and what verification was
+  run.
+- Reviewers are read-only. They report findings; they do not edit files.
+- Address every reviewer finding with either a code/doc fix or a clear written
+  reason the finding is not valid.
+- Commit reviewer fixes separately from the original implementation slice. The
+  fix commit message should say what the reviewer found and how it was
+  addressed.
+- Do not call a phase complete while its reviewer still has blocking findings.
+- Do not batch unrelated phases into one giant review if smaller slices can be
+  reviewed cleanly.
+- Preserve user or parallel-agent work in the tree. Do not revert unrelated
+  changes to make a slice look clean.
+
+## Phase 1: Source Gap Audit
+
+Before implementation, produce a short gap audit against the four active docs.
+
+The audit must identify:
+
+- every documented layer missing from `src/`;
+- every current demo shortcut that conflicts with the target architecture;
+- which current runtime pieces stay as foundations;
+- the first vertical slice that will prove the new path.
+
+This is a working audit, not a new architecture proposal. Do not rewrite the
+docs into a smaller target.
+
+Verification:
+
+```sh
+rg -n "ScreenRoute|GridStrategy|use_local_state|OptionsState|view model|MVC" docs src tests
+git diff --check
+```
+
+## Phase 2: Focus Runtime
+
+Add the generic focus runtime under `src/ui/focus/`.
+
+Required behavior:
+
+- focus scopes with stable ids;
+- modal focus scopes;
+- initial focus requests;
+- focusable registration during component declaration;
+- bounded storage with explicit overflow diagnostics;
+- layout harvest after `Clay_EndLayout()` through `Clay_GetElementData()`;
+- frame N directional navigation from frame N-1 harvested rectangles;
+- disabled controls skipped for focus movement and confirm;
+- focus source tracking for keyboard, gamepad, mouse, touch, and programmatic
+  focus;
+- spatial resolver with stable tie-breaks;
+- rare local boundary rules such as stop, wrap, or explicit target.
+
+Required tests:
+
+- stacked buttons navigate up/down from harvested rectangles;
+- grid cells navigate from harvested geometry, not row/column neighbor tables;
+- disabled controls do not receive confirm;
+- initial focus chooses the requested enabled element when present;
+- modal scope traps navigation and parent focus resumes when it closes;
+- focus state remains stable across resize/reflow after the next harvest.
+
+## Phase 3: Interaction and Primitives
+
+Add the generic interaction layer under `src/ui/primitives/`.
+
+Required primitives:
+
+- `Focusable`;
+- `Button`;
+- `Toggle`;
+- `Selectable`;
+- at least one richer focusable tile primitive used by the shooter example;
+- stepper or numeric control if the shooter loadout flow needs quantity/count
+  editing.
+
+Required behavior:
+
+- keyboard/gamepad confirm and cancel;
+- pointer hover, press, drag-off cancellation, release-to-confirm;
+- focus-visible behavior by input source;
+- caller-owned control state;
+- visual state derived from focus state plus control state;
+- frame-local callback functions;
+- no primitive-owned game state;
+- no primitive-owned navigation graph.
+
+Required tests:
+
+- button confirms once on keyboard/gamepad confirm;
+- pointer press outside or drag-off does not confirm;
+- pointer release on the same target confirms once;
+- toggles call hook-returned setter functions and do not own shared state;
+- visual state changes only through focus/control state.
+
+## Phase 4: Client UI Ownership
+
+Add retained client UI ownership under `src/client/ui/`.
+
+Required pieces:
+
+- `UiScreen` retained stack entry;
+- `{Name}ScreenView` component root convention;
+- `ScreenStack`;
+- overlay/opaque visible-screen ordering;
+- `ScreenNavigator` hook;
+- `ClientUi`;
+- bounded UI write queue;
+- post-layout drain point for queued writes.
+
+Rules:
+
+- `ScreenStack` stores retained `UiScreen` objects.
+- `{Name}ScreenView` is only a component root.
+- Screen components use hooks for services, values, functions, and local state.
+- Children receive narrow props only for their own behavior.
+- The game loop does not own the screen stack.
+- Stack mutation is requested through hook-returned functions and applied after
+  Clay declaration.
+
+Required tests:
+
+- push, pop, replace if implemented, and overlay ordering;
+- visible screen ordering with opaque and overlay screens;
+- `use_screen_navigator()` routes operations to the current retained screen
+  entry;
+- local hook state survives normal rerenders and resets on unmount;
+- screen stack writes requested during UI declaration are not applied until the
+  post-layout drain.
+
+## Phase 5: Game/UI Frame Pipeline
+
+Replace the direct sample `App(&input)` frame path with the documented boundary.
+
+Required flow:
+
+```text
+platform input
+  -> UiInputFrame
+  -> GameUiPipeline
+  -> ClientUi::begin_frame
+  -> React/Clay declaration
+  -> Clay_EndLayout
+  -> ClientUi layout harvest and input dispatch
+  -> render Clay commands
+  -> drain UI writes
+  -> present
+```
+
+Required behavior:
+
+- platform code owns raw SDL polling;
+- game/sample state owns shooter simulation;
+- `GameUiPipeline` adapts game state into presentation providers;
+- `ClientUi` owns focus, input routing, retained screens, and write draining;
+- component code never calls Clay lifecycle functions;
+- component code never ticks shooter simulation;
+- shooter/game writes are applied after UI declaration.
+
+Required tests:
+
+- Clay lifecycle calls stay in the frame owner/pipeline;
+- ordinary UI components do not read raw shooter state directly;
+- UI writes requested by controls are drained after layout;
+- runtime teardown still runs hook/effect cleanup and worker cleanup correctly.
+
+## Phase 6: Shooter Example
+
+Build a real shooter-style example that exercises the architecture end to end.
+
+The example should include enough game-shaped state to make the UI meaningful:
+
+- player health, armor, ammo, credits, and selected weapon;
+- inventory/loadout items with disabled requirements;
+- buy or loadout screen with tabs, grid, details panel, equipment slots, compare
+  toggle, quantity/stepper where useful, and modal confirmation;
+- pause screen and options screen;
+- HUD overlay visible over gameplay;
+- nested modal dialog for confirm/discard flows;
+- local hook state for dialogs and scratch UI state;
+- hooks returning values and functions for shooter presentation and writes.
+
+Required screens/components:
+
+- `HudScreenView` or HUD overlay component;
+- `PauseScreenView`;
+- `OptionsScreenView`;
+- `LoadoutScreenView` or `BuyMenuScreenView`;
+- retained `UiScreen` entries for top-level screens;
+- item tile using `Focusable` directly;
+- buttons, toggles, and dialog controls using primitives;
+- details panel reading selected/preview data through hooks.
+
+The shooter example must not be a separate hand-coded UI path. It is the proof
+that the documented architecture works.
+
+Required runtime scenarios:
+
+- keyboard navigation through pause/options;
+- gamepad navigation through loadout grid and equipment slots;
+- mouse hover/press/drag-off/release on item tiles;
+- disabled item explains itself and does not confirm;
+- modal confirm traps focus and restores parent focus when closed;
+- changing tabs or resizing reflows the grid and navigation follows rectangles;
+- buying/equipping requests a real shooter-state write after layout;
+- closing options returns to pause without prop-threaded state.
+
+## Phase 7: Integration Hardening
+
+Once the shooter example works, remove demo-only shortcuts that no longer match
+the architecture.
+
+Expected cleanup:
+
+- direct `App(&input)` as the primary app path is replaced by `ClientUi`;
+- demo counter/theme components either move behind the new screen model or are
+  archived/deleted;
+- global UI state is eliminated except for platform/service globals that have an
+  explicit owner;
+- broad context bags are not introduced;
+- source comments describe the final architecture, not transitional intent.
+
+## Verification Gates
+
+Run these before every completion claim:
+
+```sh
+ctest --test-dir build --output-on-failure
+git diff --check
+rg -n "ScreenRoute|GridStrategy|use_local_state|OptionsState|view model|MVC" docs src tests
+```
+
+Add focused tests as implementation lands. Completion requires coverage for:
+
+- React runtime identity and hook invariants;
+- focus resolver behavior;
+- modal scope behavior;
+- pointer and confirm interaction behavior;
+- primitive visual state derivation;
+- screen stack ownership and visible ordering;
+- post-layout write draining;
+- shooter example integration scenarios.
+
+If a check is too broad and reports archive or legacy docs, scope it to active
+docs and current source before treating it as a blocker.
+
+## Reviewer Gate
+
+Completion requires at least one read-only reviewer pass after implementation.
+
+The reviewer should check:
+
+- source matches the active docs;
+- hooks are the UI boundary for values and functions;
+- no MVC/view-model/state-bundle architecture was introduced;
+- `ui/` remains generic and shooter-agnostic;
+- `client/ui/` owns retained screens and `ClientUi`;
+- shooter-specific code stays behind shooter hooks/adapters;
+- navigation derives from Clay rectangles instead of sibling edge tables;
+- writes drain after Clay declaration.
+
+Any high-confidence reviewer finding must be fixed before the plan is complete.
+
+## Done Means
+
+The implementation is complete only when `src/` demonstrates the full documented
+stack end to end:
+
+```text
+SDL/platform input
+  -> UiInputFrame
+  -> GameUiPipeline
+  -> ClientUi
+  -> ScreenStack
+  -> UiScreen
+  -> {Name}ScreenView
+  -> hooks returning values and functions
+  -> primitives and Focusable
+  -> Clay layout/render commands
+  -> focus layout harvest
+  -> post-layout UI write drain
+  -> shooter state update
+```
+
+The shooter example must use that path for HUD, pause/options, and loadout/buy
+flows. A working UI that bypasses this stack does not satisfy the plan.
