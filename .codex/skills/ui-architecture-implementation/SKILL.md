@@ -34,6 +34,9 @@ Game tick
 GameUiPipeline
   adapts platform/game state into UiInputFrame and presentation providers
 
+platform/control harness
+  launches or attaches to the runtime, drives the same input adapter, captures rendered frames
+
 ClientUi
   owns focus runtime, input routing, retained ScreenStack, write queues, drain point
 
@@ -69,6 +72,9 @@ Shooter code must not own focus, primitive state, or screen-stack mechanics.
 - `GameUiPipeline` owns React/Clay frame lifecycle around `ClientUi`: begin,
   declare, end layout, dispatch focus/input, render Clay commands, then drain
   queued UI writes.
+- CLI/control-harness input must enter through the same platform-to-`UiInputFrame`
+  adapter as normal runtime input. Screenshots and frame captures must come from
+  the actual rendered frame, not a synthetic component snapshot.
 - Key retained-screen providers and screen component roots by `UiScreen` entry
   id so hook state survives rerenders and resets on unmount/new entries.
 - Route `use_screen_navigator().pop_current()` by retained screen entry id,
@@ -130,6 +136,9 @@ tracker. Edit the plan only when the contract itself needs correction.
   visible ordering, and post-layout write draining.
 - `src/game/ui/` adapts platform/game state into `UiInputFrame`, presentation
   hooks/providers, and write application.
+- `src/platform/` owns platform input adaptation and local control harness
+  plumbing. It may inspect runtime state for tests, but must not mutate focus,
+  screen, or shooter state behind the pipeline.
 - `src/shooter/` proves the architecture through HUD, pause/options, loadout,
   modals, disabled items, tab/grid reflow, and real write requests.
 
@@ -146,6 +155,8 @@ tracker. Edit the plan only when the contract itself needs correction.
 - Letting a modal scope move parent focus while the modal is active.
 - Treating passing render output as proof when focus/input/write ordering is
   unverified.
+- Building CLI tests that bypass SDL/platform input adaptation or capture
+  non-rendered component snapshots.
 
 ## Verification
 

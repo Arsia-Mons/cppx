@@ -24,12 +24,15 @@
 #include "game/ui/demo_app_screen.h"
 #include "game/ui/game_ui_pipeline.h"
 #include "input.h"
+#include "platform/control_mailbox.h"
+#include "platform/input_adapter.h"
 #include "react.h"
 
 #include <curl/curl.h>
 
 #include <memory>
 #include <stdio.h>
+#include <string.h>
 
 // ----------------------------------------------------------------------------
 // Definitions for the shared globals declared in app_state.h.
@@ -89,7 +92,14 @@ static void on_clay_error(Clay_ErrorData err) {
 // SDL bootstrap + main loop.
 // ----------------------------------------------------------------------------
 
-int main(int, char **) {
+int main(int argc, char **argv) {
+    const char *control_dir = nullptr;
+    for (int i = 1; i < argc; ++i) {
+        if (strcmp(argv[i], "--control-dir") == 0 && i + 1 < argc) {
+            control_dir = argv[++i];
+        }
+    }
+
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         fprintf(stderr, "SDL_Init: %s\n", SDL_GetError());
         return 1;
@@ -104,7 +114,7 @@ int main(int, char **) {
     if (!g_window) { fprintf(stderr, "SDL_CreateWindow: %s\n", SDL_GetError()); return 1; }
     g_sdl = SDL_CreateRenderer(g_window, nullptr);
     if (!g_sdl) { fprintf(stderr, "SDL_CreateRenderer: %s\n", SDL_GetError()); return 1; }
-    SDL_SetRenderVSync(g_sdl, 1);
+    SDL_SetRenderVSync(g_sdl, control_dir ? 0 : 1);
 
     g_text_eng = TTF_CreateRendererTextEngine(g_sdl);
     g_font = open_some_font(16.0f);
@@ -133,6 +143,10 @@ int main(int, char **) {
 
     game::ui::GameUiPipeline ui_pipeline;
     ui_pipeline.client_ui().push_screen(std::make_unique<game::ui::DemoAppScreen>());
+    platform::ControlMailbox control;
+    if (control_dir && !control.init(control_dir)) {
+        return 1;
+    }
 
     // --- main loop ---
     bool running = true;
@@ -148,54 +162,10 @@ int main(int, char **) {
                     running = false; break;
                 case SDL_EVENT_KEY_DOWN:
                     if (ev.key.repeat) break;
-                    switch (ev.key.key) {
-                        case SDLK_ESCAPE:
-                            ui_input.cancel_pressed = true;
-                            ui_input.cancel_down = true;
-                            ui_input.source = ::ui::UiFocusSource::Keyboard;
-                            running = false;
-                            break;
-                        case SDLK_UP:
-                            input.increment_counter = true;
-                            ui_input.nav_up = true;
-                            ui_input.source = ::ui::UiFocusSource::Keyboard;
-                            break;
-                        case SDLK_DOWN:
-                            input.decrement_counter = true;
-                            ui_input.nav_down = true;
-                            ui_input.source = ::ui::UiFocusSource::Keyboard;
-                            break;
-                        case SDLK_RETURN:
-                        case SDLK_SPACE:
-                            ui_input.confirm_pressed = true;
-                            ui_input.confirm_down = true;
-                            ui_input.source = ::ui::UiFocusSource::Keyboard;
-                            break;
-                        case SDLK_M:
-                            input.toggle_counter = true;
-                            break;
-                        case SDLK_T:
-                            input.cycle_theme = true;
-                            break;
-                        case SDLK_I:
-                            input.fetch_image = true;
-                            break;
-                        default: break;
-                    }
+                    platform::apply_key_down(ev.key.key, input, ui_input, &running);
                     break;
                 case SDL_EVENT_KEY_UP:
-                    switch (ev.key.key) {
-                        case SDLK_ESCAPE:
-                            ui_input.cancel_released = true;
-                            ui_input.source = ::ui::UiFocusSource::Keyboard;
-                            break;
-                        case SDLK_RETURN:
-                        case SDLK_SPACE:
-                            ui_input.confirm_released = true;
-                            ui_input.source = ::ui::UiFocusSource::Keyboard;
-                            break;
-                        default: break;
-                    }
+                    platform::apply_key_up(ev.key.key, ui_input);
                     break;
                 default: break;
             }
@@ -217,6 +187,11 @@ int main(int, char **) {
         }
         previous_pointer_down = pointer_down;
 
+        control.poll(input, ui_input, running, g_window, ui_pipeline);
+        if (control.apply_pointer_override(mx, my, pointer_down)) {
+            ui_input.pointer_down = pointer_down;
+        }
+
         int frame_w = 800;
         int frame_h = 500;
         SDL_GetWindowSize(g_window, &frame_w, &frame_h);
@@ -227,14 +202,17 @@ int main(int, char **) {
             .demo_input = &input,
         };
 
-        ui_pipeline.render_client_ui_frame(frame, [](Clay_RenderCommandArray &cmds) {
+        ui_pipeline.render_client_ui_frame(frame, [&](Clay_RenderCommandArray &cmds) {
             SDL_SetRenderDrawColor(g_sdl, 12, 14, 22, 255);
             SDL_RenderClear(g_sdl);
             SDL_Clay_RenderClayCommands(&g_clay_rd, &cmds);
+            control.capture_after_render(g_sdl, ui_pipeline);
             SDL_RenderPresent(g_sdl);
         });
+        control.finish_frame(ui_pipeline);
     }
 
+    control.shutdown();
     react_shutdown();
     SDL_free(clay_buf);
     TTF_CloseFont(g_font);

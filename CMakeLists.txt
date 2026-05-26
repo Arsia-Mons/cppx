@@ -40,6 +40,7 @@ if(NOT SDL3_ttf_FOUND)
 endif()
 
 find_package(CURL REQUIRED)
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
 enable_testing()
 
@@ -50,6 +51,8 @@ add_executable(hello
   src/client/ui/screen_stack.cpp
   src/game/ui/demo_app_screen.cpp
   src/game/ui/game_ui_pipeline.cpp
+  src/platform/control_mailbox.cpp
+  src/platform/input_adapter.cpp
   src/ui/focus/ui_focus.cpp
   src/ui/primitives/button.cpp
   src/ui/primitives/focusable.cpp
@@ -187,3 +190,14 @@ target_compile_options(game_ui_pipeline_tests PRIVATE
 )
 
 add_test(NAME game_ui_pipeline_tests COMMAND game_ui_pipeline_tests)
+
+add_test(
+  NAME ui_cli_smoke
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/ui_cli_smoke.py
+    --exe $<TARGET_FILE:hello>
+    --cli ${CMAKE_CURRENT_SOURCE_DIR}/tools/ui_cli.py
+    --out ${CMAKE_CURRENT_BINARY_DIR}/ui_cli_smoke.bmp
+    --capture-dir ${CMAKE_CURRENT_BINARY_DIR}/ui_cli_capture
+    --control-dir ${CMAKE_CURRENT_BINARY_DIR}/ui_cli_control
+)
