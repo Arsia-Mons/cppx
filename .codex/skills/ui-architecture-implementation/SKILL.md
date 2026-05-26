@@ -66,6 +66,10 @@ Shooter code must not own focus, primitive state, or screen-stack mechanics.
 - Expose shared reads through named hooks, not broad world-shaped context.
 - Request stack/game writes through hook-returned functions and drain after Clay
   declaration.
+- Key retained-screen providers and screen component roots by `UiScreen` entry
+  id so hook state survives rerenders and resets on unmount/new entries.
+- Route `use_screen_navigator().pop_current()` by retained screen entry id,
+  not by whichever screen happens to be top when writes drain.
 - Let screen authors declare components. Do not make them author sibling
   navigation edges.
 - Derive directional navigation from harvested Clay rectangles from the previous

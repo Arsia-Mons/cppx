@@ -46,6 +46,8 @@ enable_testing()
 add_executable(hello
   src/main.cpp
   src/react.cpp
+  src/client/ui/client_ui.cpp
+  src/client/ui/screen_stack.cpp
   src/ui/focus/ui_focus.cpp
   src/ui/primitives/button.cpp
   src/ui/primitives/focusable.cpp
@@ -138,3 +140,24 @@ target_compile_options(ui_primitives_tests PRIVATE
 )
 
 add_test(NAME ui_primitives_tests COMMAND ui_primitives_tests)
+
+add_executable(client_ui_tests
+  tests/client_ui_tests.cpp
+  src/react.cpp
+  src/client/ui/client_ui.cpp
+  src/client/ui/screen_stack.cpp
+  src/ui/focus/ui_focus.cpp
+  third_party/clay_impl.cpp
+)
+
+target_include_directories(client_ui_tests PRIVATE
+  src
+  third_party
+  third_party/clay
+)
+
+target_compile_options(client_ui_tests PRIVATE
+  $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall -Wextra -Wno-missing-field-initializers -Wno-c99-designator -Wno-unused-parameter>
+)
+
+add_test(NAME client_ui_tests COMMAND client_ui_tests)
