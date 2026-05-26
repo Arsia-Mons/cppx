@@ -30,6 +30,10 @@ struct ShooterHudRead {
     const char *weapon = "";
 };
 
+constexpr int LOADOUT_ACTION_NONE = 0;
+constexpr int LOADOUT_ACTION_BUY = 1;
+constexpr int LOADOUT_ACTION_EQUIP = 2;
+
 static ReactContext ShooterContextValue = {};
 
 static ShooterGame *use_shooter_game(void) {
@@ -94,14 +98,21 @@ static void ShooterProvider(ShooterGame *game, const std::function<void()> &chil
 
 static void HudBand(void) {
     ShooterHudRead hud = use_shooter_hud();
-    static char line[160];
-    snprintf(line, sizeof(line), "HP %d   ARMOR %d   AMMO %d   CREDITS %d   %s",
-             hud.health, hud.armor, hud.ammo, hud.credits, hud.weapon);
+    static char health[32];
+    static char armor[32];
+    static char ammo[32];
+    static char credits[40];
+    snprintf(health, sizeof(health), "HP %d", hud.health);
+    snprintf(armor, sizeof(armor), "ARMOR %d", hud.armor);
+    snprintf(ammo, sizeof(ammo), "AMMO %d", hud.ammo);
+    snprintf(credits, sizeof(credits), "CREDITS %d", hud.credits);
     CLAY({
         .id = CLAY_ID("ShooterHudBand"),
         .layout = {
             .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_FIXED(44) },
             .padding = { 16, 16, 10, 10 },
+            .childGap = 18,
+            .layoutDirection = CLAY_LEFT_TO_RIGHT,
             .childAlignment = { CLAY_ALIGN_X_LEFT, CLAY_ALIGN_Y_CENTER },
         },
         .backgroundColor = { 18, 24, 28, 245 },
@@ -110,7 +121,15 @@ static void HudBand(void) {
             .color = { 82, 106, 118, 255 },
         },
     }) {
-        CLAY_TEXT(::ui::clay_text(line),
+        CLAY_TEXT(::ui::clay_text(health),
+            CLAY_TEXT_CONFIG({ .textColor = { 224, 238, 236, 255 }, .fontSize = 18 }));
+        CLAY_TEXT(::ui::clay_text(armor),
+            CLAY_TEXT_CONFIG({ .textColor = { 224, 238, 236, 255 }, .fontSize = 18 }));
+        CLAY_TEXT(::ui::clay_text(ammo),
+            CLAY_TEXT_CONFIG({ .textColor = { 224, 238, 236, 255 }, .fontSize = 18 }));
+        CLAY_TEXT(::ui::clay_text(credits),
+            CLAY_TEXT_CONFIG({ .textColor = { 224, 238, 236, 255 }, .fontSize = 18 }));
+        CLAY_TEXT(::ui::clay_text(hud.weapon),
             CLAY_TEXT_CONFIG({ .textColor = { 224, 238, 236, 255 }, .fontSize = 18 }));
     }
 }
@@ -237,6 +256,10 @@ static void WeaponTile(int index, int *selected_index) {
             if (selected_index) *selected_index = index;
             if (select) select();
         },
+        .on_focus = [selected_index, index, select] {
+            if (selected_index) *selected_index = index;
+            if (select) select();
+        },
     }, [&](const ::ui::UiFocusableState &focus) {
         ::ui::VisualState visual = ::ui::derive_visual_state(focus, {
             .selected = selected,
@@ -275,11 +298,116 @@ static void WeaponTile(int index, int *selected_index) {
     });
 }
 
+static void LoadoutConfirmDialog(int action,
+                                 int weapon_index,
+                                 int serial,
+                                 int *pending_action) {
+    REACT_COMPONENT_BEGIN_KEY("LoadoutConfirmDialog", (uint32_t)((serial << 8) | action)) {
+        ShooterGame *game = use_shooter_game();
+        std::function<void()> buy = use_buy_weapon(weapon_index);
+        std::function<void()> equip = use_equip_weapon(weapon_index);
+        bool valid = game && action != LOADOUT_ACTION_NONE &&
+            weapon_index >= 0 && weapon_index < game->weapon_count();
+        if (valid) {
+            const WeaponState &weapon = game->weapon(weapon_index);
+
+            static char title[64];
+            static char message[128];
+            if (action == LOADOUT_ACTION_BUY) {
+                snprintf(title, sizeof(title), "Confirm Buy");
+                snprintf(message, sizeof(message), "Buy %s for %d credits?",
+                         weapon.spec.name, weapon.spec.cost);
+            } else {
+                snprintf(title, sizeof(title), "Confirm Equip");
+                snprintf(message, sizeof(message), "Equip %s as active weapon?",
+                         weapon.spec.name);
+            }
+
+            auto close = [pending_action] {
+                if (pending_action) *pending_action = LOADOUT_ACTION_NONE;
+            };
+
+            ::ui::ui_focus_push_scope({
+                .id = CLAY_IDI("LoadoutConfirmScope", serial),
+                .modal = true,
+                .wrap = true,
+            });
+            ::ui::ui_focus_request_initial_focus(CLAY_ID("ConfirmLoadoutActionButton"));
+
+            CLAY({
+                .id = CLAY_ID("LoadoutConfirmScrim"),
+                .layout = {
+                    .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0) },
+                    .childAlignment = { CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER },
+                },
+                .backgroundColor = { 0, 0, 0, 160 },
+                .floating = {
+                    .zIndex = 300,
+                    .pointerCaptureMode = CLAY_POINTER_CAPTURE_MODE_CAPTURE,
+                    .attachTo = CLAY_ATTACH_TO_ROOT,
+                },
+            }) {
+                CLAY({
+                    .id = CLAY_ID("LoadoutConfirmPanel"),
+                    .layout = {
+                        .sizing = { CLAY_SIZING_FIXED(360), CLAY_SIZING_FIT(0) },
+                        .padding = CLAY_PADDING_ALL(18),
+                        .childGap = 12,
+                        .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                    },
+                    .backgroundColor = { 18, 26, 32, 255 },
+                    .border = {
+                        .width = CLAY_BORDER_OUTSIDE(1),
+                        .color = { 92, 116, 126, 255 },
+                    },
+                    .cornerRadius = CLAY_CORNER_RADIUS(4),
+                }) {
+                    CLAY_TEXT(::ui::clay_text(title),
+                        CLAY_TEXT_CONFIG({ .textColor = { 240, 248, 244, 255 }, .fontSize = 22 }));
+                    CLAY_TEXT(::ui::clay_text(message),
+                        CLAY_TEXT_CONFIG({ .textColor = { 202, 218, 216, 255 }, .fontSize = 15 }));
+                    CLAY({
+                        .id = CLAY_ID("LoadoutConfirmActions"),
+                        .layout = {
+                            .sizing = { CLAY_SIZING_FIT(0), CLAY_SIZING_FIT(0) },
+                            .childGap = 10,
+                            .layoutDirection = CLAY_LEFT_TO_RIGHT,
+                        },
+                    }) {
+                        ::ui::Button({
+                            .id = CLAY_ID("ConfirmLoadoutActionButton"),
+                            .label = "Confirm",
+                            .on_confirm = [action, buy, equip, close] {
+                                if (action == LOADOUT_ACTION_BUY) {
+                                    if (buy) buy();
+                                } else if (action == LOADOUT_ACTION_EQUIP) {
+                                    if (equip) equip();
+                                }
+                                close();
+                            },
+                        });
+                        ::ui::Button({
+                            .id = CLAY_ID("CancelLoadoutActionButton"),
+                            .label = "Cancel",
+                            .on_confirm = close,
+                        });
+                    }
+                }
+            }
+
+            ::ui::ui_focus_pop_scope();
+        }
+    } REACT_COMPONENT_END();
+}
+
 static void LoadoutScreenView(void) {
     REACT_COMPONENT_BEGIN("LoadoutScreenView") {
         client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
         ShooterGame *game = use_shooter_game();
         int *selected_index = use_state_int(game ? game->selected_weapon() : 0);
+        int *pending_action = use_state_int(LOADOUT_ACTION_NONE);
+        int *pending_weapon_index = use_state_int(*selected_index);
+        int *pending_serial = use_state_int(0);
         if (game && (*selected_index < 0 || *selected_index >= game->weapon_count())) {
             *selected_index = 0;
         }
@@ -359,13 +487,31 @@ static void LoadoutScreenView(void) {
                         .id = CLAY_ID("BuyWeaponButton"),
                         .label = "Buy",
                         .disabled = !can_buy,
-                        .on_confirm = use_buy_weapon(*selected_index),
+                        .on_confirm = [pending_action,
+                                       pending_weapon_index,
+                                       pending_serial,
+                                       selected_index] {
+                            if (pending_weapon_index && selected_index) {
+                                *pending_weapon_index = *selected_index;
+                            }
+                            if (pending_serial) *pending_serial += 1;
+                            if (pending_action) *pending_action = LOADOUT_ACTION_BUY;
+                        },
                     });
                     ::ui::Button({
                         .id = CLAY_ID("EquipWeaponButton"),
                         .label = "Equip",
                         .disabled = !can_equip,
-                        .on_confirm = use_equip_weapon(*selected_index),
+                        .on_confirm = [pending_action,
+                                       pending_weapon_index,
+                                       pending_serial,
+                                       selected_index] {
+                            if (pending_weapon_index && selected_index) {
+                                *pending_weapon_index = *selected_index;
+                            }
+                            if (pending_serial) *pending_serial += 1;
+                            if (pending_action) *pending_action = LOADOUT_ACTION_EQUIP;
+                        },
                     });
                     ::ui::Button({
                         .id = CLAY_ID("BackFromLoadoutButton"),
@@ -374,6 +520,11 @@ static void LoadoutScreenView(void) {
                     });
                 }
             }
+        }
+
+        if (*pending_action != LOADOUT_ACTION_NONE) {
+            LoadoutConfirmDialog(
+                *pending_action, *pending_weapon_index, *pending_serial, pending_action);
         }
 
         ::ui::ui_focus_pop_scope();

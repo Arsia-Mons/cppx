@@ -32,6 +32,14 @@ static Clay_Dimensions measure_text(Clay_StringSlice text,
     return Clay_Dimensions{ (float)text.length * 8.0f, 16.0f };
 }
 
+static Clay_ElementId test_id(const char *name) {
+    return Clay_GetElementId(Clay_String{ false, (int32_t)strlen(name), name });
+}
+
+static bool same_id(Clay_ElementId a, Clay_ElementId b) {
+    return a.id != 0 && a.id == b.id;
+}
+
 static bool init_clay_once(void) {
     if (g_clay) return true;
 
@@ -79,6 +87,13 @@ static ::ui::UiInputFrame keyboard_confirm(void) {
 static ::ui::UiInputFrame keyboard_down(void) {
     return {
         .nav_down = true,
+        .source = ::ui::UiFocusSource::Keyboard,
+    };
+}
+
+static ::ui::UiInputFrame keyboard_right(void) {
+    return {
+        .nav_right = true,
         .source = ::ui::UiFocusSource::Keyboard,
     };
 }
@@ -142,12 +157,76 @@ static bool pause_options_returns_to_pause_through_screen_stack(void) {
     return true;
 }
 
+static bool loadout_buy_uses_confirm_dialog_and_restores_parent_focus(void) {
+    react_init(g_clay);
+    shooter::ShooterGame game;
+    client::ui::ClientUi client_ui;
+    CHECK(client_ui.push_screen(std::make_unique<shooter::LoadoutScreen>(&game)));
+
+    run_client_frame(client_ui);
+    CHECK(same_id(
+        ::ui::ui_focus_focused_id_for_scope(test_id("LoadoutScope")),
+        CLAY_IDI("WeaponTile", 0)));
+    CHECK(game.selected_weapon() == 0);
+
+    run_client_frame(client_ui, keyboard_right());
+    CHECK(same_id(
+        ::ui::ui_focus_focused_id_for_scope(test_id("LoadoutScope")),
+        CLAY_IDI("WeaponTile", 1)));
+    CHECK(game.selected_weapon() == 1);
+    CHECK(!game.weapon(1).owned);
+    CHECK(game.credits() == 450);
+
+    run_client_frame(client_ui, keyboard_right());
+    run_client_frame(client_ui, keyboard_down());
+    CHECK(same_id(
+        ::ui::ui_focus_focused_id_for_scope(test_id("LoadoutScope")),
+        test_id("BuyWeaponButton")));
+
+    run_client_frame(client_ui, keyboard_confirm());
+    CHECK(!game.weapon(1).owned);
+    CHECK(game.credits() == 450);
+
+    run_client_frame(client_ui);
+    CHECK(same_id(
+        ::ui::ui_focus_focused_id_for_scope(CLAY_IDI("LoadoutConfirmScope", 1)),
+        test_id("ConfirmLoadoutActionButton")));
+    CHECK(same_id(
+        ::ui::ui_focus_focused_id_for_scope(test_id("LoadoutScope")),
+        test_id("BuyWeaponButton")));
+
+    run_client_frame(client_ui, keyboard_right());
+    CHECK(same_id(
+        ::ui::ui_focus_focused_id_for_scope(CLAY_IDI("LoadoutConfirmScope", 1)),
+        test_id("CancelLoadoutActionButton")));
+    run_client_frame(client_ui, keyboard_confirm());
+    CHECK(!game.weapon(1).owned);
+    CHECK(game.credits() == 450);
+
+    run_client_frame(client_ui);
+    CHECK(same_id(
+        ::ui::ui_focus_focused_id_for_scope(test_id("LoadoutScope")),
+        test_id("BuyWeaponButton")));
+
+    run_client_frame(client_ui, keyboard_confirm());
+    CHECK(!game.weapon(1).owned);
+    run_client_frame(client_ui);
+    CHECK(same_id(
+        ::ui::ui_focus_focused_id_for_scope(CLAY_IDI("LoadoutConfirmScope", 2)),
+        test_id("ConfirmLoadoutActionButton")));
+    run_client_frame(client_ui, keyboard_confirm());
+    CHECK(game.weapon(1).owned);
+    CHECK(game.credits() == 150);
+    return true;
+}
+
 int main(void) {
     if (!init_clay_once()) return 1;
 
     if (!shooter_game_buy_and_equip_are_real_state_writes()) return 1;
     if (!shooter_screen_pushes_pause_after_confirm()) return 1;
     if (!pause_options_returns_to_pause_through_screen_stack()) return 1;
+    if (!loadout_buy_uses_confirm_dialog_and_restores_parent_focus()) return 1;
 
     react_shutdown();
     free(g_clay_memory);

@@ -103,6 +103,11 @@ Shooter code must not own focus, primitive state, or screen-stack mechanics.
 - Capture confirm targets before current-layout fallback repair. If a focused
   control becomes disabled or disappears during the current declaration, do not
   retarget the same-frame confirm press to the newly selected fallback element.
+- When a conditional dialog should start from its default control each time it
+  opens, key the dialog component and focus scope by a local open-instance
+  serial. Reusing the same modal scope id can intentionally preserve focus, but
+  it can also reopen on the old Cancel/destructive target after the dialog was
+  hidden.
 - Suppress duplicate pointer/key confirms only after one path actually
   dispatched. A pointer release on the already-focused target must still confirm
   when no keyboard/gamepad confirm edge fired.
@@ -168,6 +173,8 @@ tracker. Edit the plan only when the contract itself needs correction.
 - Mutating game, stack, or shared state during Clay declaration.
 - Storing old-frame callbacks in retained focus records.
 - Letting a modal scope move parent focus while the modal is active.
+- Reusing a conditional modal focus scope id when the UX requires fresh initial
+  focus on every open.
 - Treating passing render output as proof when focus/input/write ordering is
   unverified, or treating a captured screenshot as proof without inspecting the
   rendered pixels for unexpected layout, clipping, focus, or artifact issues.
