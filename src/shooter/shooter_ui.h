@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../client/ui/ui_screen.h"
-#include "shooter_game.h"
+#include "../game/shooter_game.h"
 
 #include <functional>
 

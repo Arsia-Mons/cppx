@@ -57,7 +57,9 @@ add_executable(hello
   src/platform/sdl/window.cpp
   src/renderer/font_registry.cpp
   src/renderer/sdl_clay_renderer.cpp
-  src/shooter/shooter_game.cpp
+  src/game/inventory.cpp
+  src/game/economy.cpp
+  src/game/shooter_game.cpp
   src/shooter/shooter_ui.cpp
   src/ui/focus/ui_focus.cpp
   src/ui/primitives/button.cpp
@@ -206,7 +208,9 @@ add_executable(shooter_ui_tests
   src/react.cpp
   src/client/ui/client_ui.cpp
   src/client/ui/screen_stack.cpp
-  src/shooter/shooter_game.cpp
+  src/game/inventory.cpp
+  src/game/economy.cpp
+  src/game/shooter_game.cpp
   src/shooter/shooter_ui.cpp
   src/ui/focus/ui_focus.cpp
   src/ui/primitives/button.cpp

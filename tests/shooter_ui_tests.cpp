@@ -1,6 +1,6 @@
 #include "client/ui/client_ui.h"
 #include "react.h"
-#include "shooter/shooter_game.h"
+#include "game/shooter_game.h"
 #include "shooter/shooter_ui.h"
 
 #include <clay.h>

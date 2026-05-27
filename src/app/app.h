@@ -5,7 +5,7 @@
 #include "../platform/sdl/window.h"
 #include "../renderer/font_registry.h"
 #include "../renderer/sdl_clay_renderer.h"
-#include "../shooter/shooter_game.h"
+#include "../game/shooter_game.h"
 
 #include <clay.h>
 
