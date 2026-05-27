@@ -56,4 +56,8 @@ bool ShooterGame::equip_weapon(int index) {
     return true;
 }
 
+void ShooterGame::reset() {
+    *this = ShooterGame();
+}
+
 } // namespace shooter

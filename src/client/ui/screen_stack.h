@@ -16,6 +16,7 @@ public:
     bool pop_top();
     bool pop_entry(UiScreenEntryId entry_id);
     bool replace_top(std::unique_ptr<UiScreen> screen);
+    bool reset_to(std::unique_ptr<UiScreen> screen);
 
     int count() const { return count_; }
     UiScreen *at(int index) const;

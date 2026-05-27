@@ -181,8 +181,11 @@ int main(int argc, char **argv) {
 
     game::ui::GameUiPipeline ui_pipeline;
     shooter::ShooterGame shooter_game;
+    bool running = true;
     ui_pipeline.client_ui().push_screen(
-        std::make_unique<shooter::ShooterGameScreen>(&shooter_game));
+        std::make_unique<shooter::MainMenuScreen>(&shooter_game, [&running] {
+            running = false;
+        }));
     platform::ControlMailbox control;
     control.set_game_state_json_provider([&shooter_game] {
         return shooter_state_json(shooter_game);
@@ -192,7 +195,6 @@ int main(int argc, char **argv) {
     }
 
     // --- main loop ---
-    bool running = true;
     bool previous_pointer_down = false;
     while (running) {
         ::ui::UiInputFrame ui_input = {};

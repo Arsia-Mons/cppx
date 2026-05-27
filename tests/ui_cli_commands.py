@@ -86,12 +86,15 @@ def main() -> int:
         run_cli(cli, control_dir, "wait", "--frames", "1")
         state = run_cli(cli, control_dir, "inspect")
         result = state["result"]
-        if result["screen_count"] != 1 or result["top_screen"] != "ShooterGame":
+        if result["screen_count"] != 1 or result["top_screen"] != "MainMenu":
             raise RuntimeError(f"unexpected state: {result}")
-        if screen_names(result) != ["ShooterGame"]:
+        if screen_names(result) != ["MainMenu"]:
             raise RuntimeError(f"unexpected screen stack: {result}")
         if result["focus_source"] != "Programmatic":
             raise RuntimeError(f"unexpected focus source: {result}")
+        focusable(result, "StartMatchButton")
+        focusable(result, "OpenOptionsFromMainMenuButton")
+        focusable(result, "QuitButton")
         game = result["game"]
         if game["credits"] != 450 or game["selected_weapon"] != 0:
             raise RuntimeError(f"unexpected shooter state: {game}")
@@ -99,12 +102,57 @@ def main() -> int:
         if not weapons[0]["equipped"] or weapons[1]["owned"]:
             raise RuntimeError(f"unexpected weapon state: {weapons}")
 
-        run_cli(cli, control_dir, "gamepad", "--button", "right")
+        run_cli(
+            cli,
+            control_dir,
+            "pointer",
+            "--target",
+            "OpenOptionsFromMainMenuButton",
+            "--action",
+            "click",
+        )
+        wait_frame(cli, control_dir)
+        state = run_cli(cli, control_dir, "inspect")
+        result = state["result"]
+        if result["screen_count"] != 2 or result["top_screen"] != "Options":
+            raise RuntimeError(f"options did not open from main menu: {result}")
+        if screen_names(result) != ["MainMenu", "Options"]:
+            raise RuntimeError(f"unexpected main menu options stack: {result}")
+
+        run_cli(cli, control_dir, "key", "--key", "escape")
+        wait_frame(cli, control_dir)
+        state = run_cli(cli, control_dir, "inspect")
+        result = state["result"]
+        if result["screen_count"] != 1 or result["top_screen"] != "MainMenu":
+            raise RuntimeError(f"escape did not return to main menu: {result}")
+        if screen_names(result) != ["MainMenu"]:
+            raise RuntimeError(f"unexpected main menu stack after escape: {result}")
+
+        run_cli(cli, control_dir, "gamepad", "--button", "down")
         wait_frame(cli, control_dir)
         state = run_cli(cli, control_dir, "inspect")
         result = state["result"]
         if result["focus_source"] != "Gamepad":
             raise RuntimeError(f"gamepad did not set focus source: {result}")
+
+        run_cli(
+            cli,
+            control_dir,
+            "pointer",
+            "--target",
+            "StartMatchButton",
+            "--action",
+            "click",
+        )
+        wait_frame(cli, control_dir)
+        state = run_cli(cli, control_dir, "inspect")
+        result = state["result"]
+        if result["screen_count"] != 1 or result["top_screen"] != "ShooterGame":
+            raise RuntimeError(f"start match did not open game: {result}")
+        if screen_names(result) != ["ShooterGame"]:
+            raise RuntimeError(f"unexpected game stack: {result}")
+        if result["game"]["credits"] != 450 or result["game"]["selected_weapon"] != 0:
+            raise RuntimeError(f"start match did not reset shooter state: {result}")
 
         run_cli(cli, control_dir, "gamepad", "--button", "left")
         wait_frame(cli, control_dir)
@@ -226,6 +274,49 @@ def main() -> int:
             frame_path = Path(frame)
             if not frame_path.exists() or frame_path.stat().st_size <= 0:
                 raise RuntimeError(f"capture frame missing: {frame_path}")
+
+        run_cli(cli, control_dir, "key", "--key", "escape")
+        wait_frame(cli, control_dir)
+        state = run_cli(cli, control_dir, "inspect")
+        result = state["result"]
+        if result["screen_count"] != 2 or result["top_screen"] != "Pause":
+            raise RuntimeError(f"escape did not close loadout to pause: {result}")
+        if screen_names(result) != ["ShooterGame", "Pause"]:
+            raise RuntimeError(f"unexpected pause stack after closing loadout: {result}")
+
+        run_cli(
+            cli,
+            control_dir,
+            "pointer",
+            "--target",
+            "ExitToMainMenuButton",
+            "--action",
+            "click",
+        )
+        wait_frame(cli, control_dir)
+        state = run_cli(cli, control_dir, "inspect")
+        result = state["result"]
+        if result["screen_count"] != 1 or result["top_screen"] != "MainMenu":
+            raise RuntimeError(f"exit to main menu did not reset stack: {result}")
+        if screen_names(result) != ["MainMenu"]:
+            raise RuntimeError(f"unexpected stack after exit to main menu: {result}")
+
+        run_cli(
+            cli,
+            control_dir,
+            "pointer",
+            "--target",
+            "StartMatchButton",
+            "--action",
+            "click",
+        )
+        wait_frame(cli, control_dir)
+        state = run_cli(cli, control_dir, "inspect")
+        result = state["result"]
+        if result["screen_count"] != 1 or result["top_screen"] != "ShooterGame":
+            raise RuntimeError(f"second start match did not open game: {result}")
+        if result["game"]["credits"] != 450 or result["game"]["selected_weapon"] != 0:
+            raise RuntimeError(f"second start match did not reset game: {result}")
 
         error = run_cli(cli, control_dir, "key", "--key", "not-a-key", expect_ok=False)
         if "BAD_KEY" not in error.get("error", "") and "BAD_KEY" not in error.get("code", ""):

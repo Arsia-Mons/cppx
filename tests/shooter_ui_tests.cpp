@@ -111,6 +111,14 @@ static ::ui::UiInputFrame keyboard_right(void) {
     };
 }
 
+static ::ui::UiInputFrame keyboard_cancel(void) {
+    return {
+        .cancel_pressed = true,
+        .cancel_down = true,
+        .source = ::ui::UiFocusSource::Keyboard,
+    };
+}
+
 static ::ui::UiInputFrame pointer_press(void) {
     return {
         .pointer_pressed = true,
@@ -141,6 +149,77 @@ static bool shooter_game_buy_and_equip_are_real_state_writes(void) {
     return true;
 }
 
+static bool main_menu_start_match_resets_game_and_stack(void) {
+    react_init(g_clay);
+    shooter::ShooterGame game;
+    CHECK(game.buy_weapon(1));
+    CHECK(game.equip_weapon(1));
+    CHECK(game.credits() == 150);
+    CHECK(game.selected_weapon() == 1);
+
+    bool quit_requested = false;
+    client::ui::ClientUi client_ui;
+    CHECK(client_ui.push_screen(std::make_unique<shooter::MainMenuScreen>(&game, [&quit_requested] {
+        quit_requested = true;
+    })));
+
+    run_client_frame(client_ui);
+    CHECK(client_ui.screens().count() == 1);
+    CHECK(strcmp(client_ui.screens().top()->debug_name(), "MainMenu") == 0);
+
+    run_client_frame(client_ui, keyboard_confirm());
+
+    CHECK(client_ui.screens().count() == 1);
+    CHECK(strcmp(client_ui.screens().top()->debug_name(), "ShooterGame") == 0);
+    CHECK(game.credits() == 450);
+    CHECK(game.selected_weapon() == 0);
+    CHECK(game.weapon(0).equipped);
+    CHECK(!game.weapon(1).owned);
+    CHECK(!quit_requested);
+    return true;
+}
+
+static bool main_menu_options_returns_to_menu_with_cancel(void) {
+    react_init(g_clay);
+    shooter::ShooterGame game;
+    client::ui::ClientUi client_ui;
+    CHECK(client_ui.push_screen(std::make_unique<shooter::MainMenuScreen>(&game)));
+
+    run_client_frame(client_ui);
+    run_client_frame(client_ui, keyboard_down());
+    run_client_frame(client_ui, keyboard_confirm());
+
+    CHECK(client_ui.screens().count() == 2);
+    CHECK(strcmp(client_ui.screens().at(0)->debug_name(), "MainMenu") == 0);
+    CHECK(strcmp(client_ui.screens().top()->debug_name(), "Options") == 0);
+
+    run_client_frame(client_ui, keyboard_cancel());
+
+    CHECK(client_ui.screens().count() == 1);
+    CHECK(strcmp(client_ui.screens().top()->debug_name(), "MainMenu") == 0);
+    return true;
+}
+
+static bool main_menu_quit_callback_runs(void) {
+    react_init(g_clay);
+    shooter::ShooterGame game;
+    bool quit_requested = false;
+    client::ui::ClientUi client_ui;
+    CHECK(client_ui.push_screen(std::make_unique<shooter::MainMenuScreen>(&game, [&quit_requested] {
+        quit_requested = true;
+    })));
+
+    run_client_frame(client_ui);
+    run_client_frame(client_ui, keyboard_down());
+    run_client_frame(client_ui, keyboard_down());
+    run_client_frame(client_ui, keyboard_confirm());
+
+    CHECK(quit_requested);
+    CHECK(client_ui.screens().count() == 1);
+    CHECK(strcmp(client_ui.screens().top()->debug_name(), "MainMenu") == 0);
+    return true;
+}
+
 static bool shooter_screen_pushes_pause_after_confirm(void) {
     react_init(g_clay);
     shooter::ShooterGame game;
@@ -155,6 +234,28 @@ static bool shooter_screen_pushes_pause_after_confirm(void) {
 
     CHECK(client_ui.screens().count() == 2);
     CHECK(strcmp(client_ui.screens().top()->debug_name(), "Pause") == 0);
+    return true;
+}
+
+static bool pause_exit_to_main_menu_resets_stack(void) {
+    react_init(g_clay);
+    shooter::ShooterGame game;
+    client::ui::ClientUi client_ui;
+    CHECK(client_ui.push_screen(std::make_unique<shooter::ShooterGameScreen>(&game)));
+
+    run_client_frame(client_ui);
+    run_client_frame(client_ui, keyboard_confirm());
+    CHECK(client_ui.screens().count() == 2);
+    CHECK(strcmp(client_ui.screens().top()->debug_name(), "Pause") == 0);
+
+    run_client_frame(client_ui);
+    run_client_frame(client_ui, keyboard_down());
+    run_client_frame(client_ui, keyboard_down());
+    run_client_frame(client_ui, keyboard_down());
+    run_client_frame(client_ui, keyboard_confirm());
+
+    CHECK(client_ui.screens().count() == 1);
+    CHECK(strcmp(client_ui.screens().top()->debug_name(), "MainMenu") == 0);
     return true;
 }
 
@@ -302,7 +403,11 @@ int main(void) {
     if (!init_clay_once()) return 1;
 
     if (!shooter_game_buy_and_equip_are_real_state_writes()) return 1;
+    if (!main_menu_start_match_resets_game_and_stack()) return 1;
+    if (!main_menu_options_returns_to_menu_with_cancel()) return 1;
+    if (!main_menu_quit_callback_runs()) return 1;
     if (!shooter_screen_pushes_pause_after_confirm()) return 1;
+    if (!pause_exit_to_main_menu_resets_stack()) return 1;
     if (!pause_options_returns_to_pause_through_screen_stack()) return 1;
     if (!loadout_buy_uses_confirm_dialog_and_restores_parent_focus()) return 1;
     if (!loadout_tabs_and_equipment_slots_are_real_focus_targets()) return 1;

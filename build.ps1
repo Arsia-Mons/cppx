@@ -2,12 +2,13 @@
 # Easy Windows build entry point for the SDL3/Clay UI reference app.
 #
 # Usage:
-#   ./build.ps1                    # configure/build Debug hello
+#   ./build.ps1                    # build Debug hello; configure only if needed
 #   ./build.ps1 -Run               # build then run hello.exe
 #   ./build.ps1 -Tests             # build all targets then run ctest
 #   ./build.ps1 -Target shooter_ui_tests
 #   ./build.ps1 -Config Release
 #   ./build.ps1 -Clean
+#   ./build.ps1 -Configure         # force CMake configure, then build
 
 [CmdletBinding()]
 param(
@@ -19,6 +20,8 @@ param(
     [string]$BuildDir = '',
 
     [switch]$Clean,
+
+    [switch]$Configure,
 
     [switch]$Run,
 
@@ -45,12 +48,13 @@ function Info($message) {
 function Usage {
     Write-Host @'
 Usage:
-  ./build.ps1                    configure/build Debug hello
+  ./build.ps1                    build Debug hello; configure only if needed
   ./build.ps1 -Run               build then run hello.exe
   ./build.ps1 -Tests             build all targets then run ctest
   ./build.ps1 -Target <name>     build one target, e.g. shooter_ui_tests
   ./build.ps1 -Config Release    use cmake-build-release
-  ./build.ps1 -Clean             remove CMakeCache.txt + CMakeFiles first
+  ./build.ps1 -Clean             remove CMakeCache.txt + CMakeFiles first, then configure
+  ./build.ps1 -Configure         force CMake configure, then build
 '@
 }
 
@@ -210,11 +214,24 @@ try {
     Write-Host "build.ps1: build dir = $binaryDir" -ForegroundColor DarkGray
     Write-Host "build.ps1: target    = $buildTarget" -ForegroundColor DarkGray
 
-    $configure = 'cmake -S "{0}" -B "{1}" -G Ninja -DCMAKE_BUILD_TYPE={2}{3}' -f $repoDir, $binaryDir, $Config, $toolchainArgs
-    $build = 'cmake --build "{0}" --target "{1}" --config {2}' -f $binaryDir, $buildTarget, $Config
-    $inner = 'call "{0}" >nul && cd /d "{1}" && {2} && {3}' -f $vcvars, $repoDir, $configure, $build
+    $cachePath = Join-Path $binaryDir 'CMakeCache.txt'
+    $ninjaFile = Join-Path $binaryDir 'build.ninja'
+    $needsConfigure = $Configure -or $Clean -or -not (Test-Path $cachePath) -or -not (Test-Path $ninjaFile)
+
+    $configureCommand = 'cmake -S "{0}" -B "{1}" -G Ninja -DCMAKE_BUILD_TYPE={2}{3}' -f $repoDir, $binaryDir, $Config, $toolchainArgs
+    $buildCommand = 'cmake --build "{0}" --target "{1}" --config {2}' -f $binaryDir, $buildTarget, $Config
+    $commands = @()
+    if ($needsConfigure) {
+        $commands += $configureCommand
+    } else {
+        Info "configure skipped; using existing Ninja build tree"
+    }
+    $commands += $buildCommand
+    $commandLine = $commands -join ' && '
+
+    $inner = 'call "{0}" >nul && cd /d "{1}" && {2}' -f $vcvars, $repoDir, $commandLine
     if ($vcpkgRoot) {
-        $inner = 'call "{0}" >nul && set "VCPKG_ROOT={1}" && cd /d "{2}" && {3} && {4}' -f $vcvars, $vcpkgRoot, $repoDir, $configure, $build
+        $inner = 'call "{0}" >nul && set "VCPKG_ROOT={1}" && cd /d "{2}" && {3}' -f $vcvars, $vcpkgRoot, $repoDir, $commandLine
     }
 
     & cmd /d /s /c $inner

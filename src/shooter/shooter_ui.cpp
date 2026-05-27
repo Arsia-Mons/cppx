@@ -21,6 +21,7 @@ namespace shooter {
 
 struct ShooterContext {
     ShooterGame *game = nullptr;
+    std::function<void()> request_quit = {};
 };
 
 struct ShooterHudRead {
@@ -57,6 +58,12 @@ static ShooterGame *use_shooter_game(void) {
     ShooterContext *context =
         static_cast<ShooterContext *>(use_context(&ShooterContextValue));
     return context ? context->game : nullptr;
+}
+
+static std::function<void()> use_request_quit(void) {
+    ShooterContext *context =
+        static_cast<ShooterContext *>(use_context(&ShooterContextValue));
+    return context ? context->request_quit : std::function<void()>{};
 }
 
 static ShooterHudRead use_shooter_hud(void) {
@@ -140,25 +147,53 @@ static std::function<void()> use_equip_weapon(int index) {
 
 static std::function<void()> use_push_pause_screen(void) {
     ShooterGame *game = use_shooter_game();
+    std::function<void()> request_quit = use_request_quit();
     client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
-    return [game, nav] {
-        if (nav.push && game) nav.push(std::make_unique<PauseScreen>(game));
+    return [game, request_quit, nav] {
+        if (nav.push && game) nav.push(std::make_unique<PauseScreen>(game, request_quit));
     };
 }
 
 static std::function<void()> use_push_loadout_screen(void) {
     ShooterGame *game = use_shooter_game();
+    std::function<void()> request_quit = use_request_quit();
     client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
-    return [game, nav] {
-        if (nav.push && game) nav.push(std::make_unique<LoadoutScreen>(game));
+    return [game, request_quit, nav] {
+        if (nav.push && game) nav.push(std::make_unique<LoadoutScreen>(game, request_quit));
     };
 }
 
 static std::function<void()> use_push_options_screen(void) {
     ShooterGame *game = use_shooter_game();
+    std::function<void()> request_quit = use_request_quit();
     client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
-    return [game, nav] {
-        if (nav.push && game) nav.push(std::make_unique<OptionsScreen>(game));
+    return [game, request_quit, nav] {
+        if (nav.push && game) nav.push(std::make_unique<OptionsScreen>(game, request_quit));
+    };
+}
+
+static std::function<void()> use_start_match(void) {
+    ShooterGame *game = use_shooter_game();
+    std::function<void()> request_quit = use_request_quit();
+    client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
+    client::ui::QueueUiWrite queue_write = client::ui::use_ui_write_queue();
+    return [game, request_quit, nav, queue_write] {
+        if (!game || !nav.reset_to) return;
+        if (queue_write) {
+            queue_write([game] {
+                game->reset();
+            });
+        }
+        nav.reset_to(std::make_unique<ShooterGameScreen>(game, request_quit));
+    };
+}
+
+static std::function<void()> use_exit_to_main_menu(void) {
+    ShooterGame *game = use_shooter_game();
+    std::function<void()> request_quit = use_request_quit();
+    client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
+    return [game, request_quit, nav] {
+        if (nav.reset_to && game) nav.reset_to(std::make_unique<MainMenuScreen>(game, request_quit));
     };
 }
 
@@ -179,8 +214,10 @@ static std::function<void(bool)> use_set_compare_enabled(void) {
     };
 }
 
-static void ShooterProvider(ShooterGame *game, const std::function<void()> &children) {
-    ShooterContext context = { .game = game };
+static void ShooterProvider(ShooterGame *game,
+                            const std::function<void()> &request_quit,
+                            const std::function<void()> &children) {
+    ShooterContext context = { .game = game, .request_quit = request_quit };
     REACT_PROVIDER_ENTER_KEY("ShooterProvider", reinterpret_cast<uintptr_t>(game));
     PROVIDE(&ShooterContextValue, &context) {
         children();
@@ -226,6 +263,67 @@ static void HudBand(void) {
                 CLAY_TEXT_CONFIG({ .textColor = { 224, 238, 236, 255 }, .fontSize = 18 }));
         }
     } REACT_FRAGMENT_COMPONENT_END();
+}
+
+static void MainMenuScreenView(void) {
+    REACT_COMPONENT_BEGIN("MainMenuScreenView") {
+        std::function<void()> start_match = use_start_match();
+        std::function<void()> open_options = use_push_options_screen();
+        std::function<void()> request_quit = use_request_quit();
+        ::ui::ui_focus_push_scope({ .id = CLAY_ID("MainMenuScope") });
+        ::ui::ui_focus_request_initial_focus(CLAY_ID("StartMatchButton"));
+
+        CLAY({
+            .id = CLAY_ID("MainMenuRoot"),
+            .layout = {
+                .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0) },
+                .padding = CLAY_PADDING_ALL(36),
+                .childGap = 24,
+                .childAlignment = { CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER },
+                .layoutDirection = CLAY_TOP_TO_BOTTOM,
+            },
+            .backgroundColor = { 8, 14, 18, 255 },
+        }) {
+            CLAY({
+                .id = CLAY_ID("MainMenuPanel"),
+                .layout = {
+                    .sizing = { CLAY_SIZING_FIXED(340), CLAY_SIZING_FIT(0) },
+                    .padding = CLAY_PADDING_ALL(24),
+                    .childGap = 14,
+                    .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                },
+                .backgroundColor = { 18, 27, 32, 245 },
+                .cornerRadius = CLAY_CORNER_RADIUS(6),
+                .border = {
+                    .color = { 83, 108, 118, 255 },
+                    .width = CLAY_BORDER_OUTSIDE(1),
+                },
+            }) {
+                CLAY_TEXT(::ui::clay_text("Reference Shooter"),
+                    CLAY_TEXT_CONFIG({ .textColor = { 235, 246, 242, 255 }, .fontSize = 30 }));
+                CLAY_TEXT(::ui::clay_text("SDL3 / Clay UI flow"),
+                    CLAY_TEXT_CONFIG({ .textColor = { 154, 177, 184, 255 }, .fontSize = 16 }));
+                ::ui::Button({
+                    .id = CLAY_ID("StartMatchButton"),
+                    .label = "Start Match",
+                    .on_confirm = start_match,
+                });
+                ::ui::Button({
+                    .id = CLAY_ID("OpenOptionsFromMainMenuButton"),
+                    .label = "Options",
+                    .on_confirm = open_options,
+                });
+                ::ui::Button({
+                    .id = CLAY_ID("QuitButton"),
+                    .label = "Quit",
+                    .disabled = !request_quit,
+                    .on_confirm = request_quit,
+                });
+            }
+        }
+
+        ::ui::ui_focus_pop_scope();
+    } REACT_COMPONENT_END();
 }
 
 static void ShooterGameScreenView(void) {
@@ -276,6 +374,7 @@ static void PauseScreenView(void) {
         client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
         std::function<void()> open_options = use_push_options_screen();
         std::function<void()> open_loadout = use_push_loadout_screen();
+        std::function<void()> exit_to_main_menu = use_exit_to_main_menu();
         ::ui::ui_focus_push_scope({ .id = CLAY_ID("PauseScope"), .modal = true });
         ::ui::ui_focus_request_initial_focus(CLAY_ID("ResumeButton"));
 
@@ -310,6 +409,11 @@ static void PauseScreenView(void) {
                 .id = CLAY_ID("OpenLoadoutFromPauseButton"),
                 .label = "Loadout",
                 .on_confirm = open_loadout,
+            });
+            ::ui::Button({
+                .id = CLAY_ID("ExitToMainMenuButton"),
+                .label = "Exit To Menu",
+                .on_confirm = exit_to_main_menu,
             });
         }
 
@@ -783,8 +887,16 @@ static void OptionsScreenView(void) {
     } REACT_COMPONENT_END();
 }
 
+void MainMenuScreen::build_ui() {
+    ShooterProvider(game_, request_quit_, [this] {
+        REACT_COMPONENT_BEGIN_KEY("MainMenuScreen", entry_id()) {
+            MainMenuScreenView();
+        } REACT_COMPONENT_END();
+    });
+}
+
 void ShooterGameScreen::build_ui() {
-    ShooterProvider(game_, [this] {
+    ShooterProvider(game_, request_quit_, [this] {
         REACT_COMPONENT_BEGIN_KEY("ShooterGameScreen", entry_id()) {
             ShooterGameScreenView();
         } REACT_COMPONENT_END();
@@ -792,7 +904,7 @@ void ShooterGameScreen::build_ui() {
 }
 
 void PauseScreen::build_ui() {
-    ShooterProvider(game_, [this] {
+    ShooterProvider(game_, request_quit_, [this] {
         REACT_COMPONENT_BEGIN_KEY("PauseScreen", entry_id()) {
             PauseScreenView();
         } REACT_COMPONENT_END();
@@ -800,7 +912,7 @@ void PauseScreen::build_ui() {
 }
 
 void LoadoutScreen::build_ui() {
-    ShooterProvider(game_, [this] {
+    ShooterProvider(game_, request_quit_, [this] {
         REACT_COMPONENT_BEGIN_KEY("LoadoutScreen", entry_id()) {
             LoadoutScreenView();
         } REACT_COMPONENT_END();
@@ -808,7 +920,7 @@ void LoadoutScreen::build_ui() {
 }
 
 void OptionsScreen::build_ui() {
-    ShooterProvider(game_, [this] {
+    ShooterProvider(game_, request_quit_, [this] {
         REACT_COMPONENT_BEGIN_KEY("OptionsScreen", entry_id()) {
             OptionsScreenView();
         } REACT_COMPONENT_END();

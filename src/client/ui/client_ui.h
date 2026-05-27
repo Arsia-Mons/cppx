@@ -18,6 +18,7 @@ using QueueUiWrite = std::function<void(UiDeferredWrite)>;
 struct ScreenNavigator {
     UiScreenEntryId current_entry_id = 0;
     std::function<void(std::unique_ptr<UiScreen>)> push = {};
+    std::function<void(std::unique_ptr<UiScreen>)> reset_to = {};
     std::function<void()> pop_current = {};
     std::function<void()> pop_top = {};
 };
@@ -38,6 +39,7 @@ public:
     bool push_screen(std::unique_ptr<UiScreen> screen);
     bool replace_top(std::unique_ptr<UiScreen> screen);
     bool queue_push_screen(std::unique_ptr<UiScreen> screen);
+    bool queue_reset_to_screen(std::unique_ptr<UiScreen> screen);
     bool queue_pop_current(UiScreenEntryId entry_id);
     bool queue_pop_top();
     bool queue_deferred_write(UiDeferredWrite write);
@@ -47,6 +49,7 @@ public:
 private:
     enum class WriteKind {
         Push,
+        ResetTo,
         PopCurrent,
         PopTop,
         Deferred,

@@ -80,7 +80,6 @@ void apply_key_down(SDL_Keycode key, ::ui::UiInputFrame &ui_input, bool *running
             ui_input.cancel_pressed = true;
             ui_input.cancel_down = true;
             ui_input.source = ::ui::UiFocusSource::Keyboard;
-            if (running) *running = false;
             break;
         case SDLK_UP:
             ui_input.nav_up = true;

@@ -39,6 +39,7 @@ public:
     void select_weapon(int index);
     bool buy_weapon(int index);
     bool equip_weapon(int index);
+    void reset();
     void set_compare_enabled(bool enabled) { compare_enabled_ = enabled; }
 
 private:

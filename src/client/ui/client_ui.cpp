@@ -71,6 +71,10 @@ void ClientUi::build_visible_screens() {
 void ClientUi::end_layout(const ::ui::UiInputFrame &input) {
     ::ui::ui_focus_set_current(&focus_);
     ::ui::ui_focus_end_layout(input);
+    UiScreen *top = screens_.top();
+    if (input.cancel_pressed && top && top->is_overlay()) {
+        queue_pop_current(top->entry_id());
+    }
 }
 
 bool ClientUi::push_screen(std::unique_ptr<UiScreen> screen) {
@@ -85,6 +89,14 @@ bool ClientUi::queue_push_screen(std::unique_ptr<UiScreen> screen) {
     if (!screen) return false;
     return queue_write({
         .kind = WriteKind::Push,
+        .screen = std::move(screen),
+    });
+}
+
+bool ClientUi::queue_reset_to_screen(std::unique_ptr<UiScreen> screen) {
+    if (!screen) return false;
+    return queue_write({
+        .kind = WriteKind::ResetTo,
         .screen = std::move(screen),
     });
 }
@@ -121,6 +133,9 @@ void ClientUi::drain_writes() {
             case WriteKind::Push:
                 screens_.push(std::move(write.screen));
                 break;
+            case WriteKind::ResetTo:
+                screens_.reset_to(std::move(write.screen));
+                break;
             case WriteKind::PopCurrent:
                 screens_.pop_entry(write.entry_id);
                 break;
@@ -153,6 +168,9 @@ ScreenNavigator use_screen_navigator() {
         .current_entry_id = entry_id,
         .push = [client_ui](std::unique_ptr<UiScreen> screen) {
             client_ui->queue_push_screen(std::move(screen));
+        },
+        .reset_to = [client_ui](std::unique_ptr<UiScreen> screen) {
+            client_ui->queue_reset_to_screen(std::move(screen));
         },
         .pop_current = [client_ui, entry_id] {
             client_ui->queue_pop_current(entry_id);

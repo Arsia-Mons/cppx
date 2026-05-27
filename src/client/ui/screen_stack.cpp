@@ -36,6 +36,15 @@ bool ScreenStack::replace_top(std::unique_ptr<UiScreen> screen) {
     return true;
 }
 
+bool ScreenStack::reset_to(std::unique_ptr<UiScreen> screen) {
+    if (!screen) return false;
+    for (int i = 0; i < count_; ++i) {
+        screens_[i].reset();
+    }
+    count_ = 0;
+    return push(std::move(screen));
+}
+
 UiScreen *ScreenStack::at(int index) const {
     if (index < 0 || index >= count_) return nullptr;
     return screens_[index].get();

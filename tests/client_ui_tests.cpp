@@ -104,6 +104,32 @@ private:
     int *build_count_;
 };
 
+class ResetToScreen final : public UiScreen {
+public:
+    ResetToScreen(int *build_count, int *destroy_count)
+        : build_count_(build_count), destroy_count_(destroy_count) {}
+    ~ResetToScreen() override {
+        if (destroy_count_) {
+            *destroy_count_ += 1;
+        }
+    }
+
+    const char *debug_name() const override { return "ResetToScreen"; }
+    bool is_overlay() const override { return true; }
+
+    void build_ui() override {
+        if (build_count_) {
+            *build_count_ += 1;
+        }
+        ScreenNavigator nav = use_screen_navigator();
+        nav.reset_to(std::make_unique<RecordingScreen>("ResetRoot", false, nullptr));
+    }
+
+private:
+    int *build_count_;
+    int *destroy_count_;
+};
+
 class DestroyCountingScreen final : public UiScreen {
 public:
     explicit DestroyCountingScreen(int *destroy_count) : destroy_count_(destroy_count) {}
@@ -180,6 +206,9 @@ static bool screen_stack_push_pop_replace_and_visible_ordering(void) {
     CHECK(stack.count() == 2);
     CHECK(stack.pop_entry(stack.top()->entry_id()));
     CHECK(stack.count() == 1);
+    CHECK(stack.reset_to(std::make_unique<RecordingScreen>("Root", false, nullptr)));
+    CHECK(stack.count() == 1);
+    CHECK(strcmp(stack.top()->debug_name(), "Root") == 0);
     return true;
 }
 
@@ -296,6 +325,65 @@ static bool screen_navigator_push_drains_after_layout(void) {
     return true;
 }
 
+static bool screen_navigator_reset_to_drains_after_layout(void) {
+    react_init(g_clay);
+    ClientUi client_ui;
+    int base_destroy_count = 0;
+    int reset_build_count = 0;
+    int reset_destroy_count = 0;
+
+    CHECK(client_ui.push_screen(std::make_unique<DestroyCountingScreen>(&base_destroy_count)));
+    CHECK(client_ui.push_screen(
+        std::make_unique<ResetToScreen>(&reset_build_count, &reset_destroy_count)));
+    UiScreenEntryId old_top_id = client_ui.screens().top()->entry_id();
+
+    Clay_SetLayoutDimensions({ 640, 480 });
+    Clay_SetPointerState({ -1000.0f, -1000.0f }, false);
+    client_ui.begin_frame({});
+    react_begin_frame();
+    Clay_BeginLayout();
+    client_ui.build_visible_screens();
+    CHECK(client_ui.screens().count() == 2);
+    CHECK(client_ui.pending_write_count() == 1);
+    (void)Clay_EndLayout();
+    client_ui.end_layout({});
+    react_end_frame();
+
+    CHECK(client_ui.screens().count() == 2);
+    client_ui.drain_writes();
+    CHECK(client_ui.screens().count() == 1);
+    CHECK(strcmp(client_ui.screens().top()->debug_name(), "ResetRoot") == 0);
+    CHECK(client_ui.screens().top()->entry_id() > old_top_id);
+    CHECK(base_destroy_count == 1);
+    CHECK(reset_destroy_count == 1);
+    CHECK(reset_build_count == 1);
+    return true;
+}
+
+static bool cancel_pops_top_overlay_after_layout(void) {
+    react_init(g_clay);
+    ClientUi client_ui;
+    int base_builds = 0;
+    int overlay_builds = 0;
+
+    CHECK(client_ui.push_screen(std::make_unique<RecordingScreen>("Base", false, &base_builds)));
+    CHECK(client_ui.push_screen(
+        std::make_unique<RecordingScreen>("Overlay", true, &overlay_builds)));
+
+    ::ui::UiInputFrame cancel = {
+        .cancel_pressed = true,
+        .cancel_down = true,
+        .source = ::ui::UiFocusSource::Keyboard,
+    };
+    run_client_frame(client_ui, cancel);
+
+    CHECK(client_ui.screens().count() == 1);
+    CHECK(strcmp(client_ui.screens().top()->debug_name(), "Base") == 0);
+    CHECK(base_builds == 1);
+    CHECK(overlay_builds == 1);
+    return true;
+}
+
 static bool queued_push_screen_releases_if_frame_resets_before_drain(void) {
     react_init(g_clay);
     ClientUi client_ui;
@@ -338,6 +426,8 @@ int main(void) {
     if (!overlay_screens_float_over_base_screen_area()) return 1;
     if (!screen_navigator_pop_current_drains_after_layout()) return 1;
     if (!screen_navigator_push_drains_after_layout()) return 1;
+    if (!screen_navigator_reset_to_drains_after_layout()) return 1;
+    if (!cancel_pops_top_overlay_after_layout()) return 1;
     if (!queued_push_screen_releases_if_frame_resets_before_drain()) return 1;
     if (!screen_local_hook_state_survives_rerender_and_resets_on_unmount()) return 1;
 
