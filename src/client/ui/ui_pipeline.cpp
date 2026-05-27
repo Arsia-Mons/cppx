@@ -46,6 +46,33 @@ to_retained_focus_source(::ui::UiFocusSource source) {
     };
 }
 
+bool retained_tree_has_modal(const ::ui::retained::UiTree &tree,
+                             ::ui::retained::NodeId id) {
+    ::ui::retained::NodeSnapshot node = {};
+    if (!tree.snapshot(id, &node))
+        return false;
+    if (node.interaction.modal)
+        return true;
+    for (int i = 0; i < tree.child_count(id); ++i) {
+        if (retained_tree_has_modal(tree, tree.child_at(id, i)))
+            return true;
+    }
+    return false;
+}
+
+::ui::UiInputFrame legacy_input_frame(const UiPipelineFrame &frame,
+                                      bool retained_modal_active) {
+    if (!retained_modal_active)
+        return frame.input;
+
+    ::ui::UiInputFrame input = {};
+    input.cancel_pressed = frame.input.cancel_pressed;
+    input.cancel_down = frame.input.cancel_down;
+    input.cancel_released = frame.input.cancel_released;
+    input.source = frame.input.source;
+    return input;
+}
+
 } // namespace
 
 const UiPipelineFrame *use_ui_pipeline_frame() {
@@ -60,7 +87,12 @@ void UiPipeline::render_client_ui_frame(const UiPipelineFrame    &frame,
     Clay_SetLayoutDimensions(frame.layout);
     Clay_SetPointerState(frame.pointer, frame.input.pointer_down);
 
-    client_ui_.begin_frame(frame.input);
+    bool retained_modal_active = retained_tree_has_modal(
+        client_ui_.retained_tree(), client_ui_.retained_tree().root_id());
+    ::ui::UiInputFrame legacy_input =
+        legacy_input_frame(frame, retained_modal_active);
+
+    client_ui_.begin_frame(legacy_input);
     react_begin_frame();
     bool retained_frame_started = ::ui::retained::begin_retained_tree_frame(
         client_ui_.retained_tree(), frame.layout.width, frame.layout.height);
@@ -97,7 +129,7 @@ void UiPipeline::render_client_ui_frame(const UiPipelineFrame    &frame,
                 "client/ui: failed to end retained tree frame\n");
         }
     }
-    client_ui_.end_layout(frame.input);
+    client_ui_.end_layout(legacy_input);
 
     if (retained_frame_started && retained_frame_ended) {
         bool retained_updated = client_ui_.update_retained_runtime(

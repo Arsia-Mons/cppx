@@ -169,6 +169,9 @@ for screens that have not been ported.
 its background, panel, headings, buttons, navigation, callbacks, and CLI
 targeting now run through the retained tree while the rest of the app continues
 to use the temporary Clay path.
+`OptionsScreen` is also retained. While a retained modal is active, `UiPipeline`
+filters legacy Clay focus input behind it but preserves cancel handling, so
+mixed retained/Clay stacks do not dispatch actions through covered screens.
 
 ## Component API Direction
 

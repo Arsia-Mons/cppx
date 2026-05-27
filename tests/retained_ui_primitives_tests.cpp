@@ -187,12 +187,37 @@ static bool retained_button_invokes_confirm_callback(void) {
     return true;
 }
 
+static bool retained_toggle_invokes_change_callback(void) {
+    react_init_runtime();
+    UiTree tree;
+    int observed = -1;
+
+    CHECK(begin_retained_frame(tree, 220.0f, 80.0f));
+    Toggle(ToggleProps{
+        .key = "music",
+        .id = "MusicToggle",
+        .label = "Music",
+        .checked = true,
+        .on_change = [&observed](bool checked) {
+            observed = checked ? 1 : 0;
+        },
+    });
+    CHECK(end_retained_frame());
+
+    NodeId toggle_id = tree.child_at(tree.root_id(), 0);
+    CHECK(tree.invoke_confirm(toggle_id));
+    CHECK(observed == 0);
+    return true;
+}
+
 int main(void) {
     if (!retained_primitives_write_semantic_metadata_and_layout())
         return 1;
     if (!reused_nodes_clear_previous_primitive_metadata())
         return 1;
     if (!retained_button_invokes_confirm_callback())
+        return 1;
+    if (!retained_toggle_invokes_change_callback())
         return 1;
     return 0;
 }

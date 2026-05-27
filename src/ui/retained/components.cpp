@@ -224,6 +224,13 @@ void Toggle(const ToggleProps &props) {
                                          .disabled = props.disabled,
                                          .checked = props.checked,
                                      },
+                                 .on_confirm =
+                                     [checked = props.checked,
+                                      on_change = props.on_change] {
+                                         if (on_change) {
+                                             on_change(!checked);
+                                         }
+                                     },
                              });
     if (!scope.active())
         return;

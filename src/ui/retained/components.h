@@ -46,6 +46,7 @@ struct ToggleProps {
     bool disabled = false;
     Length width = Length::points(178.0f);
     Length height = Length::points(38.0f);
+    std::function<void(bool)> on_change = {};
 };
 
 struct SelectableProps {

@@ -149,7 +149,10 @@ and mismatch/unclosed-tag diagnostics.
    - control-mailbox retained focusable readback: foundation done.
    - main menu: ported to retained panels, text, buttons, focus, confirm
      callbacks, and CLI targeting.
-   - options.
+   - options: ported to retained modal panel, text, toggles, back button,
+     focus, confirm callbacks, and CLI targeting.
+   - mixed retained modal over Clay screen input gating: foundation done in
+     `UiPipeline`.
    - pause.
    - in-game HUD.
    - loadout and dialogs.

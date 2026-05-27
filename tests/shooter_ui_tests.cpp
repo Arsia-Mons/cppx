@@ -317,25 +317,26 @@ static bool pause_options_returns_to_pause_through_screen_stack(void) {
     react_init(g_clay);
     shooter::ShooterGame game;
     TestFrameProviders providers { .game = &game };
-    client::ui::ClientUi client_ui;
+    client::ui::UiPipeline pipeline;
+    client::ui::ClientUi &client_ui = pipeline.client_ui();
     CHECK(client_ui.push_screen(std::make_unique<shooter::ShooterGameScreen>()));
 
-    run_client_frame(client_ui, providers);
-    run_client_frame(client_ui, providers, keyboard_confirm());
+    run_pipeline_frame(pipeline, providers);
+    run_pipeline_frame(pipeline, providers, keyboard_confirm());
     CHECK(client_ui.screens().count() == 2);
     CHECK(strcmp(client_ui.screens().top()->debug_name(), "Pause") == 0);
 
-    run_client_frame(client_ui, providers);
-    run_client_frame(client_ui, providers, keyboard_down());
-    run_client_frame(client_ui, providers, keyboard_confirm());
+    run_pipeline_frame(pipeline, providers);
+    run_pipeline_frame(pipeline, providers, keyboard_down());
+    run_pipeline_frame(pipeline, providers, keyboard_confirm());
     CHECK(client_ui.screens().count() == 3);
     CHECK(strcmp(client_ui.screens().at(1)->debug_name(), "Pause") == 0);
     CHECK(strcmp(client_ui.screens().top()->debug_name(), "Options") == 0);
 
-    run_client_frame(client_ui, providers);
-    run_client_frame(client_ui, providers, keyboard_down());
-    run_client_frame(client_ui, providers, keyboard_down());
-    run_client_frame(client_ui, providers, keyboard_confirm());
+    run_pipeline_frame(pipeline, providers);
+    run_pipeline_frame(pipeline, providers, keyboard_down());
+    run_pipeline_frame(pipeline, providers, keyboard_down());
+    run_pipeline_frame(pipeline, providers, keyboard_confirm());
     CHECK(client_ui.screens().count() == 2);
     CHECK(strcmp(client_ui.screens().top()->debug_name(), "Pause") == 0);
     return true;
