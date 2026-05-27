@@ -53,6 +53,7 @@ add_executable(hello
   src/client/ui/components/hud_band.cpp
   src/client/ui/hooks/shooter_hud.cpp
   src/client/ui/hooks/shooter_weapons.cpp
+  src/client/ui/providers/app_shell.cpp
   src/client/ui/providers/shooter_provider.cpp
   src/client/ui/navigation/screen_stack.cpp
   src/client/ui/screens/in_game/in_game_screen.cpp
@@ -60,6 +61,7 @@ add_executable(hello
   src/client/ui/screens/loadout/components/equipment_slot.cpp
   src/client/ui/screens/loadout/components/weapon_tile.cpp
   src/client/ui/screens/loadout/loadout_screen.cpp
+  src/client/ui/screens/loadout/loadout_state.cpp
   src/client/ui/screens/main_menu/main_menu_screen.cpp
   src/client/ui/screens/options/options_screen.cpp
   src/client/ui/screens/pause/pause_screen.cpp
@@ -221,6 +223,7 @@ add_executable(shooter_ui_tests
   src/client/ui/components/hud_band.cpp
   src/client/ui/hooks/shooter_hud.cpp
   src/client/ui/hooks/shooter_weapons.cpp
+  src/client/ui/providers/app_shell.cpp
   src/client/ui/providers/shooter_provider.cpp
   src/client/ui/navigation/screen_stack.cpp
   src/client/ui/screens/in_game/in_game_screen.cpp
@@ -228,6 +231,7 @@ add_executable(shooter_ui_tests
   src/client/ui/screens/loadout/components/equipment_slot.cpp
   src/client/ui/screens/loadout/components/weapon_tile.cpp
   src/client/ui/screens/loadout/loadout_screen.cpp
+  src/client/ui/screens/loadout/loadout_state.cpp
   src/client/ui/screens/main_menu/main_menu_screen.cpp
   src/client/ui/screens/options/options_screen.cpp
   src/client/ui/screens/pause/pause_screen.cpp

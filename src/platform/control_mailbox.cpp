@@ -202,7 +202,7 @@ std::string ControlMailbox::state_json(client::ui::UiPipeline &pipeline) {
         body << "{"
              << "\"entry_id\":" << (screen ? screen->entry_id() : 0) << ","
              << "\"name\":\"" << json_escape(screen ? screen->debug_name() : "") << "\","
-             << "\"overlay\":" << (screen && screen->is_overlay() ? "true" : "false")
+             << "\"overlay\":" << (screen && screen->kind() == client::ui::ScreenKind::Overlay ? "true" : "false")
              << "}";
     }
     body << "],\"focusables\":[";

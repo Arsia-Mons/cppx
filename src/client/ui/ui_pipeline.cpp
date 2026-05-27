@@ -27,7 +27,12 @@ void UiPipeline::render_client_ui_frame(const UiPipelineFrame    &frame,
                 .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0) },
             },
         }) {
-            client_ui_.build_visible_screens();
+            auto build = [this] { client_ui_.build_visible_screens(); };
+            if (frame_provider_) {
+                frame_provider_(build);
+            } else {
+                build();
+            }
         }
     }
     REACT_PROVIDER_EXIT();

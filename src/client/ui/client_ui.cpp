@@ -2,12 +2,12 @@
 
 namespace client::ui {
 
-struct ScreenContext {
+struct ScreenContextValue {
     ClientUi *client_ui = nullptr;
     UiScreenEntryId current_entry_id = 0;
 };
 
-static ReactContext ScreenContextValue = {};
+static ReactContext ScreenContext = {};
 
 ClientUi::ClientUi() {
     ::ui::ui_focus_init(&focus_);
@@ -25,45 +25,47 @@ void ClientUi::build_visible_screens() {
         UiScreen *screen = visible[i];
         if (!screen) continue;
         auto build_screen = [&] {
-            ScreenContext context = {
+            ScreenContextValue context = {
                 .client_ui = this,
                 .current_entry_id = screen->entry_id(),
             };
             REACT_PROVIDER_ENTER_KEY("ScreenProvider", screen->entry_id());
-            PROVIDE(&ScreenContextValue, &context) {
+            PROVIDE(&ScreenContext, &context) {
                 screen->build_ui();
             }
             REACT_PROVIDER_EXIT();
         };
 
-        if (!screen->is_overlay()) {
-            CLAY({
-                .id = CLAY_IDI("ClientUiScreenFrame", screen->entry_id()),
-                .layout = {
-                    .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0) },
-                    .layoutDirection = CLAY_TOP_TO_BOTTOM,
-                },
-            }) {
-                build_screen();
-            }
-            continue;
-        }
-
-        CLAY({
-            .id = CLAY_IDI("ClientUiOverlayScreenFrame", screen->entry_id()),
-            .layout = {
-                .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0) },
-                .childAlignment = { CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER },
-                .layoutDirection = CLAY_TOP_TO_BOTTOM,
-            },
-            .backgroundColor = { 5, 8, 10, 218 },
-            .floating = {
-                .zIndex = static_cast<int16_t>(100 + i),
-                .pointerCaptureMode = CLAY_POINTER_CAPTURE_MODE_CAPTURE,
-                .attachTo = CLAY_ATTACH_TO_ROOT,
-            },
-        }) {
-            build_screen();
+        switch (screen->kind()) {
+            case ScreenKind::Normal:
+                CLAY({
+                    .id = CLAY_IDI("ClientUiScreenFrame", screen->entry_id()),
+                    .layout = {
+                        .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0) },
+                        .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                    },
+                }) {
+                    build_screen();
+                }
+                break;
+            case ScreenKind::Overlay:
+                CLAY({
+                    .id = CLAY_IDI("ClientUiOverlayScreenFrame", screen->entry_id()),
+                    .layout = {
+                        .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0) },
+                        .childAlignment = { CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER },
+                        .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                    },
+                    .backgroundColor = { 5, 8, 10, 218 },
+                    .floating = {
+                        .zIndex = static_cast<int16_t>(100 + i),
+                        .pointerCaptureMode = CLAY_POINTER_CAPTURE_MODE_CAPTURE,
+                        .attachTo = CLAY_ATTACH_TO_ROOT,
+                    },
+                }) {
+                    build_screen();
+                }
+                break;
         }
     }
 }
@@ -72,7 +74,7 @@ void ClientUi::end_layout(const ::ui::UiInputFrame &input) {
     ::ui::ui_focus_set_current(&focus_);
     ::ui::ui_focus_end_layout(input);
     UiScreen *top = screens_.top();
-    if (input.cancel_pressed && top && top->is_overlay()) {
+    if (input.cancel_pressed && top && top->kind() == ScreenKind::Overlay) {
         queue_pop_current(top->entry_id());
     }
 }
@@ -158,8 +160,8 @@ void ClientUi::clear_writes() {
 }
 
 ScreenNavigator use_screen_navigator() {
-    ScreenContext *context =
-        static_cast<ScreenContext *>(use_context(&ScreenContextValue));
+    ScreenContextValue *context =
+        static_cast<ScreenContextValue *>(use_context(&ScreenContext));
     if (!context || !context->client_ui) return {};
 
     ClientUi *client_ui = context->client_ui;
@@ -182,8 +184,8 @@ ScreenNavigator use_screen_navigator() {
 }
 
 QueueUiWrite use_ui_write_queue() {
-    ScreenContext *context =
-        static_cast<ScreenContext *>(use_context(&ScreenContextValue));
+    ScreenContextValue *context =
+        static_cast<ScreenContextValue *>(use_context(&ScreenContext));
     if (!context || !context->client_ui) return {};
 
     ClientUi *client_ui = context->client_ui;

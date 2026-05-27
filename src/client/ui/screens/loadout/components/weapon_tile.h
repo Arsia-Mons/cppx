@@ -11,6 +11,9 @@ Clay_ElementId weapon_tile_id(int index);
 bool           weapon_in_tab(int index, int tab);
 int            first_weapon_for_tab(int tab);
 
-void WeaponTile(int index, int *selected_index);
+// Renders one weapon tile. Reads/writes the loadout's UI selection through
+// `LoadoutContext` — does NOT mutate game state. The Equip flow goes through
+// the confirm dialog, not through focus.
+void WeaponTile(int index);
 
 } // namespace shooter

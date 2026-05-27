@@ -1,7 +1,5 @@
 #include "hud_band.h"
 
-#include <stdio.h>
-
 #include <clay.h>
 
 #include "../hooks/shooter_hud.h"
@@ -13,14 +11,10 @@ namespace shooter {
 void HudBand() {
     REACT_FRAGMENT_COMPONENT_BEGIN("HudBand") {
         ShooterHudRead hud = use_shooter_hud();
-        static char health[32];
-        static char armor[32];
-        static char ammo[32];
-        static char credits[40];
-        snprintf(health,  sizeof(health),  "HP %d",      hud.health);
-        snprintf(armor,   sizeof(armor),   "ARMOR %d",   hud.armor);
-        snprintf(ammo,    sizeof(ammo),    "AMMO %d",    hud.ammo);
-        snprintf(credits, sizeof(credits), "CREDITS %d", hud.credits);
+        const char *health  = use_text_storage("HP %d",      hud.health);
+        const char *armor   = use_text_storage("ARMOR %d",   hud.armor);
+        const char *ammo    = use_text_storage("AMMO %d",    hud.ammo);
+        const char *credits = use_text_storage("CREDITS %d", hud.credits);
         CLAY({
             .id = CLAY_ID("ShooterHudBand"),
             .layout = {

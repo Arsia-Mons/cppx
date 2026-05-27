@@ -394,6 +394,237 @@ static bool hook_drift_is_diagnosed(void) {
     return true;
 }
 
+// ---- use_state<T> ----
+
+struct PodState {
+    int   a;
+    float b;
+    char  tag;
+};
+
+static PodState *g_pod_ptr[2] = {};
+static int       g_pod_a[2]    = {};
+static float     g_pod_b[2]    = {};
+static bool     *g_bool_ptr[2] = {};
+static bool      g_bool_val[2] = {};
+
+static void PodStateProbe(int slot, PodState initial, bool write, PodState write_value) {
+    REACT_COMPONENT_BEGIN_KEY("PodStateProbe", slot) {
+        PodState *p = use_state<PodState>(initial);
+        if (write) *p = write_value;
+        g_pod_ptr[slot] = p;
+        g_pod_a[slot]   = p->a;
+        g_pod_b[slot]   = p->b;
+    } REACT_COMPONENT_END();
+}
+
+static void BoolStateProbe(int slot, bool initial, bool write, bool write_value) {
+    REACT_COMPONENT_BEGIN_KEY("BoolStateProbe", slot) {
+        bool *p = use_state<bool>(initial);
+        if (write) *p = write_value;
+        g_bool_ptr[slot] = p;
+        g_bool_val[slot] = *p;
+    } REACT_COMPONENT_END();
+}
+
+static bool use_state_template_persists_typed_values(void) {
+    react_init(g_clay);
+
+    PodState init0 = { 1, 1.5f, 'a' };
+    PodState init1 = { 2, 2.5f, 'b' };
+    PodState updated = { 99, 9.5f, 'z' };
+
+    run_frame([&] {
+        PodStateProbe(0, init0, true, updated);
+        PodStateProbe(1, init1, false, init1);
+        BoolStateProbe(0, false, true, true);
+        BoolStateProbe(1, true,  false, true);
+    });
+    CHECK(react_error_count() == 0);
+    CHECK(g_pod_a[0] == 99);
+    CHECK(g_pod_b[0] == 9.5f);
+    CHECK(g_pod_a[1] == 2);
+    CHECK(g_pod_b[1] == 2.5f);
+    CHECK(g_bool_val[0] == true);
+    CHECK(g_bool_val[1] == true);
+
+    PodState *first_pod_ptr_0 = g_pod_ptr[0];
+    PodState *first_pod_ptr_1 = g_pod_ptr[1];
+    bool     *first_bool_ptr_0 = g_bool_ptr[0];
+
+    // Second frame: initial values are ignored; pointer identity preserved.
+    PodState noop = { 0, 0.0f, '?' };
+    run_frame([&] {
+        PodStateProbe(0, noop, false, noop);
+        PodStateProbe(1, noop, false, noop);
+        BoolStateProbe(0, false, false, false);
+        BoolStateProbe(1, false, false, false);
+    });
+    CHECK(react_error_count() == 0);
+    CHECK(g_pod_a[0] == 99);
+    CHECK(g_pod_b[0] == 9.5f);
+    CHECK(g_pod_a[1] == 2);
+    CHECK(g_pod_b[1] == 2.5f);
+    CHECK(g_bool_val[0] == true);
+    CHECK(g_bool_val[1] == true);
+    CHECK(g_pod_ptr[0] == first_pod_ptr_0);
+    CHECK(g_pod_ptr[1] == first_pod_ptr_1);
+    CHECK(g_bool_ptr[0] == first_bool_ptr_0);
+
+    // Different fibers must yield different pointers.
+    CHECK(g_pod_ptr[0] != g_pod_ptr[1]);
+    CHECK(g_bool_ptr[0] != g_bool_ptr[1]);
+    return true;
+}
+
+// ---- use_state_int regression ----
+
+static int *g_legacy_int_ptr[2] = {};
+static int  g_legacy_int_val[2] = {};
+
+static void LegacyIntProbe(int slot, int initial, int write_value) {
+    REACT_COMPONENT_BEGIN_KEY("LegacyIntProbe", slot) {
+        int *p = use_state_int(initial);
+        if (write_value >= 0) *p = write_value;
+        g_legacy_int_ptr[slot] = p;
+        g_legacy_int_val[slot] = *p;
+    } REACT_COMPONENT_END();
+}
+
+static bool use_state_int_still_works(void) {
+    react_init(g_clay);
+    run_frame([] {
+        LegacyIntProbe(0, 5, 42);
+        LegacyIntProbe(1, 7, -1);
+    });
+    CHECK(react_error_count() == 0);
+    CHECK(g_legacy_int_val[0] == 42);
+    CHECK(g_legacy_int_val[1] == 7);
+
+    int *prev_0 = g_legacy_int_ptr[0];
+    int *prev_1 = g_legacy_int_ptr[1];
+
+    run_frame([] {
+        LegacyIntProbe(0, 999, -1);
+        LegacyIntProbe(1, 999, -1);
+    });
+    CHECK(react_error_count() == 0);
+    CHECK(g_legacy_int_val[0] == 42);
+    CHECK(g_legacy_int_val[1] == 7);
+    CHECK(g_legacy_int_ptr[0] == prev_0);
+    CHECK(g_legacy_int_ptr[1] == prev_1);
+    return true;
+}
+
+// ---- use_callback ----
+//
+// We can't count "how many times the std::function was rebuilt" by counting
+// functor copy constructions, because the functor passed to use_callback is
+// materialized at the call site every frame regardless of whether use_callback
+// chooses to placement-new it into the slot. Instead we prove stability two
+// ways: (1) the storage slot pointer is identical across frames, and (2) the
+// captured value from frame 1 survives a frame 2 call that "would have"
+// captured a different value, proving the slot wasn't rebuilt.
+
+static int g_callback_invocations = 0;
+static std::function<void()> *g_callback_slot[2] = {};
+
+static void CallbackProbe(int slot, uint64_t deps, int capture) {
+    REACT_COMPONENT_BEGIN_KEY("CallbackProbe", slot) {
+        std::function<void()> &fn = use_callback(
+            [capture] { g_callback_invocations += capture; }, deps);
+        g_callback_slot[slot] = &fn;
+        fn();
+    } REACT_COMPONENT_END();
+}
+
+static bool use_callback_is_stable_across_frames(void) {
+    react_init(g_clay);
+    g_callback_invocations  = 0;
+
+    // Frame 1: cold — function is constructed once per slot.
+    run_frame([] {
+        CallbackProbe(0, 0xAAA, 1);
+        CallbackProbe(1, 0xBBB, 10);
+    });
+    CHECK(react_error_count() == 0);
+    CHECK(g_callback_invocations == 11);
+
+    std::function<void()> *slot0 = g_callback_slot[0];
+    std::function<void()> *slot1 = g_callback_slot[1];
+    CHECK(slot0 != nullptr);
+    CHECK(slot1 != nullptr);
+    CHECK(slot0 != slot1);
+
+    // Frame 2: deps unchanged — the closure passed in this frame would capture
+    // 999 if the slot were rebuilt; but use_callback should keep the frame-1
+    // closure and ignore the new lambda. Slot pointers must be stable.
+    run_frame([] {
+        CallbackProbe(0, 0xAAA, 999);
+        CallbackProbe(1, 0xBBB, 999);
+    });
+    CHECK(react_error_count() == 0);
+    CHECK(g_callback_slot[0] == slot0);
+    CHECK(g_callback_slot[1] == slot1);
+    // Frame-1 captures preserved: +1 and +10, not +999.
+    CHECK(g_callback_invocations == 11 + 11);
+
+    // Frame 3: change deps_hash on slot 0 only; slot 0 rebuilds, slot 1 stays.
+    run_frame([] {
+        CallbackProbe(0, 0xCCC, 100);  // deps changed — rebuild with capture=100
+        CallbackProbe(1, 0xBBB, 999);  // unchanged — still capture=10
+    });
+    CHECK(react_error_count() == 0);
+    CHECK(g_callback_slot[0] == slot0);  // storage slot still stable
+    CHECK(g_callback_slot[1] == slot1);
+    CHECK(g_callback_invocations == 22 + 100 + 10);
+    return true;
+}
+
+// ---- use_text_storage ----
+
+static const char *g_text_ptr[2] = {};
+
+static void TextStorageProbe(int key, int value) {
+    REACT_COMPONENT_BEGIN_KEY("TextStorageProbe", key) {
+        const char *s = use_text_storage("v=%d", value);
+        g_text_ptr[key] = s;
+    } REACT_COMPONENT_END();
+}
+
+static bool use_text_storage_is_per_instance_and_stable(void) {
+    react_init(g_clay);
+
+    run_frame([] {
+        TextStorageProbe(0, 10);
+        TextStorageProbe(1, 20);
+    });
+    CHECK(react_error_count() == 0);
+
+    const char *p0_frame_1 = g_text_ptr[0];
+    const char *p1_frame_1 = g_text_ptr[1];
+    CHECK(p0_frame_1 != nullptr);
+    CHECK(p1_frame_1 != nullptr);
+    // Two instances in the same frame must have distinct buffers — proves the
+    // file-static `char buf[N]` clobber bug is impossible with this hook.
+    CHECK(p0_frame_1 != p1_frame_1);
+    CHECK(strcmp(p0_frame_1, "v=10") == 0);
+    CHECK(strcmp(p1_frame_1, "v=20") == 0);
+
+    // Frame 2 — same call sites, different values. Buffer pointer must be the
+    // same per call site (proves the hook is fiber-scoped, not allocate-each-frame).
+    run_frame([] {
+        TextStorageProbe(0, 30);
+        TextStorageProbe(1, 40);
+    });
+    CHECK(react_error_count() == 0);
+    CHECK(g_text_ptr[0] == p0_frame_1);
+    CHECK(g_text_ptr[1] == p1_frame_1);
+    CHECK(strcmp(g_text_ptr[0], "v=30") == 0);
+    CHECK(strcmp(g_text_ptr[1], "v=40") == 0);
+    return true;
+}
+
 int main(void) {
     if (!init_clay_once()) return 1;
 
@@ -404,6 +635,10 @@ int main(void) {
     if (!remounts_reuse_unmounted_fibers()) return 1;
     if (!shutdown_cleans_live_effects()) return 1;
     if (!hook_drift_is_diagnosed()) return 1;
+    if (!use_state_template_persists_typed_values()) return 1;
+    if (!use_state_int_still_works()) return 1;
+    if (!use_callback_is_stable_across_frames()) return 1;
+    if (!use_text_storage_is_per_instance_and_stable()) return 1;
 
     react_shutdown();
     free(g_clay_memory);

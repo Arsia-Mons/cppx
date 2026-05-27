@@ -4,6 +4,7 @@
 
 #include <clay.h>
 
+#include "loadout_state.h"
 #include "components/confirm_dialog.h"
 #include "components/equipment_slot.h"
 #include "components/weapon_tile.h"
@@ -18,56 +19,30 @@
 #include "../../../../ui/primitives/selectable.h"
 #include "../../../../ui/primitives/toggle.h"
 
-#include <stdio.h>
-
 namespace shooter {
 
-static ReactContext LoadoutScreenContext = {};
-
-static LoadoutScreen *use_current_loadout_screen() {
-    return static_cast<LoadoutScreen *>(use_context(&LoadoutScreenContext));
-}
-
 std::function<void()> use_push_loadout_screen() {
-    ShooterGame *game = use_shooter_game();
-    std::function<void()> request_quit = use_request_quit();
     client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
-    return [game, request_quit, nav] {
-        if (nav.push && game) nav.push(std::make_unique<LoadoutScreen>(game, request_quit));
-    };
-}
-
-static bool use_compare_enabled() {
-    LoadoutScreen *screen = use_current_loadout_screen();
-    return screen ? screen->compare_enabled() : false;
-}
-
-static std::function<void(bool)> use_set_compare_enabled() {
-    LoadoutScreen *screen = use_current_loadout_screen();
-    client::ui::QueueUiWrite queue_write = client::ui::use_ui_write_queue();
-    return [screen, queue_write](bool enabled) {
-        if (screen && queue_write) {
-            queue_write([screen, enabled] { screen->set_compare_enabled(enabled); });
-        }
+    return [nav] {
+        if (nav.push) nav.push(std::make_unique<LoadoutScreen>());
     };
 }
 
 static void LoadoutScreenView() {
     REACT_COMPONENT_BEGIN("LoadoutScreenView") {
         client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
-        int weapon_count = use_shooter_weapon_count();
-        int *selected_index       = use_state_int(use_selected_weapon_index());
-        int *pending_action       = use_state_int(LOADOUT_ACTION_NONE);
-        int *pending_weapon_index = use_state_int(*selected_index);
-        int *pending_serial       = use_state_int(0);
-        int *active_tab           = use_state_int(LOADOUT_TAB_WEAPONS);
-        if (*selected_index < 0 || *selected_index >= weapon_count) {
-            *selected_index = 0;
+        int weapon_count          = use_shooter_weapon_count();
+        int selected_index_seed   = use_selected_weapon_tile();
+        int *active_tab           = use_state<int>(LOADOUT_TAB_WEAPONS);
+
+        if (selected_index_seed < 0 || selected_index_seed >= weapon_count) {
+            selected_index_seed = 0;
         }
-        if (!weapon_in_tab(*selected_index, *active_tab)) {
-            *selected_index = first_weapon_for_tab(*active_tab);
+        if (!weapon_in_tab(selected_index_seed, *active_tab)) {
+            selected_index_seed = first_weapon_for_tab(*active_tab);
         }
-        ShooterWeaponRead selected = use_weapon_read(*selected_index);
+
+        ShooterWeaponRead selected = use_weapon_read(selected_index_seed);
         if (!selected.valid) return;
         bool can_buy   = selected.can_buy;
         bool can_equip = selected.can_equip && !selected.equipped;
@@ -75,13 +50,15 @@ static void LoadoutScreenView() {
             use_select_weapon(first_weapon_for_tab(LOADOUT_TAB_WEAPONS));
         std::function<void()> select_gear_tab_weapon =
             use_select_weapon(first_weapon_for_tab(LOADOUT_TAB_GEAR));
+        std::function<void(int)>                  set_selected_tile = use_set_selected_weapon_tile();
+        std::function<void(LoadoutPendingAction)> set_pending       = use_set_pending_loadout_action();
+        LoadoutPendingAction                      pending           = use_pending_loadout_action();
 
-        static char details[160];
-        snprintf(details, sizeof(details), "%s: %s, cost %d, ammo %d",
-                 selected.name, selected.role, selected.cost, selected.ammo);
+        const char *details = use_text_storage("%s: %s, cost %d, ammo %d",
+            selected.name, selected.role, selected.cost, selected.ammo);
 
         ::ui::ui_focus_push_scope({ .id = CLAY_ID("LoadoutScope"), .modal = true });
-        ::ui::ui_focus_request_initial_focus(weapon_tile_id(*selected_index));
+        ::ui::ui_focus_request_initial_focus(weapon_tile_id(selected_index_seed));
 
         CLAY({
             .id = CLAY_ID("LoadoutRoot"),
@@ -107,9 +84,9 @@ static void LoadoutScreenView() {
                     .id = CLAY_ID("WeaponsTab"),
                     .label = "Weapons",
                     .selected = *active_tab == LOADOUT_TAB_WEAPONS,
-                    .on_select = [active_tab, selected_index, select_weapons_tab_weapon] {
+                    .on_select = [active_tab, set_selected_tile, select_weapons_tab_weapon] {
                         if (active_tab) *active_tab = LOADOUT_TAB_WEAPONS;
-                        if (selected_index) *selected_index = first_weapon_for_tab(LOADOUT_TAB_WEAPONS);
+                        if (set_selected_tile) set_selected_tile(first_weapon_for_tab(LOADOUT_TAB_WEAPONS));
                         if (select_weapons_tab_weapon) select_weapons_tab_weapon();
                     },
                 });
@@ -117,9 +94,9 @@ static void LoadoutScreenView() {
                     .id = CLAY_ID("GearTab"),
                     .label = "Gear",
                     .selected = *active_tab == LOADOUT_TAB_GEAR,
-                    .on_select = [active_tab, selected_index, select_gear_tab_weapon] {
+                    .on_select = [active_tab, set_selected_tile, select_gear_tab_weapon] {
                         if (active_tab) *active_tab = LOADOUT_TAB_GEAR;
-                        if (selected_index) *selected_index = first_weapon_for_tab(LOADOUT_TAB_GEAR);
+                        if (set_selected_tile) set_selected_tile(first_weapon_for_tab(LOADOUT_TAB_GEAR));
                         if (select_gear_tab_weapon) select_gear_tab_weapon();
                     },
                 });
@@ -150,9 +127,9 @@ static void LoadoutScreenView() {
                                     .layoutDirection = CLAY_LEFT_TO_RIGHT,
                                 },
                             }) {
-                                WeaponTile(row * 2, selected_index);
+                                WeaponTile(row * 2);
                                 if (row == 0) {
-                                    WeaponTile(row * 2 + 1, selected_index);
+                                    WeaponTile(row * 2 + 1);
                                 }
                             }
                         }
@@ -165,7 +142,7 @@ static void LoadoutScreenView() {
                                 .layoutDirection = CLAY_LEFT_TO_RIGHT,
                             },
                         }) {
-                            WeaponTile(3, selected_index);
+                            WeaponTile(3);
                         }
                     }
                 }
@@ -192,30 +169,28 @@ static void LoadoutScreenView() {
                         .id = CLAY_ID("BuyWeaponButton"),
                         .label = "Buy",
                         .disabled = !can_buy,
-                        .on_confirm = [pending_action,
-                                       pending_weapon_index,
-                                       pending_serial,
-                                       selected_index] {
-                            if (pending_weapon_index && selected_index) {
-                                *pending_weapon_index = *selected_index;
+                        .on_confirm = [set_pending, pending, selected_index_seed] {
+                            if (set_pending) {
+                                set_pending({
+                                    .action       = LOADOUT_ACTION_BUY,
+                                    .weapon_index = selected_index_seed,
+                                    .generation   = pending.generation + 1,
+                                });
                             }
-                            if (pending_serial) *pending_serial += 1;
-                            if (pending_action) *pending_action = LOADOUT_ACTION_BUY;
                         },
                     });
                     ::ui::Button({
                         .id = CLAY_ID("EquipWeaponButton"),
                         .label = "Equip",
                         .disabled = !can_equip,
-                        .on_confirm = [pending_action,
-                                       pending_weapon_index,
-                                       pending_serial,
-                                       selected_index] {
-                            if (pending_weapon_index && selected_index) {
-                                *pending_weapon_index = *selected_index;
+                        .on_confirm = [set_pending, pending, selected_index_seed] {
+                            if (set_pending) {
+                                set_pending({
+                                    .action       = LOADOUT_ACTION_EQUIP,
+                                    .weapon_index = selected_index_seed,
+                                    .generation   = pending.generation + 1,
+                                });
                             }
-                            if (pending_serial) *pending_serial += 1;
-                            if (pending_action) *pending_action = LOADOUT_ACTION_EQUIP;
                         },
                     });
                     ::ui::Button({
@@ -225,29 +200,63 @@ static void LoadoutScreenView() {
                     });
                     CLAY_TEXT(::ui::clay_text("Equipment Slots"),
                         CLAY_TEXT_CONFIG({ .textColor = { 202, 218, 216, 255 }, .fontSize = 14 }));
-                    EquipmentSlot(CLAY_ID("PrimarySlot"), "Primary", 0, selected_index);
-                    EquipmentSlot(CLAY_ID("GearSlot"),    "Gear",    3, selected_index);
+                    EquipmentSlot(CLAY_ID("PrimarySlot"), "Primary", 0);
+                    EquipmentSlot(CLAY_ID("GearSlot"),    "Gear",    3);
                 }
             }
         }
 
-        if (*pending_action != LOADOUT_ACTION_NONE) {
-            LoadoutConfirmDialog(
-                *pending_action, *pending_weapon_index, *pending_serial, pending_action);
-        }
+        LoadoutConfirmDialog();
 
         ::ui::ui_focus_pop_scope();
     } REACT_COMPONENT_END();
 }
 
 void LoadoutScreen::build_ui() {
-    ShooterProvider(game_, request_quit_, [this] {
-        REACT_COMPONENT_BEGIN_KEY("LoadoutScreen", entry_id()) {
-            PROVIDE(&LoadoutScreenContext, this) {
-                LoadoutScreenView();
+    REACT_COMPONENT_BEGIN_KEY("LoadoutScreen", entry_id()) {
+        bool                 *compare_enabled = use_state<bool>(false);
+        int                  *selected_index  = use_state<int>(0);
+        LoadoutPendingAction *pending         = use_state<LoadoutPendingAction>({});
+
+        client::ui::QueueUiWrite queue_write = client::ui::use_ui_write_queue();
+
+        LoadoutContextValue ctx;
+        ctx.compare_enabled      = compare_enabled;
+        ctx.selected_weapon_tile = selected_index;
+        ctx.pending              = pending;
+        ctx.set_compare_enabled = [compare_enabled, queue_write](bool enabled) {
+            if (queue_write && compare_enabled) {
+                queue_write([compare_enabled, enabled] {
+                    *compare_enabled = enabled;
+                });
             }
-        } REACT_COMPONENT_END();
-    });
+        };
+        ctx.set_selected_weapon_tile = [selected_index, queue_write](int index) {
+            if (queue_write && selected_index) {
+                queue_write([selected_index, index] {
+                    *selected_index = index;
+                });
+            }
+        };
+        ctx.set_pending_action = [pending, queue_write](LoadoutPendingAction next) {
+            if (queue_write && pending) {
+                queue_write([pending, next] {
+                    *pending = next;
+                });
+            }
+        };
+        ctx.clear_pending_action = [pending, queue_write] {
+            if (queue_write && pending) {
+                queue_write([pending] {
+                    pending->action = LOADOUT_ACTION_NONE;
+                });
+            }
+        };
+
+        loadout_provider_push(&ctx);
+        LoadoutScreenView();
+        loadout_provider_pop();
+    } REACT_COMPONENT_END();
 }
 
 } // namespace shooter

@@ -1,11 +1,15 @@
 #include "client/ui/client_ui.h"
 #include "react.h"
 #include "game/shooter_game.h"
+#include "client/ui/providers/app_shell.h"
+#include "client/ui/providers/shooter_provider.h"
 #include "client/ui/screens/in_game/in_game_screen.h"
 #include "client/ui/screens/loadout/loadout_screen.h"
 #include "client/ui/screens/main_menu/main_menu_screen.h"
 #include "client/ui/screens/options/options_screen.h"
 #include "client/ui/screens/pause/pause_screen.h"
+
+#include <functional>
 
 #include <clay.h>
 
@@ -59,7 +63,13 @@ static bool init_clay_once(void) {
     return true;
 }
 
+struct TestFrameProviders {
+    shooter::ShooterGame                *game         = nullptr;
+    std::function<void()>                request_quit = {};
+};
+
 static void run_client_frame(client::ui::ClientUi &client_ui,
+                             const TestFrameProviders &providers,
                              const ::ui::UiInputFrame &input = {},
                              Clay_Vector2 pointer = { -1000.0f, -1000.0f },
                              bool drain_writes = true) {
@@ -74,7 +84,13 @@ static void run_client_frame(client::ui::ClientUi &client_ui,
             .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0) },
         },
     }) {
+        shooter::ShooterContextValue     game_ctx { .game = providers.game };
+        client::ui::AppShellContextValue shell_ctx { .request_quit = providers.request_quit };
+        shooter::shooter_provider_push(&game_ctx);
+        client::ui::app_shell_provider_push(&shell_ctx);
         client_ui.build_visible_screens();
+        client::ui::app_shell_provider_pop();
+        shooter::shooter_provider_pop();
     }
     (void)Clay_EndLayout();
     client_ui.end_layout(input);
@@ -162,16 +178,18 @@ static bool main_menu_start_match_resets_game_and_stack(void) {
     CHECK(game.selected_weapon() == 1);
 
     bool quit_requested = false;
+    TestFrameProviders providers {
+        .game = &game,
+        .request_quit = [&quit_requested] { quit_requested = true; },
+    };
     client::ui::ClientUi client_ui;
-    CHECK(client_ui.push_screen(std::make_unique<shooter::MainMenuScreen>(&game, [&quit_requested] {
-        quit_requested = true;
-    })));
+    CHECK(client_ui.push_screen(std::make_unique<shooter::MainMenuScreen>()));
 
-    run_client_frame(client_ui);
+    run_client_frame(client_ui, providers);
     CHECK(client_ui.screens().count() == 1);
     CHECK(strcmp(client_ui.screens().top()->debug_name(), "MainMenu") == 0);
 
-    run_client_frame(client_ui, keyboard_confirm());
+    run_client_frame(client_ui, providers, keyboard_confirm());
 
     CHECK(client_ui.screens().count() == 1);
     CHECK(strcmp(client_ui.screens().top()->debug_name(), "ShooterGame") == 0);
@@ -186,18 +204,19 @@ static bool main_menu_start_match_resets_game_and_stack(void) {
 static bool main_menu_options_returns_to_menu_with_cancel(void) {
     react_init(g_clay);
     shooter::ShooterGame game;
+    TestFrameProviders providers { .game = &game };
     client::ui::ClientUi client_ui;
-    CHECK(client_ui.push_screen(std::make_unique<shooter::MainMenuScreen>(&game)));
+    CHECK(client_ui.push_screen(std::make_unique<shooter::MainMenuScreen>()));
 
-    run_client_frame(client_ui);
-    run_client_frame(client_ui, keyboard_down());
-    run_client_frame(client_ui, keyboard_confirm());
+    run_client_frame(client_ui, providers);
+    run_client_frame(client_ui, providers, keyboard_down());
+    run_client_frame(client_ui, providers, keyboard_confirm());
 
     CHECK(client_ui.screens().count() == 2);
     CHECK(strcmp(client_ui.screens().at(0)->debug_name(), "MainMenu") == 0);
     CHECK(strcmp(client_ui.screens().top()->debug_name(), "Options") == 0);
 
-    run_client_frame(client_ui, keyboard_cancel());
+    run_client_frame(client_ui, providers, keyboard_cancel());
 
     CHECK(client_ui.screens().count() == 1);
     CHECK(strcmp(client_ui.screens().top()->debug_name(), "MainMenu") == 0);
@@ -208,15 +227,17 @@ static bool main_menu_quit_callback_runs(void) {
     react_init(g_clay);
     shooter::ShooterGame game;
     bool quit_requested = false;
+    TestFrameProviders providers {
+        .game = &game,
+        .request_quit = [&quit_requested] { quit_requested = true; },
+    };
     client::ui::ClientUi client_ui;
-    CHECK(client_ui.push_screen(std::make_unique<shooter::MainMenuScreen>(&game, [&quit_requested] {
-        quit_requested = true;
-    })));
+    CHECK(client_ui.push_screen(std::make_unique<shooter::MainMenuScreen>()));
 
-    run_client_frame(client_ui);
-    run_client_frame(client_ui, keyboard_down());
-    run_client_frame(client_ui, keyboard_down());
-    run_client_frame(client_ui, keyboard_confirm());
+    run_client_frame(client_ui, providers);
+    run_client_frame(client_ui, providers, keyboard_down());
+    run_client_frame(client_ui, providers, keyboard_down());
+    run_client_frame(client_ui, providers, keyboard_confirm());
 
     CHECK(quit_requested);
     CHECK(client_ui.screens().count() == 1);
@@ -227,14 +248,15 @@ static bool main_menu_quit_callback_runs(void) {
 static bool shooter_screen_pushes_pause_after_confirm(void) {
     react_init(g_clay);
     shooter::ShooterGame game;
+    TestFrameProviders providers { .game = &game };
     client::ui::ClientUi client_ui;
-    CHECK(client_ui.push_screen(std::make_unique<shooter::ShooterGameScreen>(&game)));
+    CHECK(client_ui.push_screen(std::make_unique<shooter::ShooterGameScreen>()));
 
-    run_client_frame(client_ui);
+    run_client_frame(client_ui, providers);
     CHECK(client_ui.screens().count() == 1);
     CHECK(strcmp(client_ui.screens().top()->debug_name(), "ShooterGame") == 0);
 
-    run_client_frame(client_ui, keyboard_confirm());
+    run_client_frame(client_ui, providers, keyboard_confirm());
 
     CHECK(client_ui.screens().count() == 2);
     CHECK(strcmp(client_ui.screens().top()->debug_name(), "Pause") == 0);
@@ -244,19 +266,20 @@ static bool shooter_screen_pushes_pause_after_confirm(void) {
 static bool pause_exit_to_main_menu_resets_stack(void) {
     react_init(g_clay);
     shooter::ShooterGame game;
+    TestFrameProviders providers { .game = &game };
     client::ui::ClientUi client_ui;
-    CHECK(client_ui.push_screen(std::make_unique<shooter::ShooterGameScreen>(&game)));
+    CHECK(client_ui.push_screen(std::make_unique<shooter::ShooterGameScreen>()));
 
-    run_client_frame(client_ui);
-    run_client_frame(client_ui, keyboard_confirm());
+    run_client_frame(client_ui, providers);
+    run_client_frame(client_ui, providers, keyboard_confirm());
     CHECK(client_ui.screens().count() == 2);
     CHECK(strcmp(client_ui.screens().top()->debug_name(), "Pause") == 0);
 
-    run_client_frame(client_ui);
-    run_client_frame(client_ui, keyboard_down());
-    run_client_frame(client_ui, keyboard_down());
-    run_client_frame(client_ui, keyboard_down());
-    run_client_frame(client_ui, keyboard_confirm());
+    run_client_frame(client_ui, providers);
+    run_client_frame(client_ui, providers, keyboard_down());
+    run_client_frame(client_ui, providers, keyboard_down());
+    run_client_frame(client_ui, providers, keyboard_down());
+    run_client_frame(client_ui, providers, keyboard_confirm());
 
     CHECK(client_ui.screens().count() == 1);
     CHECK(strcmp(client_ui.screens().top()->debug_name(), "MainMenu") == 0);
@@ -266,25 +289,26 @@ static bool pause_exit_to_main_menu_resets_stack(void) {
 static bool pause_options_returns_to_pause_through_screen_stack(void) {
     react_init(g_clay);
     shooter::ShooterGame game;
+    TestFrameProviders providers { .game = &game };
     client::ui::ClientUi client_ui;
-    CHECK(client_ui.push_screen(std::make_unique<shooter::ShooterGameScreen>(&game)));
+    CHECK(client_ui.push_screen(std::make_unique<shooter::ShooterGameScreen>()));
 
-    run_client_frame(client_ui);
-    run_client_frame(client_ui, keyboard_confirm());
+    run_client_frame(client_ui, providers);
+    run_client_frame(client_ui, providers, keyboard_confirm());
     CHECK(client_ui.screens().count() == 2);
     CHECK(strcmp(client_ui.screens().top()->debug_name(), "Pause") == 0);
 
-    run_client_frame(client_ui);
-    run_client_frame(client_ui, keyboard_down());
-    run_client_frame(client_ui, keyboard_confirm());
+    run_client_frame(client_ui, providers);
+    run_client_frame(client_ui, providers, keyboard_down());
+    run_client_frame(client_ui, providers, keyboard_confirm());
     CHECK(client_ui.screens().count() == 3);
     CHECK(strcmp(client_ui.screens().at(1)->debug_name(), "Pause") == 0);
     CHECK(strcmp(client_ui.screens().top()->debug_name(), "Options") == 0);
 
-    run_client_frame(client_ui);
-    run_client_frame(client_ui, keyboard_down());
-    run_client_frame(client_ui, keyboard_down());
-    run_client_frame(client_ui, keyboard_confirm());
+    run_client_frame(client_ui, providers);
+    run_client_frame(client_ui, providers, keyboard_down());
+    run_client_frame(client_ui, providers, keyboard_down());
+    run_client_frame(client_ui, providers, keyboard_confirm());
     CHECK(client_ui.screens().count() == 2);
     CHECK(strcmp(client_ui.screens().top()->debug_name(), "Pause") == 0);
     return true;
@@ -293,34 +317,36 @@ static bool pause_options_returns_to_pause_through_screen_stack(void) {
 static bool loadout_buy_uses_confirm_dialog_and_restores_parent_focus(void) {
     react_init(g_clay);
     shooter::ShooterGame game;
+    TestFrameProviders providers { .game = &game };
     client::ui::ClientUi client_ui;
-    CHECK(client_ui.push_screen(std::make_unique<shooter::LoadoutScreen>(&game)));
+    CHECK(client_ui.push_screen(std::make_unique<shooter::LoadoutScreen>()));
 
-    run_client_frame(client_ui);
+    run_client_frame(client_ui, providers);
     CHECK(same_id(
         ::ui::ui_focus_focused_id_for_scope(test_id("LoadoutScope")),
         CLAY_IDI("WeaponTile", 0)));
     CHECK(game.selected_weapon() == 0);
 
-    run_client_frame(client_ui, keyboard_right());
+    run_client_frame(client_ui, providers, keyboard_right());
     CHECK(same_id(
         ::ui::ui_focus_focused_id_for_scope(test_id("LoadoutScope")),
         CLAY_IDI("WeaponTile", 1)));
-    CHECK(game.selected_weapon() == 1);
+    // Focus is a pure-UI change: focusing tile 1 must NOT mutate game state.
+    CHECK(game.selected_weapon() == 0);
     CHECK(!game.weapon(1).owned);
     CHECK(game.credits() == 450);
 
-    run_client_frame(client_ui, keyboard_right());
-    run_client_frame(client_ui, keyboard_down());
+    run_client_frame(client_ui, providers, keyboard_right());
+    run_client_frame(client_ui, providers, keyboard_down());
     CHECK(same_id(
         ::ui::ui_focus_focused_id_for_scope(test_id("LoadoutScope")),
         test_id("BuyWeaponButton")));
 
-    run_client_frame(client_ui, keyboard_confirm());
+    run_client_frame(client_ui, providers, keyboard_confirm());
     CHECK(!game.weapon(1).owned);
     CHECK(game.credits() == 450);
 
-    run_client_frame(client_ui);
+    run_client_frame(client_ui, providers);
     CHECK(same_id(
         ::ui::ui_focus_focused_id_for_scope(CLAY_IDI("LoadoutConfirmScope", 1)),
         test_id("ConfirmLoadoutActionButton")));
@@ -328,26 +354,26 @@ static bool loadout_buy_uses_confirm_dialog_and_restores_parent_focus(void) {
         ::ui::ui_focus_focused_id_for_scope(test_id("LoadoutScope")),
         test_id("BuyWeaponButton")));
 
-    run_client_frame(client_ui, keyboard_right());
+    run_client_frame(client_ui, providers, keyboard_right());
     CHECK(same_id(
         ::ui::ui_focus_focused_id_for_scope(CLAY_IDI("LoadoutConfirmScope", 1)),
         test_id("CancelLoadoutActionButton")));
-    run_client_frame(client_ui, keyboard_confirm());
+    run_client_frame(client_ui, providers, keyboard_confirm());
     CHECK(!game.weapon(1).owned);
     CHECK(game.credits() == 450);
 
-    run_client_frame(client_ui);
+    run_client_frame(client_ui, providers);
     CHECK(same_id(
         ::ui::ui_focus_focused_id_for_scope(test_id("LoadoutScope")),
         test_id("BuyWeaponButton")));
 
-    run_client_frame(client_ui, keyboard_confirm());
+    run_client_frame(client_ui, providers, keyboard_confirm());
     CHECK(!game.weapon(1).owned);
-    run_client_frame(client_ui);
+    run_client_frame(client_ui, providers);
     CHECK(same_id(
         ::ui::ui_focus_focused_id_for_scope(CLAY_IDI("LoadoutConfirmScope", 2)),
         test_id("ConfirmLoadoutActionButton")));
-    run_client_frame(client_ui, keyboard_confirm());
+    run_client_frame(client_ui, providers, keyboard_confirm());
     CHECK(game.weapon(1).owned);
     CHECK(game.credits() == 150);
     return true;
@@ -356,31 +382,32 @@ static bool loadout_buy_uses_confirm_dialog_and_restores_parent_focus(void) {
 static bool loadout_tabs_and_equipment_slots_are_real_focus_targets(void) {
     react_init(g_clay);
     shooter::ShooterGame game;
+    TestFrameProviders providers { .game = &game };
     client::ui::ClientUi client_ui;
-    CHECK(client_ui.push_screen(std::make_unique<shooter::LoadoutScreen>(&game)));
+    CHECK(client_ui.push_screen(std::make_unique<shooter::LoadoutScreen>()));
 
-    run_client_frame(client_ui);
+    run_client_frame(client_ui, providers);
     CHECK(Clay_GetElementData(test_id("WeaponsTab")).found);
     CHECK(Clay_GetElementData(test_id("GearTab")).found);
     CHECK(Clay_GetElementData(test_id("PrimarySlot")).found);
     CHECK(Clay_GetElementData(test_id("GearSlot")).found);
 
     Clay_Vector2 gear_tab = center_of(test_id("GearTab"));
-    run_client_frame(client_ui, pointer_press(), gear_tab);
-    run_client_frame(client_ui, pointer_release(), gear_tab);
+    run_client_frame(client_ui, providers, pointer_press(), gear_tab);
+    run_client_frame(client_ui, providers, pointer_release(), gear_tab);
     CHECK(game.selected_weapon() == 3);
 
-    run_client_frame(client_ui);
+    run_client_frame(client_ui, providers);
     CHECK(Clay_GetElementData(CLAY_IDI("WeaponTile", 3)).found);
 
     Clay_Vector2 primary_slot = center_of(test_id("PrimarySlot"));
-    run_client_frame(client_ui, pointer_press(), primary_slot);
-    run_client_frame(client_ui, pointer_release(), primary_slot);
+    run_client_frame(client_ui, providers, pointer_press(), primary_slot);
+    run_client_frame(client_ui, providers, pointer_release(), primary_slot);
     CHECK(game.selected_weapon() == 0);
 
     Clay_Vector2 gear_slot = center_of(test_id("GearSlot"));
-    run_client_frame(client_ui, pointer_press(), gear_slot);
-    run_client_frame(client_ui, pointer_release(), gear_slot);
+    run_client_frame(client_ui, providers, pointer_press(), gear_slot);
+    run_client_frame(client_ui, providers, pointer_release(), gear_slot);
     CHECK(game.selected_weapon() == 3);
     return true;
 }
@@ -388,18 +415,75 @@ static bool loadout_tabs_and_equipment_slots_are_real_focus_targets(void) {
 static bool shooter_game_writes_wait_for_client_ui_drain(void) {
     react_init(g_clay);
     shooter::ShooterGame game;
+    TestFrameProviders providers { .game = &game };
     client::ui::ClientUi client_ui;
-    CHECK(client_ui.push_screen(std::make_unique<shooter::LoadoutScreen>(&game)));
+    CHECK(client_ui.push_screen(std::make_unique<shooter::LoadoutScreen>()));
 
-    run_client_frame(client_ui);
+    run_client_frame(client_ui, providers);
     Clay_Vector2 gear_tab = center_of(test_id("GearTab"));
-    run_client_frame(client_ui, pointer_press(), gear_tab);
-    run_client_frame(client_ui, pointer_release(), gear_tab, false);
+    run_client_frame(client_ui, providers, pointer_press(), gear_tab);
+    run_client_frame(client_ui, providers, pointer_release(), gear_tab, false);
 
     CHECK(game.selected_weapon() == 0);
-    CHECK(client_ui.pending_write_count() == 1);
+    // The gear tab's on_select queues two writes: one for the UI selection
+    // (via the LoadoutProvider's setter) and one for the game-side
+    // select_weapon. Both wait for drain.
+    CHECK(client_ui.pending_write_count() == 2);
     client_ui.drain_writes();
     CHECK(game.selected_weapon() == 3);
+    return true;
+}
+
+namespace {
+
+class GameAndQuitConsumerScreen final : public client::ui::UiScreen {
+public:
+    GameAndQuitConsumerScreen(shooter::ShooterGame **observed_game,
+                              bool *observed_quit_present)
+        : observed_game_(observed_game),
+          observed_quit_present_(observed_quit_present) {}
+
+    const char *debug_name() const override { return "GameAndQuitConsumer"; }
+
+    void build_ui() override {
+        REACT_COMPONENT_BEGIN_KEY("GameAndQuitConsumerView", entry_id()) {
+            if (observed_game_) {
+                *observed_game_ = shooter::use_shooter_game();
+            }
+            if (observed_quit_present_) {
+                std::function<void()> quit = client::ui::use_request_quit();
+                *observed_quit_present_ = static_cast<bool>(quit);
+            }
+        } REACT_COMPONENT_END();
+    }
+
+private:
+    shooter::ShooterGame **observed_game_;
+    bool                  *observed_quit_present_;
+};
+
+} // namespace
+
+static bool root_level_providers_reach_screens_without_per_screen_wrap(void) {
+    react_init(g_clay);
+    shooter::ShooterGame game;
+    bool quit_invoked = false;
+    TestFrameProviders providers {
+        .game = &game,
+        .request_quit = [&quit_invoked] { quit_invoked = true; },
+    };
+
+    shooter::ShooterGame *observed_game     = nullptr;
+    bool                  observed_quit     = false;
+
+    client::ui::ClientUi client_ui;
+    CHECK(client_ui.push_screen(
+        std::make_unique<GameAndQuitConsumerScreen>(&observed_game, &observed_quit)));
+
+    run_client_frame(client_ui, providers);
+    CHECK(observed_game == &game);
+    CHECK(observed_quit);
+    CHECK(!quit_invoked);
     return true;
 }
 
@@ -416,6 +500,7 @@ int main(void) {
     if (!loadout_buy_uses_confirm_dialog_and_restores_parent_focus()) return 1;
     if (!loadout_tabs_and_equipment_slots_are_real_focus_targets()) return 1;
     if (!shooter_game_writes_wait_for_client_ui_drain()) return 1;
+    if (!root_level_providers_reach_screens_without_per_screen_wrap()) return 1;
 
     react_shutdown();
     free(g_clay_memory);

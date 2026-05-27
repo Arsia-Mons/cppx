@@ -7,7 +7,7 @@
 #include "../in_game/in_game_screen.h"
 #include "../options/options_screen.h"
 #include "../../client_ui.h"
-#include "../../providers/shooter_provider.h"
+#include "../../providers/app_shell.h"
 #include "../../../../react.h"
 #include "../../../../ui/focus/ui_focus.h"
 #include "../../../../ui/primitives/button.h"
@@ -16,11 +16,9 @@
 namespace shooter {
 
 std::function<void()> use_exit_to_main_menu() {
-    ShooterGame *game = use_shooter_game();
-    std::function<void()> request_quit = use_request_quit();
     client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
-    return [game, request_quit, nav] {
-        if (nav.reset_to && game) nav.reset_to(std::make_unique<MainMenuScreen>(game, request_quit));
+    return [nav] {
+        if (nav.reset_to) nav.reset_to(std::make_unique<MainMenuScreen>());
     };
 }
 
@@ -28,7 +26,7 @@ static void MainMenuScreenView() {
     REACT_COMPONENT_BEGIN("MainMenuScreenView") {
         std::function<void()> start_match  = use_start_match();
         std::function<void()> open_options = use_push_options_screen();
-        std::function<void()> request_quit = use_request_quit();
+        std::function<void()> request_quit = client::ui::use_request_quit();
         ::ui::ui_focus_push_scope({ .id = CLAY_ID("MainMenuScope") });
         ::ui::ui_focus_request_initial_focus(CLAY_ID("StartMatchButton"));
 
@@ -86,11 +84,9 @@ static void MainMenuScreenView() {
 }
 
 void MainMenuScreen::build_ui() {
-    ShooterProvider(game_, request_quit_, [this] {
-        REACT_COMPONENT_BEGIN_KEY("MainMenuScreen", entry_id()) {
-            MainMenuScreenView();
-        } REACT_COMPONENT_END();
-    });
+    REACT_COMPONENT_BEGIN_KEY("MainMenuScreen", entry_id()) {
+        MainMenuScreenView();
+    } REACT_COMPONENT_END();
 }
 
 } // namespace shooter

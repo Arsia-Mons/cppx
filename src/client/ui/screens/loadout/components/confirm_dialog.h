@@ -2,13 +2,9 @@
 
 namespace shooter {
 
-constexpr int LOADOUT_ACTION_NONE  = 0;
-constexpr int LOADOUT_ACTION_BUY   = 1;
-constexpr int LOADOUT_ACTION_EQUIP = 2;
-
-void LoadoutConfirmDialog(int  action,
-                          int  weapon_index,
-                          int  serial,
-                          int *pending_action);
+// Reads the pending action from `LoadoutContext` and renders the confirm
+// modal. Returns early when no action is pending. Action constants and the
+// pending struct live in `loadout_state.h`.
+void LoadoutConfirmDialog();
 
 } // namespace shooter

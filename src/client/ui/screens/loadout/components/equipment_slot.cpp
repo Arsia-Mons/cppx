@@ -1,9 +1,9 @@
 #include "equipment_slot.h"
 
 #include <functional>
-#include <stdio.h>
 #include <stdint.h>
 
+#include "../loadout_state.h"
 #include "../../../hooks/shooter_weapons.h"
 #include "../../../providers/shooter_provider.h"
 #include "../../../../../react.h"
@@ -15,29 +15,29 @@ namespace shooter {
 
 void EquipmentSlot(Clay_ElementId id,
                    const char    *label,
-                   int            weapon_index,
-                   int           *selected_index) {
+                   int            weapon_index) {
     REACT_FRAGMENT_COMPONENT_BEGIN_KEY("EquipmentSlot", id.id) {
         ShooterWeaponRead weapon = use_weapon_read(weapon_index);
         if (weapon.valid) {
-            bool selected = selected_index && *selected_index == weapon_index;
-            std::function<void()> select = use_select_weapon(weapon_index);
+            int selected_index = use_selected_weapon_tile();
+            std::function<void(int)> set_selected = use_set_selected_weapon_tile();
+            std::function<void()>    select       = use_select_weapon(weapon_index);
+            bool selected = selected_index == weapon_index;
 
-            static char slot_text[2][96];
-            int slot = weapon_index == 3 ? 1 : 0;
-            snprintf(slot_text[slot], sizeof(slot_text[slot]), "%s: %s",
-                     label,
-                     weapon.owned ? weapon.name : "empty");
+            const char *slot_text = use_text_storage("%s: %s",
+                label,
+                weapon.owned ? weapon.name : "empty");
 
             ::ui::Focusable({
                 .id = id,
-                .on_confirm = [selected_index, weapon_index, select] {
-                    if (selected_index) *selected_index = weapon_index;
+                .on_confirm = [set_selected, weapon_index, select] {
+                    if (set_selected) set_selected(weapon_index);
                     if (select) select();
                 },
-                .on_focus = [selected_index, weapon_index, select] {
-                    if (selected_index) *selected_index = weapon_index;
-                    if (select) select();
+                // on_focus updates UI selection only — it does NOT call
+                // select() against game state.
+                .on_focus = [set_selected, weapon_index] {
+                    if (set_selected) set_selected(weapon_index);
                 },
             }, [&](const ::ui::UiFocusableState &focus) {
                 ::ui::VisualState visual = ::ui::derive_visual_state(focus, {
@@ -62,7 +62,7 @@ void EquipmentSlot(Clay_ElementId id,
                         .width = CLAY_BORDER_OUTSIDE(border_width),
                     },
                 }) {
-                    CLAY_TEXT(::ui::clay_text(slot_text[slot]),
+                    CLAY_TEXT(::ui::clay_text(slot_text),
                         CLAY_TEXT_CONFIG({ .textColor = { 226, 238, 236, 255 }, .fontSize = 14 }));
                 }
             });

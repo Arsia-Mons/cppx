@@ -50,10 +50,10 @@ static bool init_clay_once(void) {
 class RecordingScreen final : public UiScreen {
 public:
     RecordingScreen(const char *name, bool overlay, int *build_count)
-        : name_(name), overlay_(overlay), build_count_(build_count) {}
+        : UiScreen(overlay ? ScreenKind::Overlay : ScreenKind::Normal),
+          name_(name), build_count_(build_count) {}
 
     const char *debug_name() const override { return name_; }
-    bool is_overlay() const override { return overlay_; }
 
     void build_ui() override {
         if (build_count_) {
@@ -63,16 +63,14 @@ public:
 
 private:
     const char *name_;
-    bool overlay_;
     int *build_count_;
 };
 
-class PopSelfScreen final : public UiScreen {
+class PopSelfScreen final : public OverlayScreen {
 public:
     explicit PopSelfScreen(int *build_count) : build_count_(build_count) {}
 
     const char *debug_name() const override { return "PopSelf"; }
-    bool is_overlay() const override { return true; }
 
     void build_ui() override {
         if (build_count_) {
@@ -104,7 +102,7 @@ private:
     int *build_count_;
 };
 
-class ResetToScreen final : public UiScreen {
+class ResetToScreen final : public OverlayScreen {
 public:
     ResetToScreen(int *build_count, int *destroy_count)
         : build_count_(build_count), destroy_count_(destroy_count) {}
@@ -115,7 +113,6 @@ public:
     }
 
     const char *debug_name() const override { return "ResetToScreen"; }
-    bool is_overlay() const override { return true; }
 
     void build_ui() override {
         if (build_count_) {

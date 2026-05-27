@@ -8,7 +8,6 @@
 #include "../main_menu/main_menu_screen.h"
 #include "../options/options_screen.h"
 #include "../../client_ui.h"
-#include "../../providers/shooter_provider.h"
 #include "../../../../react.h"
 #include "../../../../ui/focus/ui_focus.h"
 #include "../../../../ui/primitives/button.h"
@@ -17,11 +16,9 @@
 namespace shooter {
 
 std::function<void()> use_push_pause_screen() {
-    ShooterGame *game = use_shooter_game();
-    std::function<void()> request_quit = use_request_quit();
     client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
-    return [game, request_quit, nav] {
-        if (nav.push && game) nav.push(std::make_unique<PauseScreen>(game, request_quit));
+    return [nav] {
+        if (nav.push) nav.push(std::make_unique<PauseScreen>());
     };
 }
 
@@ -78,11 +75,9 @@ static void PauseScreenView() {
 }
 
 void PauseScreen::build_ui() {
-    ShooterProvider(game_, request_quit_, [this] {
-        REACT_COMPONENT_BEGIN_KEY("PauseScreen", entry_id()) {
-            PauseScreenView();
-        } REACT_COMPONENT_END();
-    });
+    REACT_COMPONENT_BEGIN_KEY("PauseScreen", entry_id()) {
+        PauseScreenView();
+    } REACT_COMPONENT_END();
 }
 
 } // namespace shooter

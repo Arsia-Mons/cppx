@@ -1,12 +1,11 @@
 #include "weapon_tile.h"
 
 #include <functional>
-#include <stdio.h>
 #include <stdint.h>
 
+#include "../loadout_state.h"
 #include "../../../hooks/shooter_weapons.h"
 #include "../../../providers/shooter_provider.h"
-#include "../../../../../game/inventory.h"
 #include "../../../../../react.h"
 #include "../../../../../ui/primitives/clay_text.h"
 #include "../../../../../ui/primitives/focusable.h"
@@ -27,31 +26,33 @@ int first_weapon_for_tab(int tab) {
     return tab == LOADOUT_TAB_GEAR ? 3 : 0;
 }
 
-void WeaponTile(int index, int *selected_index) {
+void WeaponTile(int index) {
     REACT_FRAGMENT_COMPONENT_BEGIN_KEY("WeaponTile", (uint32_t)index) {
         ShooterWeaponRead weapon = use_weapon_read(index);
         if (weapon.valid) {
-            bool selected = selected_index && *selected_index == index;
+            int selected_index = use_selected_weapon_tile();
+            std::function<void(int)> set_selected = use_set_selected_weapon_tile();
+            std::function<void()>    select       = use_select_weapon(index);
+            bool selected = selected_index == index;
             bool disabled = weapon.disabled;
-            std::function<void()> select = use_select_weapon(index);
 
-            static char detail[SHOOTER_WEAPON_COUNT][96];
-            snprintf(detail[index], sizeof(detail[index]), "%s  DMG %d  %s",
-                     weapon.role,
-                     weapon.damage,
-                     weapon.owned ? (weapon.equipped ? "equipped" : "owned") :
-                         (disabled ? "locked" : "available"));
+            const char *detail = use_text_storage("%s  DMG %d  %s",
+                weapon.role,
+                weapon.damage,
+                weapon.owned ? (weapon.equipped ? "equipped" : "owned")
+                             : (disabled ? "locked" : "available"));
 
             ::ui::Focusable({
                 .id = weapon_tile_id(index),
                 .disabled = disabled,
-                .on_confirm = [selected_index, index, select] {
-                    if (selected_index) *selected_index = index;
+                .on_confirm = [set_selected, index, select] {
+                    if (set_selected) set_selected(index);
                     if (select) select();
                 },
-                .on_focus = [selected_index, index, select] {
-                    if (selected_index) *selected_index = index;
-                    if (select) select();
+                // on_focus updates UI selection only — it does NOT call
+                // select() against game state (that's the dialog's job).
+                .on_focus = [set_selected, index] {
+                    if (set_selected) set_selected(index);
                 },
             }, [&](const ::ui::UiFocusableState &focus) {
                 ::ui::VisualState visual = ::ui::derive_visual_state(focus, {
@@ -80,7 +81,7 @@ void WeaponTile(int index, int *selected_index) {
                 }) {
                     CLAY_TEXT(::ui::clay_text(weapon.name),
                         CLAY_TEXT_CONFIG({ .textColor = { 238, 246, 244, 255 }, .fontSize = 16 }));
-                    CLAY_TEXT(::ui::clay_text(detail[index]),
+                    CLAY_TEXT(::ui::clay_text(detail),
                         CLAY_TEXT_CONFIG({
                             .textColor = disabled
                                 ? Clay_Color{ 142, 148, 150, 255 }

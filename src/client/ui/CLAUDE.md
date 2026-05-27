@@ -9,8 +9,8 @@ client_ui.{h,cpp}                ClientUi shell: owns ScreenStack + UiFocusRunti
                                  runs per-frame phases, queues deferred writes.
 ui_pipeline.{h,cpp}              UiPipeline: wraps ClientUi in a Clay frame pass.
 navigation/screen_stack.{h,cpp}  Retained screens, overlay flag, build order, entry IDs.
-navigation/ui_screen.h           UiScreen interface — override build_ui() and (optionally) is_overlay().
-providers/                       Cross-screen React context providers (e.g., shooter_provider).
+navigation/ui_screen.h           UiScreen / OverlayScreen base classes — override build_ui(); inherit OverlayScreen for floating screens.
+providers/                       Cross-screen React context providers (e.g., shooter_provider, app_shell).
 hooks/                           Cross-screen React hooks (e.g., shooter_hud, shooter_weapons).
 components/                      Cross-screen visual components (e.g., hud_band).
 screens/<screen>/                Per-screen dir: <screen>_screen.{h,cpp} + optional components/.

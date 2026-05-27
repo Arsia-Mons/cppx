@@ -58,7 +58,7 @@ UiScreen *ScreenStack::top() const {
     int start = count_;
     for (int i = count_ - 1; i >= 0; --i) {
         start = i;
-        if (!screens_[i]->is_overlay()) break;
+        if (screens_[i]->kind() == ScreenKind::Normal) break;
     }
 
     int visible_count = 0;

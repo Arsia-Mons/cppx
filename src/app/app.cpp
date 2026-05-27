@@ -2,6 +2,8 @@
 
 #include "game_loop.h"
 #include "../react.h"
+#include "../client/ui/providers/app_shell.h"
+#include "../client/ui/providers/shooter_provider.h"
 #include "../client/ui/screens/main_menu/main_menu_screen.h"
 
 #include <SDL3/SDL.h>
@@ -104,10 +106,17 @@ bool App::initialize(const AppOptions &options) {
 
     react_init(clay_ctx_);
 
-    ui_pipeline_.client_ui().push_screen(
-        std::make_unique<shooter::MainMenuScreen>(&shooter_game_, [this] {
-            running_ = false;
-        }));
+    ui_pipeline_.set_frame_provider([this](const std::function<void()> &build) {
+        shooter::ShooterContextValue        game_ctx { .game = &shooter_game_ };
+        client::ui::AppShellContextValue    shell_ctx { .request_quit = [this] { running_ = false; } };
+        shooter::shooter_provider_push(&game_ctx);
+        client::ui::app_shell_provider_push(&shell_ctx);
+        build();
+        client::ui::app_shell_provider_pop();
+        shooter::shooter_provider_pop();
+    });
+
+    ui_pipeline_.client_ui().push_screen(std::make_unique<shooter::MainMenuScreen>());
 
     control_.set_game_state_json_provider([this] {
         return shooter_state_json(shooter_game_);

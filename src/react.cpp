@@ -2,6 +2,7 @@
 
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 // Fixed capacities. Bump if needed; "incredibly simple" hello-world doesn't need much.
@@ -11,10 +12,13 @@
 #define REACT_MAX_RENDER_DEPTH  128
 
 enum HookKind : uint8_t {
-    HOOK_NONE   = 0,
-    HOOK_STATE  = 1,
-    HOOK_EFFECT = 2,
-    HOOK_REF    = 3,
+    HOOK_NONE          = 0,
+    HOOK_STATE         = 1,
+    HOOK_EFFECT        = 2,
+    HOOK_REF           = 3,
+    HOOK_GENERIC_STATE = 4,
+    HOOK_CALLBACK      = 5,
+    HOOK_TEXT_STORAGE  = 6,
 };
 
 struct StateData {
@@ -41,12 +45,33 @@ struct RefData {
     void *current;
 };
 
+struct GenericStateData {
+    void                 *storage;
+    ReactSlotDestructor   destructor;
+    uint32_t              size;
+};
+
+struct CallbackData {
+    void                 *storage;
+    ReactSlotDestructor   destructor;
+    uint32_t              size;
+    uint64_t              deps_hash;
+    bool                  has_value;
+};
+
+struct TextStorageData {
+    char                 *buffer;
+};
+
 struct HookSlot {
     HookKind kind;
     union {
-        StateData  state;
-        EffectData effect;
-        RefData    ref;
+        StateData         state;
+        EffectData        effect;
+        RefData           ref;
+        GenericStateData  generic;
+        CallbackData      callback;
+        TextStorageData   text;
     } u;
 };
 
@@ -87,6 +112,7 @@ static struct {
 } G;
 
 static void run_active_cleanup(HookSlot *s);
+static void destroy_slot_storage(HookSlot *s);
 
 static void react_report_error(const char *fmt, ...) {
     G.error_count++;
@@ -181,6 +207,7 @@ static void fiber_destroy(int32_t idx) {
 
     for (int j = 0; j < REACT_HOOKS_PER_FIBER; j++) {
         run_active_cleanup(&f->slots[j]);
+        destroy_slot_storage(&f->slots[j]);
     }
     fiber_unlink_from_bucket(idx);
     *f = {};
@@ -259,10 +286,13 @@ void react_leave(void) {
 
 static const char *hook_kind_name(HookKind kind) {
     switch (kind) {
-        case HOOK_NONE:   return "none";
-        case HOOK_STATE:  return "state";
-        case HOOK_EFFECT: return "effect";
-        case HOOK_REF:    return "ref";
+        case HOOK_NONE:          return "none";
+        case HOOK_STATE:         return "state";
+        case HOOK_EFFECT:        return "effect";
+        case HOOK_REF:           return "ref";
+        case HOOK_GENERIC_STATE: return "generic_state";
+        case HOOK_CALLBACK:      return "callback";
+        case HOOK_TEXT_STORAGE:  return "text_storage";
     }
     return "unknown";
 }
@@ -333,6 +363,161 @@ void **use_ref(void *initial) {
         s->u.ref.current = initial;
     }
     return &s->u.ref.current;
+}
+
+// --- Generic state, callback, and text-storage backing ---
+//
+// All three use a heap-allocated payload owned by the slot. malloc returns
+// memory aligned for std::max_align_t (typically 16 bytes), which is enough
+// for every type we currently expect to store. Anything larger is rejected.
+
+static void *react_aligned_alloc(uint32_t size, uint32_t align) {
+    if (align > alignof(max_align_t)) {
+        react_report_error("react: slot alignment %u exceeds max_align_t (%zu)\n",
+                           (unsigned)align, (size_t)alignof(max_align_t));
+        return nullptr;
+    }
+    if (size == 0) size = 1;
+    return malloc(size);
+}
+
+static void destroy_slot_storage(HookSlot *s) {
+    switch (s->kind) {
+        case HOOK_GENERIC_STATE: {
+            GenericStateData &g = s->u.generic;
+            if (g.storage) {
+                if (g.destructor) g.destructor(g.storage);
+                free(g.storage);
+                g.storage = nullptr;
+            }
+            break;
+        }
+        case HOOK_CALLBACK: {
+            CallbackData &c = s->u.callback;
+            if (c.storage) {
+                if (c.has_value && c.destructor) c.destructor(c.storage);
+                free(c.storage);
+                c.storage = nullptr;
+                c.has_value = false;
+            }
+            break;
+        }
+        case HOOK_TEXT_STORAGE: {
+            TextStorageData &t = s->u.text;
+            if (t.buffer) {
+                free(t.buffer);
+                t.buffer = nullptr;
+            }
+            break;
+        }
+        default:
+            break;
+    }
+}
+
+void *react_use_generic_state_slot(uint32_t size,
+                                   uint32_t align,
+                                   ReactSlotDestructor destructor,
+                                   bool *is_new_slot) {
+    if (is_new_slot) *is_new_slot = false;
+    HookSlot *s = take_slot(HOOK_GENERIC_STATE, nullptr);
+    if (!s) return nullptr;
+    if (s->kind == HOOK_NONE) {
+        s->kind = HOOK_GENERIC_STATE;
+        s->u.generic = {};
+        void *storage = react_aligned_alloc(size, align);
+        if (!storage) {
+            // Leave the slot empty so subsequent frames may retry.
+            s->kind = HOOK_NONE;
+            return nullptr;
+        }
+        s->u.generic.storage    = storage;
+        s->u.generic.destructor = destructor;
+        s->u.generic.size       = size;
+        if (is_new_slot) *is_new_slot = true;
+    } else if (s->u.generic.size != size) {
+        // Same call-site swapped T behind use_state — diagnose like hook drift.
+        react_report_error("react: use_state size changed on fiber %u (was=%u now=%u)\n",
+                           G.current ? G.current->id : 0u,
+                           (unsigned)s->u.generic.size, (unsigned)size);
+        return nullptr;
+    }
+    return s->u.generic.storage;
+}
+
+void *react_use_callback_slot(uint32_t size,
+                              uint32_t align,
+                              ReactSlotDestructor destructor,
+                              uint64_t deps_hash,
+                              bool *is_stale) {
+    if (is_stale) *is_stale = false;
+    HookSlot *s = take_slot(HOOK_CALLBACK, nullptr);
+    if (!s) return nullptr;
+    if (s->kind == HOOK_NONE) {
+        s->kind = HOOK_CALLBACK;
+        s->u.callback = {};
+        void *storage = react_aligned_alloc(size, align);
+        if (!storage) {
+            s->kind = HOOK_NONE;
+            return nullptr;
+        }
+        s->u.callback.storage    = storage;
+        s->u.callback.destructor = destructor;
+        s->u.callback.size       = size;
+        s->u.callback.deps_hash  = deps_hash;
+        s->u.callback.has_value  = false;
+        if (is_stale) *is_stale = true;
+    } else if (s->u.callback.size != size) {
+        react_report_error("react: use_callback size changed on fiber %u (was=%u now=%u)\n",
+                           G.current ? G.current->id : 0u,
+                           (unsigned)s->u.callback.size, (unsigned)size);
+        return nullptr;
+    } else if (!s->u.callback.has_value || s->u.callback.deps_hash != deps_hash) {
+        // Destroy the previous function in place before the caller reconstructs.
+        if (s->u.callback.has_value && s->u.callback.destructor) {
+            s->u.callback.destructor(s->u.callback.storage);
+        }
+        s->u.callback.deps_hash = deps_hash;
+        s->u.callback.has_value = false;
+        if (is_stale) *is_stale = true;
+    }
+    // Caller will placement-new into storage when is_stale is true; mark as
+    // populated so we destroy it on next stale-rebuild or fiber teardown.
+    if (is_stale && *is_stale) {
+        s->u.callback.has_value = true;
+    }
+    return s->u.callback.storage;
+}
+
+const char *use_text_storage_v(const char *fmt, va_list args) {
+    HookSlot *s = take_slot(HOOK_TEXT_STORAGE, nullptr);
+    if (!s) {
+        // Sink path: format into a thread-local buffer. Mirrors use_state_int's
+        // graceful-degrade behavior so callers can always feed a valid char*.
+        static thread_local char sink[REACT_TEXT_STORAGE_CAP];
+        vsnprintf(sink, REACT_TEXT_STORAGE_CAP, fmt, args);
+        return sink;
+    }
+    if (s->kind == HOOK_NONE) {
+        s->kind = HOOK_TEXT_STORAGE;
+        s->u.text.buffer = (char *)malloc(REACT_TEXT_STORAGE_CAP);
+        if (!s->u.text.buffer) {
+            s->kind = HOOK_NONE;
+            static thread_local char sink[REACT_TEXT_STORAGE_CAP];
+            vsnprintf(sink, REACT_TEXT_STORAGE_CAP, fmt, args);
+            return sink;
+        }
+    }
+    vsnprintf(s->u.text.buffer, REACT_TEXT_STORAGE_CAP, fmt, args);
+    return s->u.text.buffer;
+}
+
+const char *use_text_storage(const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    const char *result = use_text_storage_v(fmt, args);
+    va_end(args);
+    return result;
 }
 
 // --- Context ---

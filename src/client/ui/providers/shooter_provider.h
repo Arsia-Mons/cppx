@@ -1,21 +1,21 @@
 #pragma once
 
-#include <functional>
-
 #include "../../../game/shooter_game.h"
 
 namespace shooter {
 
-struct ShooterContext {
+// Struct value provided through ShooterContext.
+struct ShooterContextValue {
     ShooterGame *game = nullptr;
-    std::function<void()> request_quit = {};
 };
 
-ShooterGame          *use_shooter_game();
-std::function<void()> use_request_quit();
+// Push/pop the shooter game context. The app wires this around the screen
+// stack so descendant components can call use_shooter_game() directly.
+void shooter_provider_push(const ShooterContextValue *value);
+void shooter_provider_pop();
 
-void ShooterProvider(ShooterGame *game,
-                     const std::function<void()> &request_quit,
-                     const std::function<void()> &children);
+// Hook: returns the game pointer installed by the active provider, or nullptr
+// if no provider is in scope.
+ShooterGame *use_shooter_game();
 
 } // namespace shooter

@@ -1,11 +1,11 @@
 #include "confirm_dialog.h"
 
 #include <functional>
-#include <stdio.h>
 #include <stdint.h>
 
 #include <clay.h>
 
+#include "../loadout_state.h"
 #include "../../../hooks/shooter_weapons.h"
 #include "../../../providers/shooter_provider.h"
 #include "../../../../../react.h"
@@ -15,39 +15,30 @@
 
 namespace shooter {
 
-void LoadoutConfirmDialog(int  action,
-                          int  weapon_index,
-                          int  serial,
-                          int *pending_action) {
-    REACT_COMPONENT_BEGIN_KEY("LoadoutConfirmDialog", (uint32_t)((serial << 8) | action)) {
-        ShooterWeaponRead weapon = use_weapon_read(weapon_index);
-        std::function<void()> buy   = use_buy_weapon(weapon_index);
-        std::function<void()> equip = use_equip_weapon(weapon_index);
-        bool valid = weapon.valid && action != LOADOUT_ACTION_NONE;
-        if (valid) {
-            static char title[64];
-            static char message[128];
-            if (action == LOADOUT_ACTION_BUY) {
-                snprintf(title, sizeof(title), "Confirm Buy");
-                snprintf(message, sizeof(message), "Buy %s for %d credits?",
-                         weapon.name, weapon.cost);
-            } else {
-                snprintf(title, sizeof(title), "Confirm Equip");
-                snprintf(message, sizeof(message), "Equip %s as active weapon?",
-                         weapon.name);
-            }
+void LoadoutConfirmDialog() {
+    LoadoutPendingAction pending = use_pending_loadout_action();
+    if (pending.action == LOADOUT_ACTION_NONE) return;
 
-            auto close = [pending_action] {
-                if (pending_action) *pending_action = LOADOUT_ACTION_NONE;
-            };
+    REACT_COMPONENT_BEGIN_KEY("LoadoutConfirmDialog", pending.generation) {
+        ShooterWeaponRead weapon = use_weapon_read(pending.weapon_index);
+        std::function<void()> buy   = use_buy_weapon(pending.weapon_index);
+        std::function<void()> equip = use_equip_weapon(pending.weapon_index);
+        std::function<void()> close = use_clear_pending_loadout_action();
+        if (weapon.valid) {
+            const char *title = use_text_storage("%s",
+                pending.action == LOADOUT_ACTION_BUY ? "Confirm Buy" : "Confirm Equip");
+            const char *message = pending.action == LOADOUT_ACTION_BUY
+                ? use_text_storage("Buy %s for %d credits?", weapon.name, weapon.cost)
+                : use_text_storage("Equip %s as active weapon?", weapon.name);
 
             ::ui::ui_focus_push_scope({
-                .id = CLAY_IDI("LoadoutConfirmScope", serial),
+                .id = CLAY_IDI("LoadoutConfirmScope", (int32_t)pending.generation),
                 .modal = true,
                 .wrap = true,
             });
             ::ui::ui_focus_request_initial_focus(CLAY_ID("ConfirmLoadoutActionButton"));
 
+            int action = pending.action;
             CLAY({
                 .id = CLAY_ID("LoadoutConfirmScrim"),
                 .layout = {
@@ -97,7 +88,7 @@ void LoadoutConfirmDialog(int  action,
                                 } else if (action == LOADOUT_ACTION_EQUIP) {
                                     if (equip) equip();
                                 }
-                                close();
+                                if (close) close();
                             },
                         });
                         ::ui::Button({

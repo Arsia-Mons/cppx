@@ -1,19 +1,22 @@
 # src/client/ui/screens/loadout/
 
-The loadout screen — the only screen complex enough to need its own components dir + screen-local UI state. Treat this as the reference template for screens that grow beyond a single `<screen>_screen.{h,cpp}` file.
+The loadout screen — the only screen complex enough to need its own components dir + a screen-local React-style provider. Treat this as the reference template for screens that grow beyond a single `<screen>_screen.{h,cpp}` file.
 
 ## Files
 
-- `loadout_screen.{h,cpp}` — `LoadoutScreen` class (UI state lives here: `compare_enabled_`), `LoadoutScreenView`, `use_push_loadout_screen`, `use_compare_enabled` / `use_set_compare_enabled` hooks.
+- `loadout_screen.{h,cpp}` — `LoadoutScreen` class (no member fields; the class is just the `UiScreen` entry point) + `LoadoutScreenView` body + `use_push_loadout_screen`.
+- `loadout_state.{h,cpp}` — `LoadoutPendingAction` + `LoadoutContextValue` + the `LoadoutContext` provider (`loadout_provider_push/pop`) + hooks (`use_compare_enabled`, `use_set_compare_enabled`, `use_selected_weapon_tile`, `use_set_selected_weapon_tile`, `use_pending_loadout_action`, `use_set_pending_loadout_action`, `use_clear_pending_loadout_action`).
 - `components/weapon_tile.{h,cpp}` — `WeaponTile` + tab constants (`LOADOUT_TAB_WEAPONS`, `LOADOUT_TAB_GEAR`) + helpers.
 - `components/equipment_slot.{h,cpp}` — `EquipmentSlot`.
-- `components/confirm_dialog.{h,cpp}` — `LoadoutConfirmDialog` + action constants (`LOADOUT_ACTION_*`).
+- `components/confirm_dialog.{h,cpp}` — `LoadoutConfirmDialog` (no props; reads pending state from `LoadoutContext`).
 
 ## Conventions for screen-local state
 
-- Screen-local state (e.g., `compare_enabled_`) is a private member on the screen class, with public getter/setter.
-- Expose the screen to descendant components via a `ReactContext` provided in `build_ui()`. Descendant hooks call `use_current_loadout_screen()` to reach the state.
-- Mutations from inside Clay layout MUST go through `client::ui::use_ui_write_queue()` — never write directly.
+- **Don't** store screen-local UI state as a member on the screen class. Hold it inside `build_ui()` with `use_state<T>` and expose it through a provider.
+- The pattern: `LoadoutScreen::build_ui` declares `use_state<bool>(...)` / `use_state<int>(...)` / `use_state<LoadoutPendingAction>({})` slots, wraps the body with `loadout_provider_push(&ctx)` / `loadout_provider_pop()`, then renders `LoadoutScreenView()`.
+- Descendant components consume state via the typed hooks (`use_compare_enabled()`, `use_selected_weapon_tile()`, `use_pending_loadout_action()`) and mutate it via the setter hooks. Don't add a back-channel that reaches into the screen class.
+- Setters returned from `use_set_*` hooks already route through `client::ui::use_ui_write_queue()` — so they're safe to call from inside Clay layout (button `on_confirm`, focus `on_focus`, etc.).
+- Focus handlers (`on_focus`) must only mutate UI state. Game-state mutations (e.g. `select_weapon`, `buy_weapon`, `equip_weapon`) belong on confirm flows, not on focus traversal.
 
 ## When to graduate a component to the parent dir
 

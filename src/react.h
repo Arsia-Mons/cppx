@@ -34,8 +34,16 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdarg.h>
 
 #include <clay.h>
+
+#ifdef __cplusplus
+#include <functional>
+#include <new>
+#include <type_traits>
+#include <utility>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -120,6 +128,50 @@ void use_effect(ReactEffectFn fn, ReactCleanupFn cleanup, void *user, uint64_t d
 // Returns the address of the slot; the caller reads `*ref` and writes `*ref = ...`.
 void **use_ref(void *initial);
 
+// --- Generic state (raw byte slot + destructor) ---
+//
+// Backs the `use_state<T>` template below. Returns a stable pointer to the
+// slot's storage (heap-allocated to honor `align`). `destructor` is invoked
+// once when the owning fiber unmounts. `is_new_slot` is set to true on the
+// frame the slot is first created so the caller can placement-new the value.
+
+typedef void (*ReactSlotDestructor)(void *storage);
+
+void *react_use_generic_state_slot(uint32_t size,
+                                   uint32_t align,
+                                   ReactSlotDestructor destructor,
+                                   bool *is_new_slot);
+
+// --- Callback memo slot ---
+//
+// Backs the `use_callback` template below. Returns a stable storage pointer
+// large enough for a std::function<void()>. When `deps_hash` differs from the
+// previous frame (or on first frame), the existing function is destroyed and
+// `is_stale` is set so the caller can reconstruct it; otherwise `is_stale` is
+// false and the caller reuses the existing function in place.
+
+void *react_use_callback_slot(uint32_t size,
+                              uint32_t align,
+                              ReactSlotDestructor destructor,
+                              uint64_t deps_hash,
+                              bool *is_stale);
+
+// --- Per-fiber printf scratch ---
+//
+// Returns a stable per-call-site buffer (192 bytes cap). Two instances of the
+// same component at different fiber identities receive distinct buffers, so
+// they don't clobber each other within a single frame. If the formatted text
+// exceeds the cap, the result is truncated (snprintf semantics).
+
+#define REACT_TEXT_STORAGE_CAP 192
+
+#ifdef __GNUC__
+const char *use_text_storage(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+#else
+const char *use_text_storage(const char *fmt, ...);
+#endif
+const char *use_text_storage_v(const char *fmt, va_list args);
+
 // --- Context / providers ---
 
 #define REACT_CONTEXT_MAX_DEPTH 16
@@ -143,3 +195,86 @@ void *use_context(ReactContext *ctx);
 #ifdef __cplusplus
 }
 #endif
+
+#ifdef __cplusplus
+
+// --- use_state<T> ---
+//
+// Typed analogue of use_state_int. Returns a stable T* keyed by fiber identity
+// + call-site index. `initial` is consumed only when the slot is first
+// constructed; subsequent frames reuse the existing value. The destructor runs
+// once when the owning fiber unmounts.
+
+namespace react_detail {
+
+template <typename T>
+void destroy_state_slot(void *storage) {
+    static_cast<T *>(storage)->~T();
+}
+
+} // namespace react_detail
+
+template <typename T>
+T *use_state(T initial) {
+    bool is_new_slot = false;
+    void *storage = react_use_generic_state_slot(
+        (uint32_t)sizeof(T),
+        (uint32_t)alignof(T),
+        &react_detail::destroy_state_slot<T>,
+        &is_new_slot);
+    if (!storage) {
+        // Slot allocation failed; return a per-call sink so callers never
+        // crash. Sink is reconstructed every call — caller writes are lost,
+        // which matches the existing use_state_int sink behavior.
+        static thread_local typename std::aligned_storage<sizeof(T), alignof(T)>::type sink_storage;
+        T *sink = reinterpret_cast<T *>(&sink_storage);
+        // Reconstruct in place each call to keep behavior defined.
+        sink->~T();
+        new (sink) T(std::move(initial));
+        return sink;
+    }
+    if (is_new_slot) {
+        new (storage) T(std::move(initial));
+    }
+    return static_cast<T *>(storage);
+}
+
+// --- use_callback ---
+//
+// Returns a std::function<void()> that is stable across frames as long as
+// `deps_hash` matches the previous call at this site. When the hash changes,
+// the stored function is destroyed and rebuilt from `fn`.
+//
+// The returned reference is to per-fiber slot storage; callers typically copy
+// it into a handler field (Clay configs take std::function by value).
+
+namespace react_detail {
+
+inline void destroy_callback_slot(void *storage) {
+    static_cast<std::function<void()> *>(storage)->~function();
+}
+
+} // namespace react_detail
+
+template <typename F>
+std::function<void()> &use_callback(F &&fn, uint64_t deps_hash) {
+    using Fn = std::function<void()>;
+    bool is_stale = false;
+    void *storage = react_use_callback_slot(
+        (uint32_t)sizeof(Fn),
+        (uint32_t)alignof(Fn),
+        &react_detail::destroy_callback_slot,
+        deps_hash,
+        &is_stale);
+    if (!storage) {
+        static thread_local Fn sink;
+        sink = Fn(std::forward<F>(fn));
+        return sink;
+    }
+    if (is_stale) {
+        new (storage) Fn(std::forward<F>(fn));
+    }
+    return *static_cast<Fn *>(storage);
+}
+
+#endif // __cplusplus

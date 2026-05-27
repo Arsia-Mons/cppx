@@ -17,15 +17,14 @@ namespace shooter {
 
 std::function<void()> use_start_match() {
     ShooterGame *game = use_shooter_game();
-    std::function<void()> request_quit = use_request_quit();
     client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
     client::ui::QueueUiWrite queue_write = client::ui::use_ui_write_queue();
-    return [game, request_quit, nav, queue_write] {
-        if (!game || !nav.reset_to) return;
-        if (queue_write) {
+    return [game, nav, queue_write] {
+        if (!nav.reset_to) return;
+        if (game && queue_write) {
             queue_write([game] { game->reset(); });
         }
-        nav.reset_to(std::make_unique<ShooterGameScreen>(game, request_quit));
+        nav.reset_to(std::make_unique<ShooterGameScreen>());
     };
 }
 
@@ -73,11 +72,9 @@ static void ShooterGameScreenView() {
 }
 
 void ShooterGameScreen::build_ui() {
-    ShooterProvider(game_, request_quit_, [this] {
-        REACT_COMPONENT_BEGIN_KEY("ShooterGameScreen", entry_id()) {
-            ShooterGameScreenView();
-        } REACT_COMPONENT_END();
-    });
+    REACT_COMPONENT_BEGIN_KEY("ShooterGameScreen", entry_id()) {
+        ShooterGameScreenView();
+    } REACT_COMPONENT_END();
 }
 
 } // namespace shooter
