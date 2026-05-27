@@ -25,7 +25,8 @@ branch and PR.
   the retained runtime now also has an app-owned draw command boundary consumed
   by the SDL retained renderer.
 - `tools/ui_cli.py` drives the app through the control mailbox. That path must
-  remain deterministic through the migration.
+  remain deterministic through the migration. Retained focusables now appear in
+  the same inspect/state `focusables` array used by CLI pointer targeting.
 
 ## Flexbox Evaluation
 
@@ -143,6 +144,7 @@ and mismatch/unclosed-tag diagnostics.
    - pipeline-owned retained frame lifecycle: foundation done; screens can now
      emit retained nodes through `ScreenStack`, and the runtime computes layout,
      focus, and draw commands before render callbacks.
+   - control-mailbox retained focusable readback: foundation done.
    - main menu.
    - options.
    - pause.

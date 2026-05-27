@@ -159,6 +159,9 @@ legacy Clay pass. Until screens are ported the list is usually empty, but the
 SDL retained path is now present in the real frame. `UiPipeline` owns the
 retained frame lifecycle, so the list is computed before renderer handoff
 rather than through side-car test code.
+The control mailbox now reports retained focusables in the same `focusables`
+array used by CLI pointer targeting, while preserving legacy Clay focus fields
+for screens that have not been ported.
 
 ## Component API Direction
 

@@ -128,6 +128,18 @@ static const char *focus_source_name(::ui::UiFocusSource source) {
     return "None";
 }
 
+static const char *retained_focus_source_name(::ui::retained::FocusSource source) {
+    switch (source) {
+        case ::ui::retained::FocusSource::None: return "None";
+        case ::ui::retained::FocusSource::Keyboard: return "Keyboard";
+        case ::ui::retained::FocusSource::Gamepad: return "Gamepad";
+        case ::ui::retained::FocusSource::Mouse: return "Mouse";
+        case ::ui::retained::FocusSource::Touch: return "Touch";
+        case ::ui::retained::FocusSource::Programmatic: return "Programmatic";
+    }
+    return "None";
+}
+
 bool ControlMailbox::init(const char *dir) {
     if (!dir || !*dir) return false;
     dir_ = dir;
@@ -195,6 +207,9 @@ std::string ControlMailbox::state_json(client::ui::UiPipeline &pipeline) {
          << "\"pending_mutations\":" << client_ui.pending_mutation_count() << ","
          << "\"focused_id\":" << focused.id << ","
          << "\"focus_source\":\"" << focus_source_name(focus_source) << "\","
+         << "\"retained_focused_id\":" << ::ui::retained::focus_focused_id(client_ui.retained_focus()) << ","
+         << "\"retained_focus_source\":\""
+         << retained_focus_source_name(::ui::retained::focus_source(client_ui.retained_focus())) << "\","
          << "\"screens\":[";
     for (int i = 0; i < client_ui.screens().count(); ++i) {
         client::ui::UiScreen *screen = client_ui.screens().at(i);
@@ -231,6 +246,43 @@ std::string ControlMailbox::state_json(client::ui::UiPipeline &pipeline) {
                  << "\"h\":" << layout.rect.height
                  << "}}";
         }
+    }
+    const ::ui::retained::FocusRuntime &retained_focus = client_ui.retained_focus();
+    std::string retained_scope_name = "RetainedRoot";
+    ::ui::retained::NodeSnapshot retained_scope = {};
+    if (client_ui.retained_tree().snapshot(retained_focus.active_scope_id,
+                                           &retained_scope)) {
+        retained_scope_name =
+            retained_scope.control_id && retained_scope.control_id[0] != '\0'
+                ? retained_scope.control_id
+                : retained_scope.type;
+    }
+    for (int i = 0; i < retained_focus.focusable_count; ++i) {
+        const ::ui::retained::FocusableLayout &layout =
+            retained_focus.focusables[i];
+        ::ui::retained::NodeSnapshot node = {};
+        if (!client_ui.retained_tree().snapshot(layout.id, &node))
+            continue;
+        if (!first_focusable) body << ",";
+        first_focusable = false;
+        std::string name = node.control_id && node.control_id[0] != '\0'
+                               ? node.control_id
+                               : node.type;
+        body << "{"
+             << "\"scope_id\":" << retained_focus.active_scope_id << ","
+             << "\"scope_name\":\"" << json_escape(retained_scope_name) << "\","
+             << "\"id\":" << layout.id << ","
+             << "\"name\":\"" << json_escape(name) << "\","
+             << "\"offset\":0,"
+             << "\"disabled\":" << (layout.disabled ? "true" : "false") << ","
+             << "\"focused\":" << (layout.id == retained_focus.focused_id ? "true" : "false") << ","
+             << "\"retained\":true,"
+             << "\"rect\":{"
+             << "\"x\":" << layout.rect.x << ","
+             << "\"y\":" << layout.rect.y << ","
+             << "\"w\":" << layout.rect.width << ","
+             << "\"h\":" << layout.rect.height
+             << "}}";
     }
     body << "]";
     if (game_state_json_provider_) {
