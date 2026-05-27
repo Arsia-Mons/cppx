@@ -16,6 +16,8 @@ constexpr Color kSelectableSelectedFill = {42, 80, 60, 255};
 constexpr Color kTextFill = {226, 234, 242, 255};
 constexpr Color kTextDisabledFill = {126, 134, 148, 255};
 
+bool has_color(Color color) { return color.a > 0; }
+
 void copy_text(char (&dest)[UI_RETAINED_VALUE_CAP], const char *source) {
   const char *safe_source = source ? source : "";
   strncpy(dest, safe_source, UI_RETAINED_VALUE_CAP - 1);
@@ -33,8 +35,13 @@ Color control_fill(const NodeSnapshot &node) {
 }
 
 bool append_rect(DrawList &list, const NodeSnapshot &node) {
-  if (node.role != NodeRole::Button && node.role != NodeRole::Toggle &&
-      node.role != NodeRole::Selectable) {
+  bool styled_box = has_color(node.visual.background) ||
+                    (has_color(node.visual.border) &&
+                     node.visual.border_width > 0.0f);
+  bool control_box = node.role == NodeRole::Button ||
+                     node.role == NodeRole::Toggle ||
+                     node.role == NodeRole::Selectable;
+  if (!styled_box && !control_box) {
     return true;
   }
 
@@ -42,10 +49,16 @@ bool append_rect(DrawList &list, const NodeSnapshot &node) {
       .kind = DrawCommandKind::Rect,
       .node_id = node.id,
       .rect = node.layout,
-      .fill = control_fill(node),
-      .border =
-          node.interaction.disabled ? kButtonDisabledBorder : kButtonBorder,
-      .border_width = 1.0f,
+      .fill = has_color(node.visual.background)
+                  ? node.visual.background
+                  : (control_box ? control_fill(node) : kTransparent),
+      .border = has_color(node.visual.border)
+                    ? node.visual.border
+                    : (node.interaction.disabled ? kButtonDisabledBorder
+                                                 : kButtonBorder),
+      .border_width = node.visual.border_width > 0.0f
+                          ? node.visual.border_width
+                          : (control_box ? 1.0f : 0.0f),
   });
 }
 
@@ -58,11 +71,15 @@ bool append_text(DrawList &list, const NodeSnapshot &node,
       .kind = DrawCommandKind::Text,
       .node_id = node.id,
       .rect = node.layout,
-      .fill = (node.interaction.disabled || inherited_disabled)
-                  ? kTextDisabledFill
-                  : kTextFill,
+      .fill = has_color(node.visual.text)
+                  ? node.visual.text
+                  : ((node.interaction.disabled || inherited_disabled)
+                         ? kTextDisabledFill
+                         : kTextFill),
       .border = kTransparent,
-      .font_size = 15,
+      .font_size = node.visual.font_size > 0
+                       ? node.visual.font_size
+                       : static_cast<uint16_t>(15),
   };
   copy_text(command.text, node.value);
   return list.push(command);

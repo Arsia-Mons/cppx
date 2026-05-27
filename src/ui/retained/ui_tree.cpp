@@ -148,6 +148,7 @@ bool UiTree::set_metadata(NodeId id, const NodeMetadata &metadata) {
     return false;
   node->role = metadata.role;
   node->interaction = metadata.interaction;
+  node->visual = metadata.visual;
   node->on_confirm = metadata.on_confirm;
   copy_label(node->control_id, metadata.control_id);
   copy_value(node->value, metadata.value);
@@ -197,6 +198,7 @@ bool UiTree::snapshot(NodeId id, NodeSnapshot *out) const {
       .role = node->role,
       .interaction = node->interaction,
       .style = node->style,
+      .visual = node->visual,
       .layout = node->layout,
       .child_count = node->child_count,
       .has_measure = node->measure != nullptr,
@@ -273,6 +275,7 @@ UiTree::Node *UiTree::ensure_node(NodeId id, NodeId parent_id, const char *type,
     existing->style = style;
     existing->role = NodeRole::Generic;
     existing->interaction = {};
+    existing->visual = {};
     existing->on_confirm = {};
     existing->control_id[0] = '\0';
     existing->value[0] = '\0';

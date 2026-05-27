@@ -105,6 +105,16 @@ Style style_from_props(const NodeProps &props) {
     };
 }
 
+VisualStyle visual_from_props(const NodeProps &props) {
+    return {
+        .background = props.background,
+        .border = props.border,
+        .text = props.text_color,
+        .border_width = props.border_width,
+        .font_size = props.font_size,
+    };
+}
+
 RetainedNodeScope::RetainedNodeScope(const char *type, const char *key,
                                      const Style &style) {
     tree_ = current_retained_tree();
@@ -145,6 +155,7 @@ void Panel(const NodeProps &props) {
                                      {
                                          .modal = props.modal,
                                      },
+                                 .visual = visual_from_props(props),
                              });
 }
 
@@ -159,6 +170,7 @@ void Button(const NodeProps &props) {
                                          .focusable = true,
                                          .disabled = props.disabled,
                                      },
+                                 .visual = visual_from_props(props),
                              });
 }
 
@@ -169,6 +181,8 @@ void Text(const NodeProps &props) {
     scope.tree()->set_metadata(scope.id(), {
                                                .role = NodeRole::Text,
                                                .value = props.value,
+                                               .visual =
+                                                   visual_from_props(props),
                                            });
     scope.tree()->set_measure(
         scope.id(), measure_text_node,

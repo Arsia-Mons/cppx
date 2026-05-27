@@ -50,8 +50,17 @@ static bool retained_draw_list_uses_primitive_metadata_and_layout(void) {
             .gap = 6.0f,
             .padding = {4.0f, 4.0f, 4.0f, 4.0f},
             .align_items = AlignItems::Start,
+            .background = {18, 27, 32, 245},
+            .border = {83, 108, 118, 255},
+            .border_width = 1.0f,
         },
         [] {
+            Text({
+                .key = "title",
+                .value = "Title",
+                .text_color = {235, 246, 242, 255},
+                .font_size = 24,
+            });
             Button(ButtonProps{
                 .key = "confirm",
                 .id = "ConfirmButton",
@@ -77,17 +86,32 @@ static bool retained_draw_list_uses_primitive_metadata_and_layout(void) {
     CHECK(compute_flex_layout(adapter, tree, {320.0f, 220.0f}));
 
     NodeId root = tree.child_at(tree.root_id(), 0);
-    NodeId button = tree.child_at(root, 0);
+    NodeId title = tree.child_at(root, 0);
+    NodeId button = tree.child_at(root, 1);
     NodeId button_label = tree.child_at(button, 0);
-    NodeId toggle = tree.child_at(root, 1);
+    NodeId toggle = tree.child_at(root, 2);
     NodeId toggle_label = tree.child_at(toggle, 1);
-    NodeId selectable = tree.child_at(root, 2);
+    NodeId selectable = tree.child_at(root, 3);
     NodeId selectable_label = tree.child_at(selectable, 0);
 
     DrawList list = {};
     CHECK(build_draw_list(tree, &list));
     CHECK(list.error_count == 0);
-    CHECK(list.count == 6);
+    CHECK(list.count == 8);
+
+    const DrawCommand *root_rect =
+        find_command(list, root, DrawCommandKind::Rect);
+    CHECK(root_rect != nullptr);
+    CHECK(same_color(root_rect->fill, {18, 27, 32, 245}));
+    CHECK(same_color(root_rect->border, {83, 108, 118, 255}));
+    CHECK(root_rect->border_width == 1.0f);
+
+    const DrawCommand *title_text =
+        find_command(list, title, DrawCommandKind::Text);
+    CHECK(title_text != nullptr);
+    CHECK(same_text(title_text->text, "Title"));
+    CHECK(same_color(title_text->fill, {235, 246, 242, 255}));
+    CHECK(title_text->font_size == 24);
 
     const DrawCommand *button_rect =
         find_command(list, button, DrawCommandKind::Rect);

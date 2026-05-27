@@ -85,6 +85,21 @@ struct Rect {
   float height = 0.0f;
 };
 
+struct Color {
+  uint8_t r = 0;
+  uint8_t g = 0;
+  uint8_t b = 0;
+  uint8_t a = 0;
+};
+
+struct VisualStyle {
+  Color background = {};
+  Color border = {};
+  Color text = {};
+  float border_width = 0.0f;
+  uint16_t font_size = 0;
+};
+
 enum class MeasureMode : uint8_t {
   Undefined,
   Exactly,
@@ -116,6 +131,7 @@ struct NodeMetadata {
   const char *control_id = "";
   const char *value = "";
   NodeInteraction interaction = {};
+  VisualStyle visual = {};
   std::function<void()> on_confirm = {};
 };
 
@@ -132,6 +148,7 @@ struct NodeSnapshot {
   NodeRole role = NodeRole::Generic;
   NodeInteraction interaction = {};
   Style style = {};
+  VisualStyle visual = {};
   Rect layout = {};
   int child_count = 0;
   bool has_measure = false;
@@ -192,6 +209,7 @@ private:
     NodeInteraction interaction = {};
     std::function<void()> on_confirm = {};
     Style style = {};
+    VisualStyle visual = {};
     Rect layout = {};
     CleanupFn cleanup = nullptr;
     void *cleanup_user = nullptr;

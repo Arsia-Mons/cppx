@@ -21,6 +21,11 @@ struct NodeProps {
     float gap = 0.0f;
     bool disabled = false;
     bool modal = false;
+    Color background = {};
+    Color border = {};
+    Color text_color = {};
+    float border_width = 0.0f;
+    uint16_t font_size = 0;
 };
 
 struct ButtonProps {
@@ -60,6 +65,7 @@ bool end_retained_tree_frame();
 UiTree *current_retained_tree();
 
 Style style_from_props(const NodeProps &props);
+VisualStyle visual_from_props(const NodeProps &props);
 
 class RetainedNodeScope {
   public:
@@ -95,6 +101,8 @@ void Panel(const NodeProps &props, Children children) {
                                                        {
                                                            .modal = props.modal,
                                                        },
+                                                   .visual =
+                                                       visual_from_props(props),
                                                });
     }
     if (scope.active()) {
@@ -118,6 +126,7 @@ void Button(const NodeProps &props, Children children) {
                                                .focusable = true,
                                                .disabled = props.disabled,
                                            },
+                                       .visual = visual_from_props(props),
                                    });
         children();
     }

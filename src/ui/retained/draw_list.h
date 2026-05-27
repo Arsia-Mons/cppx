@@ -9,13 +9,6 @@ namespace ui::retained {
 
 constexpr int UI_RETAINED_MAX_DRAW_COMMANDS = UI_RETAINED_MAX_NODES * 2;
 
-struct Color {
-  uint8_t r = 0;
-  uint8_t g = 0;
-  uint8_t b = 0;
-  uint8_t a = 0;
-};
-
 enum class DrawCommandKind : uint8_t {
   Rect,
   Text,

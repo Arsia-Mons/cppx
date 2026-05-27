@@ -125,9 +125,11 @@ and mismatch/unclosed-tag diagnostics.
    - text, panel, button, toggle, and selectable retained nodes: foundation
      done through copied `UiTree` metadata, explicit retained primitive props,
      semantic control roles, labels, and interaction state.
+   - visual metadata for panel backgrounds, borders, text color, and text size:
+     foundation done.
    - retained button confirm callbacks: foundation done through copied node
      callbacks and `ClientUi` dispatch from retained confirmed node IDs.
-   - remaining: focusable containers, scroll containers, visual draw styles,
+   - remaining: focusable containers, scroll containers, richer draw styles,
      toggle/selectable callbacks, and broader event wiring.
 
 6. Event and focus port:
