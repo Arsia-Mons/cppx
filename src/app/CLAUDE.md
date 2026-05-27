@@ -1,6 +1,6 @@
 # src/app/
 
-Owns process lifecycle and the per-frame loop. `app::App` constructs SDL, fonts, Clay, the `UiPipeline`, the `ShooterGame`, and the `ControlMailbox`; `app::GameLoop::tick()` is the per-frame body (poll events → build input frame → run UI pipeline → render → present → drain deferred mutations).
+Owns process lifecycle and the per-frame loop. `app::App` constructs SDL, fonts, the retained renderer, the `UiPipeline`, the `ShooterGame`, and the `ControlMailbox`; `app::GameLoop::tick()` is the per-frame body (poll events → build input frame → run UI pipeline → render retained draw commands → present → drain deferred mutations).
 
 ## Files
 
@@ -11,5 +11,5 @@ Owns process lifecycle and the per-frame loop. `app::App` constructs SDL, fonts,
 
 - `app/` is the only directory allowed to know about every subsystem at once. Don't push subsystem-wiring into `client/`, `game/`, or `platform/`.
 - No game rules here — only orchestration. Game rules live in `game/`.
-- No Clay layout calls here — `UiPipeline` owns the frame body.
+- No layout-backend calls here — `UiPipeline` owns the retained frame body.
 - New per-frame stages go in `GameLoop::tick()`, not bolted on elsewhere.

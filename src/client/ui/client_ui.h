@@ -5,7 +5,7 @@
 #include <memory>
 
 #include "../../react.h"
-#include "../../ui/focus/ui_focus.h"
+#include "../../ui/input.h"
 #include "../../ui/retained/draw_list.h"
 #include "../../ui/retained/flex_layout.h"
 #include "../../ui/retained/focus.h"
@@ -33,7 +33,6 @@ public:
     ScreenStack &screens() { return screens_; }
     const ScreenStack &screens() const { return screens_; }
 
-    ::ui::UiFocusRuntime &focus_runtime() { return focus_; }
     ::ui::retained::UiTree &retained_tree() { return retained_tree_; }
     const ::ui::retained::UiTree &retained_tree() const {
         return retained_tree_;
@@ -80,7 +79,6 @@ private:
     void clear_mutations();
 
     ScreenStack screens_;
-    ::ui::UiFocusRuntime focus_ = {};
     ::ui::retained::UiTree retained_tree_ = {};
     ::ui::retained::FocusRuntime retained_focus_ = {};
     ::ui::retained::DrawList retained_draw_list_ = {};

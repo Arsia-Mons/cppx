@@ -102,16 +102,10 @@ add_executable(hello
   src/platform/sdl/input.cpp
   src/platform/sdl/window.cpp
   src/renderer/font_registry.cpp
-  src/renderer/sdl_clay_renderer.cpp
   src/renderer/sdl_retained_renderer.cpp
   src/game/inventory.cpp
   src/game/economy.cpp
   src/game/shooter_game.cpp
-  src/ui/focus/ui_focus.cpp
-  src/ui/primitives/button.cpp
-  src/ui/primitives/focusable.cpp
-  src/ui/primitives/selectable.cpp
-  src/ui/primitives/toggle.cpp
   src/ui/retained/components.cpp
   src/ui/retained/draw_list.cpp
   src/ui/retained/flex_layout.cpp
@@ -119,7 +113,6 @@ add_executable(hello
   src/ui/retained/ui_tree.cpp
   src/ui/retained/yoga_flex_layout.cpp
   third_party/clay_impl.cpp
-  third_party/clay/clay_renderer_SDL3.c
   third_party/stb_image_impl.cpp
 )
 
@@ -128,9 +121,6 @@ target_include_directories(hello PRIVATE
   third_party
   third_party/clay
 )
-
-# Clay ships clay_renderer_SDL3.c as C; compile it as C++ to keep one TU rule.
-set_source_files_properties(third_party/clay/clay_renderer_SDL3.c PROPERTIES LANGUAGE CXX)
 
 target_compile_options(hello PRIVATE
   $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall -Wextra -Wno-missing-field-initializers -Wno-c99-designator -Wno-unused-parameter>
@@ -361,7 +351,6 @@ add_executable(client_ui_tests
   src/react.cpp
   src/client/ui/client_ui.cpp
   src/client/ui/navigation/screen_stack.cpp
-  src/ui/focus/ui_focus.cpp
   src/ui/retained/components.cpp
   src/ui/retained/draw_list.cpp
   src/ui/retained/flex_layout.cpp
@@ -393,9 +382,6 @@ add_executable(ui_pipeline_tests
   src/client/ui/client_ui.cpp
   src/client/ui/navigation/screen_stack.cpp
   src/client/ui/ui_pipeline.cpp
-  src/ui/focus/ui_focus.cpp
-  src/ui/primitives/button.cpp
-  src/ui/primitives/focusable.cpp
   src/ui/retained/components.cpp
   src/ui/retained/draw_list.cpp
   src/ui/retained/flex_layout.cpp
@@ -444,11 +430,6 @@ add_executable(shooter_ui_tests
   src/game/inventory.cpp
   src/game/economy.cpp
   src/game/shooter_game.cpp
-  src/ui/focus/ui_focus.cpp
-  src/ui/primitives/button.cpp
-  src/ui/primitives/focusable.cpp
-  src/ui/primitives/selectable.cpp
-  src/ui/primitives/toggle.cpp
   src/ui/retained/components.cpp
   src/ui/retained/draw_list.cpp
   src/ui/retained/flex_layout.cpp

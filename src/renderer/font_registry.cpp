@@ -51,19 +51,4 @@ TTF_Font *FontRegistry::open_default_font(float pt_size) {
     return nullptr;
 }
 
-Clay_Dimensions FontRegistry::measure(Clay_StringSlice text,
-                                      Clay_TextElementConfig *config) const {
-    if (!default_font_) return { 0, 0 };
-    TTF_SetFontSize(default_font_, config->fontSize);
-    int w = 0, h = 0;
-    TTF_GetStringSize(default_font_, text.chars, (size_t)text.length, &w, &h);
-    return { (float)w, (float)h };
-}
-
-Clay_Dimensions FontRegistry::measure_thunk(Clay_StringSlice text,
-                                            Clay_TextElementConfig *config,
-                                            void *user_data) {
-    return static_cast<FontRegistry *>(user_data)->measure(text, config);
-}
-
 } // namespace renderer

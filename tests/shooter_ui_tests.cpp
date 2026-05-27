@@ -13,11 +13,8 @@
 
 #include <functional>
 
-#include <clay.h>
-
 #include <memory>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #define CHECK(expr)                                                              \
@@ -29,76 +26,16 @@
         }                                                                        \
     } while (0)
 
-static Clay_Context *g_clay = nullptr;
-static void *g_clay_memory = nullptr;
-
-static void on_clay_error(Clay_ErrorData error) {
-    fprintf(stderr, "clay: %.*s\n", (int)error.errorText.length, error.errorText.chars);
-}
-
-static Clay_Dimensions measure_text(Clay_StringSlice text,
-                                    Clay_TextElementConfig *,
-                                    void *) {
-    return Clay_Dimensions{ (float)text.length * 8.0f, 16.0f };
-}
-
-static bool init_clay_once(void) {
-    if (g_clay) return true;
-
-    uint32_t clay_memory_size = Clay_MinMemorySize();
-    g_clay_memory = malloc(clay_memory_size);
-    CHECK(g_clay_memory != nullptr);
-
-    Clay_Arena arena = Clay_CreateArenaWithCapacityAndMemory(clay_memory_size, g_clay_memory);
-    g_clay = Clay_Initialize(arena, Clay_Dimensions{ 800, 500 },
-                             Clay_ErrorHandler{ on_clay_error, nullptr });
-    CHECK(g_clay != nullptr);
-    Clay_SetMeasureTextFunction(measure_text, nullptr);
-    return true;
-}
-
 struct TestFrameProviders {
     shooter::ShooterGame                *game         = nullptr;
     std::function<void()>                request_quit = {};
 };
 
-static void run_client_frame(client::ui::ClientUi &client_ui,
-                             const TestFrameProviders &providers,
-                             const ::ui::UiInputFrame &input = {},
-                             Clay_Vector2 pointer = { -1000.0f, -1000.0f },
-                             bool drain_deferred_mutations = true) {
-    Clay_SetLayoutDimensions({ 800, 500 });
-    Clay_SetPointerState(pointer, input.pointer_down);
-    client_ui.begin_frame(input);
-    react_begin_frame();
-    Clay_BeginLayout();
-    CLAY({
-        .id = Clay_GetElementId(CLAY_STRING("ShooterTestRoot")),
-        .layout = {
-            .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0) },
-        },
-    }) {
-        shooter::ShooterContextValue     game_ctx { .game = providers.game };
-        client::ui::AppShellContextValue shell_ctx { .request_quit = providers.request_quit };
-        shooter::shooter_provider_push(&game_ctx);
-        client::ui::app_shell_provider_push(&shell_ctx);
-        client_ui.build_visible_screens();
-        client::ui::app_shell_provider_pop();
-        shooter::shooter_provider_pop();
-    }
-    (void)Clay_EndLayout();
-    client_ui.end_layout(input);
-    react_end_frame();
-    if (drain_deferred_mutations) {
-        client_ui.drain_deferred_mutations();
-    }
-}
-
 static void run_pipeline_frame(client::ui::UiPipeline &pipeline,
                                const TestFrameProviders &providers,
                                const ::ui::UiInputFrame &input = {},
-                               Clay_Vector2 pointer = { -1000.0f, -1000.0f },
-                               const client::ui::RenderClayCommands &render = {}) {
+                               ::ui::retained::Point pointer = { -1000.0f, -1000.0f },
+                               const client::ui::RenderFrame &render = {}) {
     pipeline.set_frame_provider([&](const std::function<void()> &build) {
         shooter::ShooterContextValue     game_ctx { .game = providers.game };
         client::ui::AppShellContextValue shell_ctx { .request_quit = providers.request_quit };
@@ -147,9 +84,10 @@ static ::ui::retained::NodeId retained_control_id(
     return find_retained_control(tree, tree.root_id(), name, offset);
 }
 
-static Clay_Vector2 retained_center_of(const client::ui::ClientUi &client_ui,
-                                       const char *name,
-                                       int offset = 0) {
+static ::ui::retained::Point retained_center_of(
+    const client::ui::ClientUi &client_ui,
+    const char *name,
+    int offset = 0) {
     const ::ui::retained::UiTree &tree = client_ui.retained_tree();
     ::ui::retained::NodeId id = retained_control_id(client_ui, name, offset);
     ::ui::retained::NodeSnapshot node = {};
@@ -222,7 +160,7 @@ static bool shooter_game_buy_and_equip_are_real_state_writes(void) {
 }
 
 static bool main_menu_start_match_resets_game_and_stack(void) {
-    react_init(g_clay);
+    react_init_runtime();
     shooter::ShooterGame game;
     CHECK(game.buy_weapon(1));
     CHECK(game.equip_weapon(1));
@@ -255,7 +193,7 @@ static bool main_menu_start_match_resets_game_and_stack(void) {
 }
 
 static bool main_menu_options_returns_to_menu_with_cancel(void) {
-    react_init(g_clay);
+    react_init_runtime();
     shooter::ShooterGame game;
     TestFrameProviders providers { .game = &game };
     client::ui::UiPipeline pipeline;
@@ -278,7 +216,7 @@ static bool main_menu_options_returns_to_menu_with_cancel(void) {
 }
 
 static bool main_menu_quit_callback_runs(void) {
-    react_init(g_clay);
+    react_init_runtime();
     shooter::ShooterGame game;
     bool quit_requested = false;
     TestFrameProviders providers {
@@ -301,7 +239,7 @@ static bool main_menu_quit_callback_runs(void) {
 }
 
 static bool shooter_screen_pushes_pause_after_confirm(void) {
-    react_init(g_clay);
+    react_init_runtime();
     shooter::ShooterGame game;
     TestFrameProviders providers { .game = &game };
     client::ui::UiPipeline pipeline;
@@ -320,7 +258,7 @@ static bool shooter_screen_pushes_pause_after_confirm(void) {
 }
 
 static bool pause_exit_to_main_menu_resets_stack(void) {
-    react_init(g_clay);
+    react_init_runtime();
     shooter::ShooterGame game;
     TestFrameProviders providers { .game = &game };
     client::ui::UiPipeline pipeline;
@@ -344,7 +282,7 @@ static bool pause_exit_to_main_menu_resets_stack(void) {
 }
 
 static bool pause_options_returns_to_pause_through_screen_stack(void) {
-    react_init(g_clay);
+    react_init_runtime();
     shooter::ShooterGame game;
     TestFrameProviders providers { .game = &game };
     client::ui::UiPipeline pipeline;
@@ -373,7 +311,7 @@ static bool pause_options_returns_to_pause_through_screen_stack(void) {
 }
 
 static bool loadout_buy_uses_confirm_dialog_and_restores_parent_focus(void) {
-    react_init(g_clay);
+    react_init_runtime();
     shooter::ShooterGame game;
     TestFrameProviders providers { .game = &game };
     client::ui::UiPipeline pipeline;
@@ -431,7 +369,7 @@ static bool loadout_buy_uses_confirm_dialog_and_restores_parent_focus(void) {
 }
 
 static bool loadout_tabs_and_equipment_slots_are_real_focus_targets(void) {
-    react_init(g_clay);
+    react_init_runtime();
     shooter::ShooterGame game;
     TestFrameProviders providers { .game = &game };
     client::ui::UiPipeline pipeline;
@@ -444,7 +382,7 @@ static bool loadout_tabs_and_equipment_slots_are_real_focus_targets(void) {
     CHECK(retained_control_id(client_ui, "PrimarySlot") != 0);
     CHECK(retained_control_id(client_ui, "GearSlot") != 0);
 
-    Clay_Vector2 gear_tab = retained_center_of(client_ui, "GearTab");
+    ::ui::retained::Point gear_tab = retained_center_of(client_ui, "GearTab");
     run_pipeline_frame(pipeline, providers, pointer_press(), gear_tab);
     run_pipeline_frame(pipeline, providers, pointer_release(), gear_tab);
     CHECK(game.selected_weapon() == 3);
@@ -452,12 +390,12 @@ static bool loadout_tabs_and_equipment_slots_are_real_focus_targets(void) {
     run_pipeline_frame(pipeline, providers);
     CHECK(retained_control_id(client_ui, shooter::WEAPON_TILE_CONTROL_ID, 3) != 0);
 
-    Clay_Vector2 primary_slot = retained_center_of(client_ui, "PrimarySlot");
+    ::ui::retained::Point primary_slot = retained_center_of(client_ui, "PrimarySlot");
     run_pipeline_frame(pipeline, providers, pointer_press(), primary_slot);
     run_pipeline_frame(pipeline, providers, pointer_release(), primary_slot);
     CHECK(game.selected_weapon() == 0);
 
-    Clay_Vector2 gear_slot = retained_center_of(client_ui, "GearSlot");
+    ::ui::retained::Point gear_slot = retained_center_of(client_ui, "GearSlot");
     run_pipeline_frame(pipeline, providers, pointer_press(), gear_slot);
     run_pipeline_frame(pipeline, providers, pointer_release(), gear_slot);
     CHECK(game.selected_weapon() == 3);
@@ -465,7 +403,7 @@ static bool loadout_tabs_and_equipment_slots_are_real_focus_targets(void) {
 }
 
 static bool shooter_game_mutations_wait_for_client_ui_drain(void) {
-    react_init(g_clay);
+    react_init_runtime();
     shooter::ShooterGame game;
     TestFrameProviders providers { .game = &game };
     client::ui::UiPipeline pipeline;
@@ -473,13 +411,13 @@ static bool shooter_game_mutations_wait_for_client_ui_drain(void) {
     CHECK(client_ui.push_screen(std::make_unique<shooter::LoadoutScreen>()));
 
     run_pipeline_frame(pipeline, providers);
-    Clay_Vector2 gear_tab = retained_center_of(client_ui, "GearTab");
+    ::ui::retained::Point gear_tab = retained_center_of(client_ui, "GearTab");
     run_pipeline_frame(pipeline, providers, pointer_press(), gear_tab);
     int pending_at_render = -1;
     int selected_at_render = -1;
     run_pipeline_frame(
         pipeline, providers, pointer_release(), gear_tab,
-        [&](Clay_RenderCommandArray &) {
+        [&] {
             pending_at_render = client_ui.pending_mutation_count();
             selected_at_render = game.selected_weapon();
         });
@@ -505,7 +443,7 @@ public:
     const char *debug_name() const override { return "GameAndQuitConsumer"; }
 
     void build_ui() override {
-        REACT_COMPONENT_BEGIN_KEY("GameAndQuitConsumerView", entry_id()) {
+        REACT_RETAINED_COMPONENT_BEGIN_KEY("GameAndQuitConsumerView", entry_id()) {
             if (observed_game_) {
                 *observed_game_ = shooter::use_shooter_game();
             }
@@ -513,7 +451,7 @@ public:
                 std::function<void()> quit = client::ui::use_request_quit();
                 *observed_quit_present_ = static_cast<bool>(quit);
             }
-        } REACT_COMPONENT_END();
+        } REACT_RETAINED_COMPONENT_END();
     }
 
 private:
@@ -524,7 +462,7 @@ private:
 } // namespace
 
 static bool root_level_providers_reach_screens_without_per_screen_wrap(void) {
-    react_init(g_clay);
+    react_init_runtime();
     shooter::ShooterGame game;
     bool quit_invoked = false;
     TestFrameProviders providers {
@@ -535,11 +473,11 @@ static bool root_level_providers_reach_screens_without_per_screen_wrap(void) {
     shooter::ShooterGame *observed_game     = nullptr;
     bool                  observed_quit     = false;
 
-    client::ui::ClientUi client_ui;
-    CHECK(client_ui.push_screen(
+    client::ui::UiPipeline pipeline;
+    CHECK(pipeline.client_ui().push_screen(
         std::make_unique<GameAndQuitConsumerScreen>(&observed_game, &observed_quit)));
 
-    run_client_frame(client_ui, providers);
+    run_pipeline_frame(pipeline, providers);
     CHECK(observed_game == &game);
     CHECK(observed_quit);
     CHECK(!quit_invoked);
@@ -547,8 +485,6 @@ static bool root_level_providers_reach_screens_without_per_screen_wrap(void) {
 }
 
 int main(void) {
-    if (!init_clay_once()) return 1;
-
     if (!shooter_game_buy_and_equip_are_real_state_writes()) return 1;
     if (!main_menu_start_match_resets_game_and_stack()) return 1;
     if (!main_menu_options_returns_to_menu_with_cancel()) return 1;
@@ -562,6 +498,5 @@ int main(void) {
     if (!root_level_providers_reach_screens_without_per_screen_wrap()) return 1;
 
     react_shutdown();
-    free(g_clay_memory);
     return 0;
 }

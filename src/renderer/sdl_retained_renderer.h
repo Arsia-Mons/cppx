@@ -12,7 +12,11 @@ class SdlRetainedRenderer {
 public:
     bool initialize(SDL_Renderer *renderer, FontRegistry &fonts);
 
+    void clear(::ui::retained::Color background);
     void render(const ::ui::retained::DrawList &draw_list);
+    void present();
+
+    SDL_Renderer *sdl_renderer() const { return renderer_; }
 
 private:
     void render_rect(const ::ui::retained::DrawCommand &command);

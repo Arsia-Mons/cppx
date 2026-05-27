@@ -2,7 +2,7 @@
 
 #include <SDL3/SDL.h>
 
-#include "../../ui/focus/ui_focus.h"
+#include "../../ui/input.h"
 
 namespace platform {
 

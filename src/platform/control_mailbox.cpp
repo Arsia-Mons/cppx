@@ -27,11 +27,6 @@ static std::string json_escape(const std::string &value) {
     return out;
 }
 
-static std::string clay_string_to_std(Clay_String value) {
-    if (!value.chars || value.length <= 0) return "";
-    return std::string(value.chars, (size_t)value.length);
-}
-
 static bool write_text_atomic(const std::filesystem::path &path, const std::string &text) {
     std::filesystem::create_directories(path.parent_path());
     std::filesystem::path tmp = path;
@@ -116,18 +111,6 @@ static float json_float_value(const std::string &json, const char *key, float fa
     return end == json.c_str() + pos ? fallback : value;
 }
 
-static const char *focus_source_name(::ui::UiFocusSource source) {
-    switch (source) {
-        case ::ui::UiFocusSource::None: return "None";
-        case ::ui::UiFocusSource::Keyboard: return "Keyboard";
-        case ::ui::UiFocusSource::Gamepad: return "Gamepad";
-        case ::ui::UiFocusSource::Mouse: return "Mouse";
-        case ::ui::UiFocusSource::Touch: return "Touch";
-        case ::ui::UiFocusSource::Programmatic: return "Programmatic";
-    }
-    return "None";
-}
-
 static const char *retained_focus_source_name(::ui::retained::FocusSource source) {
     switch (source) {
         case ::ui::retained::FocusSource::None: return "None";
@@ -195,18 +178,10 @@ void ControlMailbox::write_error(int id, const char *code, const std::string &me
 std::string ControlMailbox::state_json(client::ui::UiPipeline &pipeline) {
     client::ui::ClientUi &client_ui = pipeline.client_ui();
     client::ui::UiScreen *top = client_ui.screens().top();
-    ::ui::ui_focus_set_current(&client_ui.focus_runtime());
-    Clay_ElementId focused = ::ui::ui_focus_focused_id();
-    ::ui::UiFocusSource focus_source = ::ui::ui_focus_source();
     ::ui::retained::NodeId retained_focused =
         ::ui::retained::focus_focused_id(client_ui.retained_focus());
     ::ui::retained::FocusSource retained_source =
         ::ui::retained::focus_source(client_ui.retained_focus());
-    uint64_t reported_focused =
-        focused.id != 0 ? focused.id : retained_focused;
-    const char *reported_focus_source =
-        focused.id != 0 ? focus_source_name(focus_source)
-                        : retained_focus_source_name(retained_source);
 
     std::ostringstream body;
     body << "\"result\":{"
@@ -214,8 +189,8 @@ std::string ControlMailbox::state_json(client::ui::UiPipeline &pipeline) {
          << "\"screen_count\":" << client_ui.screens().count() << ","
          << "\"top_screen\":\"" << json_escape(top ? top->debug_name() : "") << "\","
          << "\"pending_mutations\":" << client_ui.pending_mutation_count() << ","
-         << "\"focused_id\":" << reported_focused << ","
-         << "\"focus_source\":\"" << reported_focus_source << "\","
+         << "\"focused_id\":" << retained_focused << ","
+         << "\"focus_source\":\"" << retained_focus_source_name(retained_source) << "\","
          << "\"retained_focused_id\":" << retained_focused << ","
          << "\"retained_focus_source\":\""
          << retained_focus_source_name(retained_source) << "\","
@@ -231,31 +206,6 @@ std::string ControlMailbox::state_json(client::ui::UiPipeline &pipeline) {
     }
     body << "],\"focusables\":[";
     bool first_focusable = true;
-    for (int i = 0; i < client_ui.focus_runtime().scope_count; ++i) {
-        const ::ui::UiFocusScope &scope = client_ui.focus_runtime().scopes[i];
-        if (scope.declared_frame != client_ui.focus_runtime().frame) continue;
-        std::string scope_name = clay_string_to_std(scope.id.stringId);
-        for (int j = 0; j < scope.layout_count; ++j) {
-            const ::ui::UiFocusableLayout &layout = scope.layout[j];
-            if (!first_focusable) body << ",";
-            first_focusable = false;
-            std::string name = clay_string_to_std(layout.id.stringId);
-            body << "{"
-                 << "\"scope_id\":" << scope.id.id << ","
-                 << "\"scope_name\":\"" << json_escape(scope_name) << "\","
-                 << "\"id\":" << layout.id.id << ","
-                 << "\"name\":\"" << json_escape(name) << "\","
-                 << "\"offset\":" << layout.id.offset << ","
-                 << "\"disabled\":" << (layout.disabled ? "true" : "false") << ","
-                 << "\"focused\":" << (layout.id.id == scope.focused_id.id ? "true" : "false") << ","
-                 << "\"rect\":{"
-                 << "\"x\":" << layout.rect.x << ","
-                 << "\"y\":" << layout.rect.y << ","
-                 << "\"w\":" << layout.rect.width << ","
-                 << "\"h\":" << layout.rect.height
-                 << "}}";
-        }
-    }
     const ::ui::retained::FocusRuntime &retained_focus = client_ui.retained_focus();
     std::string retained_scope_name = "RetainedRoot";
     ::ui::retained::NodeSnapshot retained_scope = {};

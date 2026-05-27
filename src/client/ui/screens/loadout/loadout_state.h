@@ -45,7 +45,7 @@ int                  use_selected_weapon_tile();
 LoadoutPendingAction use_pending_loadout_action();
 
 // Hooks: write state. Setters schedule deferred UI mutations so they're safe to
-// invoke from inside a Clay layout pass.
+// invoke from inside the UI declaration pass.
 std::function<void(bool)>                 use_set_compare_enabled();
 std::function<void(int)>                  use_set_selected_weapon_tile();
 std::function<void(LoadoutPendingAction)> use_set_pending_loadout_action();

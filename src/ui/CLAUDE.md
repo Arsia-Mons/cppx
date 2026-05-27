@@ -1,20 +1,24 @@
 # src/ui/
 
-The generic Clay-based UI toolkit. **This directory must not know which game is being built** — no weapons, no loadout, no shooter vocabulary, no replicated game state.
+The generic UI toolkit. **This directory must not know which game is being built** — no weapons, no loadout, no shooter vocabulary, no replicated game state.
 
 ## Layout today
 
 ```text
-focus/       UiFocusRuntime: scopes, navigation rules, focus intents
-primitives/  Button, Toggle, Focusable, Selectable, Clay text helper, visual state
+input.h      UI-shaped input frame shared by app/client/runtime code
+span.h       tiny non-owning span used by framework containers
+retained/    UiTree, retained components, flex layout, focus, draw commands
+focus/       legacy Clay focus runtime kept until final cleanup
+primitives/  legacy Clay primitives kept until final cleanup
 ```
 
-The `architecture.md` shows a richer aspirational shape (`runtime/`, `design/`, `layout/`). Today only `focus/` and `primitives/` exist — add new subdirectories when they have multiple files, not preemptively.
+The retained runtime is the app path. Add new subdirectories only when they
+have multiple files, not preemptively.
 
 ## What belongs here
 
 - Layout helpers (Box/Row/Column/Spacer/Divider) once we need them.
-- Visual primitives generic enough to drop into any Clay app.
+- Visual primitives generic enough to drop into any retained UI app.
 - Focus and input routing in **UI coordinates**, never SDL coordinates.
 - Design tokens (colors, typography) — none yet; introduce a `design/` folder when needed.
 
@@ -27,8 +31,8 @@ The `architecture.md` shows a richer aspirational shape (`runtime/`, `design/`, 
 
 ## Hooks
 
-Primitives are React-style hook components — see `../../react.h`. Each primitive returns a small handle (focusable token, button result) and uses `REACT_COMPONENT_BEGIN` for stable IDs. Reorderable lists must use `REACT_COMPONENT_BEGIN_KEY` with a stable key.
+Retained primitives are React-style hook components — see `../../react.h`. They use `REACT_RETAINED_COMPONENT_BEGIN` for stable hook identity and emit retained `UiTree` nodes. Reorderable lists must use keyed component/node identity with a stable key.
 
 ## Testing
 
-`ui_focus_tests` and `ui_primitives_tests` cover this directory (see `../../CMakeLists.txt:104,122`). They compile against the hook runtime and Clay only — keep it that way. If a new primitive needs SDL, it doesn't belong here.
+Retained runtime coverage lives in `retained_ui_*_tests`. Legacy Clay tests still exist during the cleanup window. If a new primitive needs SDL, it doesn't belong here.

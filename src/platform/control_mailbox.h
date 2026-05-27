@@ -8,7 +8,7 @@
 #include <vector>
 
 #include "../client/ui/ui_pipeline.h"
-#include "../ui/focus/ui_focus.h"
+#include "../ui/input.h"
 
 namespace platform {
 

@@ -1,9 +1,10 @@
 # Architecture Notes
 
-This project is a C++20 / SDL3 game-UI reference. The current checked-in app is
-still Clay-backed, but the active migration target is a retained-mode UI
-runtime owned by this repo. The goal is to preserve the React-like programming
-model while replacing Clay as the layout/runtime dependency.
+This project is a C++20 / SDL3 game-UI reference. The checked-in app now runs
+through a retained-mode UI runtime owned by this repo. The active migration
+goal is to finish deleting the temporary Clay compatibility that remains in
+legacy tests and `src/react.*` while preserving the React-like programming
+model.
 
 ## Layers
 
@@ -30,31 +31,28 @@ details. `ui/` must stay generic and free of shooter/game vocabulary.
 
 ## Current State
 
-The current runtime still uses Clay for:
-
-- element identity and immediate layout blocks;
-- flex-like layout and element bounds;
-- pointer hit testing;
-- render command emission;
-- text measurement integration.
+The app/runtime path now builds retained screens only. `UiPipeline` opens the
+retained tree frame, updates retained flex layout through Yoga, resolves
+retained focus/events, emits retained draw commands, and hands those commands
+to the SDL retained renderer. `App` and `GameLoop` no longer initialize a Clay
+context or request Clay render command arrays.
 
 The current React-style hook runtime stores hook state per component instance
 and already has useful concepts the migration should preserve: component
 identity, keyed siblings, providers/context, effects, refs, callbacks, and
 per-frame unmount cleanup. Hook fiber identity is now an app-owned 64-bit ID;
-Clay-backed components still emit separate Clay IDs only for the temporary Clay
-layout path.
+Clay-backed component macros still exist only as temporary compatibility for
+legacy tests and modules that have not been deleted yet.
 
-`ClientUi` owns retained screens through `ScreenStack`, focus runtime lifetime,
-and the deferred mutation queue. That ownership remains correct. The migration
-changes the generic UI runtime under the screens, not the fact that `ClientUi`
-is the shell that sequences frames and drains mutations.
+`ClientUi` owns retained screens through `ScreenStack`, retained runtime
+outputs, focus runtime lifetime, and the deferred mutation queue. That
+ownership remains correct. The migration changes the generic UI runtime under
+the screens, not the fact that `ClientUi` is the shell that sequences frames
+and drains mutations.
 `ClientUi` now also owns the retained `UiTree`, retained focus runtime, and
-retained draw list. `UiPipeline` now opens the retained tree frame alongside the
-temporary Clay frame and refreshes retained flex layout, focus/event state, and
-draw commands before the render callback. Existing screens still render through
-Clay until they are ported, but retained screen ports can now emit nodes through
-the real screen stack and app frame.
+retained draw list. `UiPipeline` now opens the retained tree frame and refreshes
+retained flex layout, focus/event state, and draw commands before the render
+callback.
 
 ## Target Runtime
 
@@ -85,8 +83,8 @@ src/ui/retained/
 ```
 
 Clay-specific IDs, `CLAY(...)` layout calls, and Clay render command arrays are
-temporary implementation details. They must not be preserved behind renamed
-facades.
+legacy compatibility details. They must be removed rather than preserved behind
+renamed facades.
 
 ## Flexbox Strategy
 
@@ -159,32 +157,20 @@ focus scopes. Focus changes and confirmed retained controls dispatch copied
 callbacks from `ClientUi` at the frame boundary, and modal retained scopes
 restore the parent focused node when they close.
 `renderer/sdl_retained_renderer.*` consumes retained draw commands directly and
-the app-owned game loop now renders `ClientUi::retained_draw_list()` after the
-legacy Clay pass. Until screens are ported the list is usually empty, but the
-SDL retained path is now present in the real frame. `UiPipeline` owns the
-retained frame lifecycle, so the list is computed before renderer handoff
-rather than through side-car test code.
+the app-owned game loop now renders `ClientUi::retained_draw_list()` without a
+Clay pass. `UiPipeline` owns the retained frame lifecycle, so the list is
+computed before renderer handoff rather than through side-car test code.
 The control mailbox now reports retained focusables in the same `focusables`
-array used by CLI pointer targeting, while preserving legacy Clay focus fields
-for screens that have not been ported.
-`MainMenuScreen` is the first screen ported to retained components end-to-end:
-its background, panel, headings, buttons, navigation, callbacks, and CLI
-targeting now run through the retained tree while the rest of the app continues
-to use the temporary Clay path.
-`OptionsScreen` is also retained. While a retained modal is active, `UiPipeline`
-filters legacy Clay focus input behind it but preserves cancel handling, so
-mixed retained/Clay stacks do not dispatch actions through covered screens.
-Retained overlay screens consult the `ScreenProvider` top-screen flag before
-emitting retained modal nodes, so a retained overlay does not render or trap
-input after a higher Clay overlay covers it.
-`ShooterGameScreen` and the shared `HudBand` component are now retained too:
-the in-game root, HUD text, and pause/loadout action buttons emit through the
-retained tree, and the screen uses the top-screen flag so it does not keep
-interactive retained controls alive behind overlays.
-`LoadoutScreen` and `LoadoutConfirmDialog` have also moved to retained UI.
-Their tabs, weapon tiles, equipment slots, toggles, buy/equip actions, and
-confirmation modal all use retained focus/confirm callbacks. Indexed retained
-control metadata preserves deterministic CLI targeting for weapon tiles.
+array used by CLI pointer targeting. The app path no longer reports legacy Clay
+focusables.
+The app screens are retained end-to-end. `MainMenuScreen`, `OptionsScreen`,
+`PauseScreen`, `ShooterGameScreen`, `HudBand`, `LoadoutScreen`, and
+`LoadoutConfirmDialog` emit retained panels, text, buttons, selectables,
+toggles, focus callbacks, and confirm callbacks. Retained overlay screens
+consult the `ScreenProvider` top-screen flag before emitting modal nodes, so a
+retained overlay does not render or trap input after a higher overlay covers it.
+Indexed retained control metadata preserves deterministic CLI targeting for
+weapon tiles and other repeated controls.
 
 ## Component API Direction
 

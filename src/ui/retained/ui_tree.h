@@ -118,6 +118,11 @@ struct Size {
   float height = 0.0f;
 };
 
+struct Point {
+  float x = 0.0f;
+  float y = 0.0f;
+};
+
 struct NodeInteraction {
   bool focusable = false;
   bool disabled = false;

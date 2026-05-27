@@ -3,21 +3,19 @@
 #include <functional>
 #include <utility>
 
-#include <clay.h>
-
 #include "client_ui.h"
-#include "../../ui/focus/ui_focus.h"
+#include "../../ui/input.h"
 #include "../../ui/retained/flex_layout.h"
 
 namespace client::ui {
 
 struct UiPipelineFrame {
     ::ui::UiInputFrame input   = {};
-    Clay_Dimensions    layout  = {};
-    Clay_Vector2       pointer = {};
+    ::ui::retained::Size layout = {};
+    ::ui::retained::Point pointer = {};
 };
 
-using RenderClayCommands = std::function<void(Clay_RenderCommandArray &)>;
+using RenderFrame = std::function<void()>;
 
 // Per-frame wrapper installed by the App. Receives the `build` callback that
 // invokes the visible screens; the wrapper pushes any cross-cutting providers
@@ -35,8 +33,8 @@ public:
 
     void set_frame_provider(FrameProvider provider) { frame_provider_ = std::move(provider); }
 
-    void render_client_ui_frame(const UiPipelineFrame    &frame,
-                                const RenderClayCommands &render_commands);
+    void render_client_ui_frame(const UiPipelineFrame &frame,
+                                const RenderFrame &render_frame);
 
 private:
     ClientUi                         client_ui_;

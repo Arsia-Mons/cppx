@@ -7,17 +7,10 @@
 
 #include <clay.h>
 
+#include "../input.h"
+#include "../span.h"
+
 namespace ui {
-
-template <typename T>
-struct Span {
-    T *items = nullptr;
-    int count = 0;
-
-    T *begin() const { return items; }
-    T *end() const { return items + count; }
-    T &operator[](int index) const { return items[index]; }
-};
 
 struct UiRuntimeLimits {
     int max_focus_scopes = 16;
@@ -31,15 +24,6 @@ enum class UiNavDir {
     Down,
     Left,
     Right,
-};
-
-enum class UiFocusSource {
-    None,
-    Keyboard,
-    Gamepad,
-    Mouse,
-    Touch,
-    Programmatic,
 };
 
 enum class UiNavRuleKind {
@@ -59,27 +43,6 @@ struct UiNavRules {
     UiNavRule down;
     UiNavRule left;
     UiNavRule right;
-};
-
-struct UiInputFrame {
-    bool nav_up = false;
-    bool nav_down = false;
-    bool nav_left = false;
-    bool nav_right = false;
-
-    bool confirm_pressed = false;
-    bool confirm_down = false;
-    bool confirm_released = false;
-
-    bool cancel_pressed = false;
-    bool cancel_down = false;
-    bool cancel_released = false;
-
-    bool pointer_pressed = false;
-    bool pointer_down = false;
-    bool pointer_released = false;
-
-    UiFocusSource source = UiFocusSource::Keyboard;
 };
 
 struct UiFocusScopeDesc {

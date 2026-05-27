@@ -29,6 +29,13 @@ bool SdlRetainedRenderer::initialize(SDL_Renderer *renderer,
     return true;
 }
 
+void SdlRetainedRenderer::clear(::ui::retained::Color background) {
+    if (!renderer_)
+        return;
+    set_draw_color(renderer_, background);
+    SDL_RenderClear(renderer_);
+}
+
 void SdlRetainedRenderer::render(const ::ui::retained::DrawList &draw_list) {
     if (!renderer_)
         return;
@@ -42,6 +49,12 @@ void SdlRetainedRenderer::render(const ::ui::retained::DrawList &draw_list) {
             render_text(command);
             break;
         }
+    }
+}
+
+void SdlRetainedRenderer::present() {
+    if (renderer_) {
+        SDL_RenderPresent(renderer_);
     }
 }
 

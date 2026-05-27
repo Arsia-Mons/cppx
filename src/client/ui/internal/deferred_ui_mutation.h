@@ -4,7 +4,7 @@
 
 namespace client::ui::internal {
 
-// Low-level bridge for hooks that must schedule state changes after the Clay
+// Low-level bridge for hooks that must schedule state changes after the UI
 // declaration pass. Product UI should expose named actions instead of this.
 struct DeferredUiMutationSink {
     ClientUi *client_ui = nullptr;

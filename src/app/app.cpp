@@ -62,10 +62,6 @@ static std::string shooter_state_json(const shooter::ShooterGame &game) {
     return out.str();
 }
 
-void App::on_clay_error(Clay_ErrorData err) {
-    fprintf(stderr, "clay: %.*s\n", (int)err.errorText.length, err.errorText.chars);
-}
-
 App::App()  = default;
 App::~App() { shutdown(); }
 
@@ -89,25 +85,11 @@ bool App::initialize(const AppOptions &options) {
     if (!fonts_.initialize(window_.renderer())) {
         return false;
     }
-    if (!clay_render_.initialize(window_.renderer(), fonts_)) {
-        return false;
-    }
     if (!retained_render_.initialize(window_.renderer(), fonts_)) {
         return false;
     }
 
-    uint32_t clay_mem_size = Clay_MinMemorySize();
-    clay_arena_mem_ = SDL_malloc(clay_mem_size);
-    Clay_Arena arena = Clay_CreateArenaWithCapacityAndMemory(clay_mem_size, clay_arena_mem_);
-    int win_w = options.width, win_h = options.height;
-    window_.size(&win_w, &win_h);
-    clay_ctx_ = Clay_Initialize(
-        arena,
-        Clay_Dimensions{ (float)win_w, (float)win_h },
-        Clay_ErrorHandler{ on_clay_error, 0 });
-    Clay_SetMeasureTextFunction(renderer::FontRegistry::measure_thunk, &fonts_);
-
-    react_init(clay_ctx_);
+    react_init_runtime();
 
     ui_pipeline_.set_frame_provider([this](const std::function<void()> &build) {
         shooter::ShooterContextValue        game_ctx { .game = &shooter_game_ };
@@ -134,8 +116,7 @@ bool App::initialize(const AppOptions &options) {
 
 int App::run() {
     if (!initialized_) return 1;
-    GameLoop loop(window_, clay_render_, retained_render_, ui_pipeline_,
-                  control_, running_);
+    GameLoop loop(window_, retained_render_, ui_pipeline_, control_, running_);
     while (running_) {
         loop.tick();
     }
@@ -146,10 +127,6 @@ void App::shutdown() {
     if (!initialized_) return;
     control_.shutdown();
     react_shutdown();
-    if (clay_arena_mem_) {
-        SDL_free(clay_arena_mem_);
-        clay_arena_mem_ = nullptr;
-    }
     fonts_.shutdown();
     window_.shutdown();
     TTF_Quit();

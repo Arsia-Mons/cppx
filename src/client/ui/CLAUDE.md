@@ -1,14 +1,14 @@
 # src/client/ui/
 
-Client UI shell: the screen stack, focus glue, the deferred-mutation queue that lets UI emit mutations safely during a Clay pass, plus the game's per-screen UI built on top.
+Client UI shell: the screen stack, retained focus/runtime glue, the deferred-mutation queue that lets UI emit mutations safely during a retained frame, plus the game's per-screen UI built on top.
 
 ## Files
 
 ```text
-client_ui.{h,cpp}                ClientUi shell: owns ScreenStack, legacy focus,
-                                 retained tree/focus/draw runtime, and queued mutations.
+client_ui.{h,cpp}                ClientUi shell: owns ScreenStack, retained
+                                 tree/focus/draw runtime, and queued mutations.
 ui_pipeline.{h,cpp}              UiPipeline: wraps ClientUi in the frame pass,
-                                 including temporary Clay and retained runtime phases.
+                                 including retained layout/focus/draw phases.
 navigation/screen_stack.{h,cpp}  Retained screens, overlay flag, build order, entry IDs.
 navigation/ui_screen.h           UiScreen / OverlayScreen base classes — override build_ui(); inherit OverlayScreen for floating screens.
 providers/                       Cross-screen React context providers (e.g., shooter_provider, app_shell).
@@ -17,20 +17,20 @@ components/                      Cross-screen visual components (e.g., hud_band)
 screens/<screen>/                Per-screen dir: <screen>_screen.{h,cpp} + optional components/.
 ```
 
-`ScreenNavigator` (`use_screen_navigator`) is the public navigation action hook screens use without touching the Clay tree mid-build. Domain and screen-local setter hooks may use `internal::DeferredUiMutationSink`; ordinary screen components should expose named actions instead of the sink itself.
+`ScreenNavigator` (`use_screen_navigator`) is the public navigation action hook screens use without mutating the screen stack mid-build. Domain and screen-local setter hooks may use `internal::DeferredUiMutationSink`; ordinary screen components should expose named actions instead of the sink itself.
 `use_screen_is_top()` reads the current `ScreenProvider` top-screen flag; retained overlay screens use it to avoid rendering/trapping input when a higher overlay covers them.
 
 The shell files (`client_ui`, `ui_pipeline`, `navigation/`) are framework-shaped — they don't know about specific games. Game vocabulary (the `ShooterGame`, `WeaponSpec`, etc.) shows up in `providers/`, `hooks/`, `components/`, and `screens/` because this project has exactly one game (the shooter). If a second game ever appears, promote shared pieces back into framework headers and namespace per-game code accordingly.
 
 ## Per-frame contract
 
-`ClientUi` runs three legacy phases each frame — keep them ordered and don't fold work into the wrong one:
+`ClientUi` runs three phases each frame — keep them ordered and don't fold work into the wrong one:
 
-1. `begin_frame(input)` — feed input to focus runtime; reset per-frame state.
-2. `build_visible_screens()` — invoke each visible screen's `build_ui()` (a Clay layout pass).
-3. `end_layout(input)` — finalize focus, then **callers must `drain_deferred_mutations()`** before the next frame's `begin_frame`.
+1. `begin_frame(input)` — reset per-frame state and discard stale queued mutations.
+2. `build_visible_screens()` — invoke each visible screen's `build_ui()` inside the retained tree frame.
+3. `end_layout(input)` — handle frame-end navigation such as cancel-pop overlays, then **callers must `drain_deferred_mutations()`** before the next frame's `begin_frame`.
 
-`UiPipeline` (`ui_pipeline.h`) is the standard wrapper that runs these phases plus Clay begin/end, retained tree begin/end, retained layout/focus/draw updates, render-command emission, and deferred mutation draining. Prefer using it over calling `ClientUi` directly.
+`UiPipeline` (`ui_pipeline.h`) is the standard wrapper that runs these phases plus retained tree begin/end, retained layout/focus/draw updates, renderer handoff, and deferred mutation draining. Prefer using it over calling `ClientUi` directly.
 
 Retained confirm callbacks are dispatched during `ClientUi::update_retained_runtime()`, after retained focus has resolved the confirmed node and before render callbacks. Keep action handlers on retained controls as queued/deferred mutations when they change app or screen state.
 

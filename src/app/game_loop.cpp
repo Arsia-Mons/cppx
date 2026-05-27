@@ -1,20 +1,17 @@
 #include "game_loop.h"
 
 #include "../platform/sdl/input.h"
-#include "../ui/focus/ui_focus.h"
 
 #include <SDL3/SDL.h>
 
 namespace app {
 
 GameLoop::GameLoop(platform::sdl::Window      &window,
-                   renderer::SdlClayRenderer  &clay_render,
                    renderer::SdlRetainedRenderer &retained_render,
                    client::ui::UiPipeline     &ui_pipeline,
                    platform::ControlMailbox   &control,
                    bool                       &running)
     : window_(window),
-      clay_render_(clay_render),
       retained_render_(retained_render),
       ui_pipeline_(ui_pipeline),
       control_(control),
@@ -70,12 +67,11 @@ void GameLoop::tick() {
         .pointer = { mx, my },
     };
 
-    ui_pipeline_.render_client_ui_frame(frame, [&](Clay_RenderCommandArray &cmds) {
-        clay_render_.clear({ 12, 14, 22, 255 });
-        clay_render_.render(cmds);
+    ui_pipeline_.render_client_ui_frame(frame, [&] {
+        retained_render_.clear({ 12, 14, 22, 255 });
         retained_render_.render(ui_pipeline_.client_ui().retained_draw_list());
-        control_.capture_after_render(clay_render_.sdl_renderer(), ui_pipeline_);
-        clay_render_.present();
+        control_.capture_after_render(retained_render_.sdl_renderer(), ui_pipeline_);
+        retained_render_.present();
     });
     control_.finish_frame(ui_pipeline_);
 }

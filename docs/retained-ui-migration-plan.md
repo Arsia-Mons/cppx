@@ -13,17 +13,15 @@ branch and PR.
   identity now has an app-owned 64-bit path. It already proves useful
   semantics: stable hook storage, keyed siblings, providers/context, effects,
   refs, callbacks, text storage, and unmount cleanup.
-- `ClientUi`, `UiPipeline`, and `ScreenStack` already own the correct
-  client-shell concerns: retained screens, retained frame sequencing, focus
-  runtime lifetime, and deferred mutation draining. `ClientUi` owns retained
-  tree/focus/draw runtime state for upcoming screen ports, and `UiPipeline`
-  updates those outputs before renderer handoff.
-- `src/ui/focus` and `src/ui/primitives` still use Clay IDs and Clay layout
-  queries. Those modules will need retained node IDs and retained layout boxes
-  before Clay can be removed.
-- `renderer/` still emits legacy screens from `Clay_RenderCommandArray`, but
-  the retained runtime now also has an app-owned draw command boundary consumed
-  by the SDL retained renderer.
+- `ClientUi`, `UiPipeline`, and `ScreenStack` own the retained app path:
+  retained screens, retained frame sequencing, focus runtime lifetime, retained
+  draw outputs, and deferred mutation draining. `UiPipeline` updates retained
+  layout/focus/draw state before renderer handoff.
+- `src/ui/focus` and `src/ui/primitives` still exist as legacy Clay modules for
+  tests, but they are no longer part of the `hello` app target.
+- `renderer/` now renders the app from retained draw commands through
+  `SdlRetainedRenderer`. The legacy Clay renderer remains only as a file-level
+  compatibility artifact until the final cleanup slice deletes it.
 - `tools/ui_cli.py` drives the app through the control mailbox. That path must
   remain deterministic through the migration. Retained focusables now appear in
   the same inspect/state `focusables` array used by CLI pointer targeting.
@@ -172,15 +170,20 @@ and mismatch/unclosed-tag diagnostics.
      `src/ui/retained/draw_list.*`, which emits rect/text commands from retained
      primitive metadata and computed layout boxes.
    - SDL renderer consumes retained commands: foundation done through
-     `renderer/sdl_retained_renderer.*`, wired into the app frame after the
-     legacy Clay pass.
-   - font measurement moved behind retained layout text measurement.
+     `renderer/sdl_retained_renderer.*`, wired as the app frame's only UI
+     renderer.
+   - app frame no longer initializes Clay, begins/ends a Clay layout pass, or
+     renders `Clay_RenderCommandArray`.
+   - retained text rendering now uses `FontRegistry` for SDL_ttf font/text
+     engine ownership without exposing Clay measurement callbacks.
 
 9. Clay removal:
-   - remove `third_party/clay*`.
+   - remove `third_party/clay*` once `src/react.*` compatibility macros are
+     deleted.
    - remove `renderer/sdl_clay_renderer.*`.
-   - delete Clay-specific tests or migrate assertions to retained snapshots.
-   - add grep/guard tests for Clay re-entry.
+   - delete `src/ui/focus`, `src/ui/primitives`, and Clay-specific tests or
+     migrate assertions to retained snapshots.
+   - add grep/guard tests for Clay re-entry into app/client/ui/react paths.
 
 ## Verification Gates
 
@@ -195,10 +198,10 @@ Per meaningful slice:
 
 ## Risks
 
-- Hook identity currently depends on Clay hashes. This must move before screens
-  can be Clay-free.
-- Focus currently queries Clay element bounds. Event/focus migration must land
-  after retained layout boxes are authoritative.
+- `src/react.h` still includes Clay for compatibility macros. That final link
+  must be cut without weakening retained hook identity or provider semantics.
+- Legacy Clay tests can mask accidental regressions unless the final cleanup
+  adds guard coverage for the app/client/runtime paths.
 - The transpiler can easily become a separate language. Keep it as syntax sugar
   over ordinary C++ component calls.
 - Partial Clay removal is dangerous if it leaves compatibility facades that

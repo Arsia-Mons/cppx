@@ -7,8 +7,8 @@ OS and library adapters. SDL window/renderer/input are isolated here so the rest
 - `sdl/window.{h,cpp}` — `SDL_Window` + `SDL_Renderer` lifetime, resize, vsync.
 - `sdl/input.{h,cpp}` — SDL keycodes + gamepad buttons → `::ui::UiInputFrame`.
 - `control_mailbox.{h,cpp}` — JSON-over-files IPC for the headless CLI tests.
-  Inspect/state replies include both legacy Clay focusables and retained
-  focusables so `tools/ui_cli.py` can target controls during screen migration.
+  Inspect/state replies expose retained focus and focusables so
+  `tools/ui_cli.py` can target controls deterministically.
 
 ## Hard rules
 

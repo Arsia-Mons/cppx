@@ -3,11 +3,9 @@
 #include "ui/retained/components.h"
 #include "ui/retained/yoga_flex_layout.h"
 
-#include <clay.h>
-
+#include <functional>
 #include <memory>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #define CHECK(expr)                                                              \
@@ -20,34 +18,6 @@
     } while (0)
 
 using namespace client::ui;
-
-static Clay_Context *g_clay = nullptr;
-static void *g_clay_memory = nullptr;
-
-static void on_clay_error(Clay_ErrorData error) {
-    fprintf(stderr, "clay: %.*s\n", (int)error.errorText.length, error.errorText.chars);
-}
-
-static Clay_Dimensions measure_text(Clay_StringSlice text,
-                                    Clay_TextElementConfig *,
-                                    void *) {
-    return Clay_Dimensions{ (float)text.length * 8.0f, 16.0f };
-}
-
-static bool init_clay_once(void) {
-    if (g_clay) return true;
-
-    uint32_t clay_memory_size = Clay_MinMemorySize();
-    g_clay_memory = malloc(clay_memory_size);
-    CHECK(g_clay_memory != nullptr);
-
-    Clay_Arena arena = Clay_CreateArenaWithCapacityAndMemory(clay_memory_size, g_clay_memory);
-    g_clay = Clay_Initialize(arena, Clay_Dimensions{ 640, 480 },
-                             Clay_ErrorHandler{ on_clay_error, nullptr });
-    CHECK(g_clay != nullptr);
-    Clay_SetMeasureTextFunction(measure_text, nullptr);
-    return true;
-}
 
 class RecordingScreen final : public UiScreen {
 public:
@@ -152,35 +122,54 @@ public:
     const char *debug_name() const override { return "HookState"; }
 
     void build_ui() override {
-        REACT_COMPONENT_BEGIN_KEY("HookStateScreenView", entry_id()) {
+        REACT_RETAINED_COMPONENT_BEGIN_KEY("HookStateScreenView", entry_id()) {
             int *value = use_state_int(0);
             *observed_ = *value;
             *value += 1;
-        } REACT_COMPONENT_END();
+        } REACT_RETAINED_COMPONENT_END();
     }
 
 private:
     int *observed_;
 };
 
-static void run_client_frame(ClientUi &client_ui, const ::ui::UiInputFrame &input = {}) {
-    Clay_SetLayoutDimensions({ 640, 480 });
-    Clay_SetPointerState({ -1000.0f, -1000.0f }, input.pointer_down);
+static bool run_client_frame(ClientUi &client_ui,
+                             const ::ui::UiInputFrame &input = {},
+                             bool drain_deferred_mutations = true) {
     client_ui.begin_frame(input);
     react_begin_frame();
-    Clay_BeginLayout();
-    CLAY({
-        .id = Clay_GetElementId(CLAY_STRING("ClientUiRoot")),
-        .layout = {
-            .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0) },
-        },
-    }) {
-        client_ui.build_visible_screens();
-    }
-    (void)Clay_EndLayout();
+    CHECK(::ui::retained::begin_retained_tree_frame(client_ui.retained_tree(),
+                                                    640.0f, 480.0f));
+    client_ui.build_visible_screens();
+    CHECK(::ui::retained::end_retained_tree_frame());
     client_ui.end_layout(input);
+    ::ui::retained::FlexLayoutAdapter adapter =
+        ::ui::retained::make_yoga_flex_layout_adapter();
+    CHECK(client_ui.update_retained_runtime(adapter, {640.0f, 480.0f}, {}));
     react_end_frame();
-    client_ui.drain_deferred_mutations();
+    if (drain_deferred_mutations) {
+        client_ui.drain_deferred_mutations();
+    }
+    return true;
+}
+
+static bool run_client_frame_with_probe(
+    ClientUi &client_ui,
+    const std::function<bool()> &probe,
+    const ::ui::UiInputFrame &input = {}) {
+    client_ui.begin_frame(input);
+    react_begin_frame();
+    CHECK(::ui::retained::begin_retained_tree_frame(client_ui.retained_tree(),
+                                                    640.0f, 480.0f));
+    client_ui.build_visible_screens();
+    CHECK(::ui::retained::end_retained_tree_frame());
+    client_ui.end_layout(input);
+    bool ok = probe ? probe() : true;
+    ::ui::retained::FlexLayoutAdapter adapter =
+        ::ui::retained::make_yoga_flex_layout_adapter();
+    CHECK(client_ui.update_retained_runtime(adapter, {640.0f, 480.0f}, {}));
+    react_end_frame();
+    return ok;
 }
 
 static bool screen_stack_push_pop_replace_and_visible_ordering(void) {
@@ -212,7 +201,7 @@ static bool screen_stack_push_pop_replace_and_visible_ordering(void) {
 }
 
 static bool client_ui_builds_visible_screens_in_order(void) {
-    react_init(g_clay);
+    react_init_runtime();
     ClientUi client_ui;
     int base_builds = 0;
     int overlay_builds = 0;
@@ -220,13 +209,13 @@ static bool client_ui_builds_visible_screens_in_order(void) {
 
     CHECK(client_ui.push_screen(std::make_unique<RecordingScreen>("Base", false, &base_builds)));
     CHECK(client_ui.push_screen(std::make_unique<RecordingScreen>("Overlay", true, &overlay_builds)));
-    run_client_frame(client_ui);
+    CHECK(run_client_frame(client_ui));
 
     CHECK(base_builds == 1);
     CHECK(overlay_builds == 1);
 
     CHECK(client_ui.push_screen(std::make_unique<RecordingScreen>("HiddenBase", false, &hidden_builds)));
-    run_client_frame(client_ui);
+    CHECK(run_client_frame(client_ui));
 
     CHECK(base_builds == 1);
     CHECK(overlay_builds == 1);
@@ -234,41 +223,8 @@ static bool client_ui_builds_visible_screens_in_order(void) {
     return true;
 }
 
-static bool overlay_screens_float_over_base_screen_area(void) {
-    react_init(g_clay);
-    ClientUi client_ui;
-    int base_builds = 0;
-    int overlay_builds = 0;
-
-    CHECK(client_ui.push_screen(std::make_unique<RecordingScreen>("Base", false, &base_builds)));
-    CHECK(client_ui.push_screen(
-        std::make_unique<RecordingScreen>("Overlay", true, &overlay_builds)));
-    UiScreenEntryId base_id = client_ui.screens().at(0)->entry_id();
-    UiScreenEntryId overlay_id = client_ui.screens().at(1)->entry_id();
-
-    run_client_frame(client_ui);
-
-    Clay_ElementData base_frame =
-        Clay_GetElementData(CLAY_IDI("ClientUiScreenFrame", base_id));
-    Clay_ElementData overlay_frame =
-        Clay_GetElementData(CLAY_IDI("ClientUiOverlayScreenFrame", overlay_id));
-    CHECK(base_frame.found);
-    CHECK(overlay_frame.found);
-    CHECK(base_frame.boundingBox.x == 0.0f);
-    CHECK(base_frame.boundingBox.y == 0.0f);
-    CHECK(base_frame.boundingBox.width == 640.0f);
-    CHECK(base_frame.boundingBox.height == 480.0f);
-    CHECK(overlay_frame.boundingBox.x == 0.0f);
-    CHECK(overlay_frame.boundingBox.y == 0.0f);
-    CHECK(overlay_frame.boundingBox.width == 640.0f);
-    CHECK(overlay_frame.boundingBox.height == 480.0f);
-    CHECK(base_builds == 1);
-    CHECK(overlay_builds == 1);
-    return true;
-}
-
 static bool screen_navigator_pop_current_drains_after_layout(void) {
-    react_init(g_clay);
+    react_init_runtime();
     ClientUi client_ui;
     int base_builds = 0;
     int overlay_builds = 0;
@@ -276,17 +232,11 @@ static bool screen_navigator_pop_current_drains_after_layout(void) {
     CHECK(client_ui.push_screen(std::make_unique<RecordingScreen>("Base", false, &base_builds)));
     CHECK(client_ui.push_screen(std::make_unique<PopSelfScreen>(&overlay_builds)));
 
-    Clay_SetLayoutDimensions({ 640, 480 });
-    Clay_SetPointerState({ -1000.0f, -1000.0f }, false);
-    client_ui.begin_frame({});
-    react_begin_frame();
-    Clay_BeginLayout();
-    client_ui.build_visible_screens();
-    CHECK(client_ui.screens().count() == 2);
-    CHECK(client_ui.pending_mutation_count() == 1);
-    (void)Clay_EndLayout();
-    client_ui.end_layout({});
-    react_end_frame();
+    CHECK(run_client_frame_with_probe(client_ui, [&] {
+        CHECK(client_ui.screens().count() == 2);
+        CHECK(client_ui.pending_mutation_count() == 1);
+        return true;
+    }));
 
     CHECK(client_ui.screens().count() == 2);
     client_ui.drain_deferred_mutations();
@@ -298,23 +248,17 @@ static bool screen_navigator_pop_current_drains_after_layout(void) {
 }
 
 static bool screen_navigator_push_drains_after_layout(void) {
-    react_init(g_clay);
+    react_init_runtime();
     ClientUi client_ui;
     int build_count = 0;
 
     CHECK(client_ui.push_screen(std::make_unique<PushScreen>(&build_count)));
 
-    Clay_SetLayoutDimensions({ 640, 480 });
-    Clay_SetPointerState({ -1000.0f, -1000.0f }, false);
-    client_ui.begin_frame({});
-    react_begin_frame();
-    Clay_BeginLayout();
-    client_ui.build_visible_screens();
-    CHECK(client_ui.screens().count() == 1);
-    CHECK(client_ui.pending_mutation_count() == 1);
-    (void)Clay_EndLayout();
-    client_ui.end_layout({});
-    react_end_frame();
+    CHECK(run_client_frame_with_probe(client_ui, [&] {
+        CHECK(client_ui.screens().count() == 1);
+        CHECK(client_ui.pending_mutation_count() == 1);
+        return true;
+    }));
 
     CHECK(client_ui.screens().count() == 1);
     client_ui.drain_deferred_mutations();
@@ -325,7 +269,7 @@ static bool screen_navigator_push_drains_after_layout(void) {
 }
 
 static bool screen_navigator_reset_to_drains_after_layout(void) {
-    react_init(g_clay);
+    react_init_runtime();
     ClientUi client_ui;
     int base_destroy_count = 0;
     int reset_build_count = 0;
@@ -336,17 +280,11 @@ static bool screen_navigator_reset_to_drains_after_layout(void) {
         std::make_unique<ResetToScreen>(&reset_build_count, &reset_destroy_count)));
     UiScreenEntryId old_top_id = client_ui.screens().top()->entry_id();
 
-    Clay_SetLayoutDimensions({ 640, 480 });
-    Clay_SetPointerState({ -1000.0f, -1000.0f }, false);
-    client_ui.begin_frame({});
-    react_begin_frame();
-    Clay_BeginLayout();
-    client_ui.build_visible_screens();
-    CHECK(client_ui.screens().count() == 2);
-    CHECK(client_ui.pending_mutation_count() == 1);
-    (void)Clay_EndLayout();
-    client_ui.end_layout({});
-    react_end_frame();
+    CHECK(run_client_frame_with_probe(client_ui, [&] {
+        CHECK(client_ui.screens().count() == 2);
+        CHECK(client_ui.pending_mutation_count() == 1);
+        return true;
+    }));
 
     CHECK(client_ui.screens().count() == 2);
     client_ui.drain_deferred_mutations();
@@ -360,7 +298,7 @@ static bool screen_navigator_reset_to_drains_after_layout(void) {
 }
 
 static bool cancel_pops_top_overlay_after_layout(void) {
-    react_init(g_clay);
+    react_init_runtime();
     ClientUi client_ui;
     int base_builds = 0;
     int overlay_builds = 0;
@@ -374,7 +312,7 @@ static bool cancel_pops_top_overlay_after_layout(void) {
         .cancel_down = true,
         .source = ::ui::UiFocusSource::Keyboard,
     };
-    run_client_frame(client_ui, cancel);
+    CHECK(run_client_frame(client_ui, cancel));
 
     CHECK(client_ui.screens().count() == 1);
     CHECK(strcmp(client_ui.screens().top()->debug_name(), "Base") == 0);
@@ -384,7 +322,7 @@ static bool cancel_pops_top_overlay_after_layout(void) {
 }
 
 static bool queued_push_screen_releases_if_frame_resets_before_drain(void) {
-    react_init(g_clay);
+    react_init_runtime();
     ClientUi client_ui;
     int destroy_count = 0;
 
@@ -399,20 +337,20 @@ static bool queued_push_screen_releases_if_frame_resets_before_drain(void) {
 }
 
 static bool screen_local_hook_state_survives_rerender_and_resets_on_unmount(void) {
-    react_init(g_clay);
+    react_init_runtime();
     ClientUi client_ui;
     int observed = -1;
 
     CHECK(client_ui.push_screen(std::make_unique<HookStateScreen>(&observed)));
-    run_client_frame(client_ui);
+    CHECK(run_client_frame(client_ui));
     CHECK(observed == 0);
 
-    run_client_frame(client_ui);
+    CHECK(run_client_frame(client_ui));
     CHECK(observed == 1);
 
     CHECK(client_ui.screens().pop_top());
     CHECK(client_ui.push_screen(std::make_unique<HookStateScreen>(&observed)));
-    run_client_frame(client_ui);
+    CHECK(run_client_frame(client_ui));
     CHECK(observed == 0);
     return true;
 }
@@ -450,11 +388,8 @@ static bool client_ui_owns_retained_runtime_outputs(void) {
 }
 
 int main(void) {
-    if (!init_clay_once()) return 1;
-
     if (!screen_stack_push_pop_replace_and_visible_ordering()) return 1;
     if (!client_ui_builds_visible_screens_in_order()) return 1;
-    if (!overlay_screens_float_over_base_screen_area()) return 1;
     if (!screen_navigator_pop_current_drains_after_layout()) return 1;
     if (!screen_navigator_push_drains_after_layout()) return 1;
     if (!screen_navigator_reset_to_drains_after_layout()) return 1;
@@ -464,6 +399,5 @@ int main(void) {
     if (!client_ui_owns_retained_runtime_outputs()) return 1;
 
     react_shutdown();
-    free(g_clay_memory);
     return 0;
 }

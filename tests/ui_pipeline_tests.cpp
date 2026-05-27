@@ -2,17 +2,12 @@
 
 #include "client/ui/navigation/ui_screen.h"
 #include "react.h"
-#include "ui/focus/ui_focus.h"
-#include "ui/primitives/button.h"
 #include "ui/retained/components.h"
 #include "ui/retained/draw_list.h"
 #include "ui/retained/focus.h"
 
-#include <clay.h>
-
 #include <memory>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #define CHECK(expr)                                                              \
@@ -28,34 +23,6 @@ using client::ui::ScreenNavigator;
 using client::ui::UiScreen;
 using client::ui::UiPipeline;
 using client::ui::UiPipelineFrame;
-
-static Clay_Context *g_clay = nullptr;
-static void *g_clay_memory = nullptr;
-
-static void on_clay_error(Clay_ErrorData error) {
-    fprintf(stderr, "clay: %.*s\n", (int)error.errorText.length, error.errorText.chars);
-}
-
-static Clay_Dimensions measure_text(Clay_StringSlice text,
-                                    Clay_TextElementConfig *,
-                                    void *) {
-    return Clay_Dimensions{ (float)text.length * 8.0f, 16.0f };
-}
-
-static bool init_clay_once(void) {
-    if (g_clay) return true;
-
-    uint32_t clay_memory_size = Clay_MinMemorySize();
-    g_clay_memory = malloc(clay_memory_size);
-    CHECK(g_clay_memory != nullptr);
-
-    Clay_Arena arena = Clay_CreateArenaWithCapacityAndMemory(clay_memory_size, g_clay_memory);
-    g_clay = Clay_Initialize(arena, Clay_Dimensions{ 640, 480 },
-                             Clay_ErrorHandler{ on_clay_error, nullptr });
-    CHECK(g_clay != nullptr);
-    Clay_SetMeasureTextFunction(measure_text, nullptr);
-    return true;
-}
 
 static UiPipelineFrame test_frame(::ui::UiInputFrame input = {}) {
     return {
@@ -80,39 +47,18 @@ private:
     bool *observed_;
 };
 
-class PopOnConfirmScreen final : public UiScreen {
-public:
-    const char *debug_name() const override { return "PopOnConfirm"; }
-
-    void build_ui() override {
-        REACT_COMPONENT_BEGIN_KEY("PopOnConfirmScreenView", entry_id()) {
-            ScreenNavigator nav = client::ui::use_screen_navigator();
-            ::ui::ui_focus_push_scope({
-                .id = CLAY_ID("PipelineFocusScope"),
-            });
-            ::ui::ui_focus_request_initial_focus(CLAY_ID("PipelinePopButton"));
-            ::ui::Button({
-                .id = CLAY_ID("PipelinePopButton"),
-                .label = "Pop",
-                .on_confirm = nav.pop_current,
-            });
-            ::ui::ui_focus_pop_scope();
-        } REACT_COMPONENT_END();
-    }
-};
-
 class RetainedProbeScreen final : public UiScreen {
 public:
     const char *debug_name() const override { return "RetainedProbe"; }
 
     void build_ui() override {
-        REACT_COMPONENT_BEGIN_KEY("RetainedProbeScreenView", entry_id()) {
+        REACT_RETAINED_COMPONENT_BEGIN_KEY("RetainedProbeScreenView", entry_id()) {
             ::ui::retained::Button({
                 .key = "confirm",
                 .id = "PipelineRetainedButton",
                 .label = "Retained",
             });
-        } REACT_COMPONENT_END();
+        } REACT_RETAINED_COMPONENT_END();
     }
 };
 
@@ -121,7 +67,7 @@ public:
     const char *debug_name() const override { return "PopOnRetainedConfirm"; }
 
     void build_ui() override {
-        REACT_COMPONENT_BEGIN_KEY("PopOnRetainedConfirmScreenView", entry_id()) {
+        REACT_RETAINED_COMPONENT_BEGIN_KEY("PopOnRetainedConfirmScreenView", entry_id()) {
             ScreenNavigator nav = client::ui::use_screen_navigator();
             ::ui::retained::Button({
                 .key = "pop",
@@ -129,7 +75,7 @@ public:
                 .label = "Pop",
                 .on_confirm = nav.pop_current,
             });
-        } REACT_COMPONENT_END();
+        } REACT_RETAINED_COMPONENT_END();
     }
 };
 
@@ -149,7 +95,7 @@ struct RetainedRenderProbe {
 };
 
 static bool ui_pipeline_frame_provider_exposes_current_frame(void) {
-    react_init(g_clay);
+    react_init_runtime();
     UiPipeline pipeline;
     bool observed = false;
 
@@ -164,11 +110,12 @@ static bool ui_pipeline_frame_provider_exposes_current_frame(void) {
 }
 
 static bool pipeline_renders_before_draining_client_mutations(void) {
-    react_init(g_clay);
+    react_init_runtime();
     UiPipeline pipeline;
     RenderProbe probe = {};
 
-    CHECK(pipeline.client_ui().push_screen(std::make_unique<PopOnConfirmScreen>()));
+    CHECK(pipeline.client_ui().push_screen(
+        std::make_unique<PopOnRetainedConfirmScreen>()));
     pipeline.render_client_ui_frame(test_frame(), {});
     CHECK(pipeline.client_ui().screens().count() == 1);
 
@@ -177,7 +124,7 @@ static bool pipeline_renders_before_draining_client_mutations(void) {
     confirm.confirm_down = true;
     confirm.source = ::ui::UiFocusSource::Keyboard;
 
-    pipeline.render_client_ui_frame(test_frame(confirm), [&](Clay_RenderCommandArray &) {
+    pipeline.render_client_ui_frame(test_frame(confirm), [&] {
         probe.render_count += 1;
         probe.pending_mutations_at_render = pipeline.client_ui().pending_mutation_count();
         probe.screen_count_at_render = pipeline.client_ui().screens().count();
@@ -191,13 +138,13 @@ static bool pipeline_renders_before_draining_client_mutations(void) {
 }
 
 static bool pipeline_updates_retained_runtime_before_render(void) {
-    react_init(g_clay);
+    react_init_runtime();
     UiPipeline pipeline;
     RetainedRenderProbe probe = {};
 
     CHECK(pipeline.client_ui().push_screen(std::make_unique<RetainedProbeScreen>()));
 
-    pipeline.render_client_ui_frame(test_frame(), [&](Clay_RenderCommandArray &) {
+    pipeline.render_client_ui_frame(test_frame(), [&] {
         probe.render_count += 1;
         const ::ui::retained::DrawList &draw =
             pipeline.client_ui().retained_draw_list();
@@ -227,7 +174,7 @@ static bool pipeline_updates_retained_runtime_before_render(void) {
 }
 
 static bool pipeline_invokes_retained_confirm_before_render(void) {
-    react_init(g_clay);
+    react_init_runtime();
     UiPipeline pipeline;
     RenderProbe probe = {};
 
@@ -241,7 +188,7 @@ static bool pipeline_invokes_retained_confirm_before_render(void) {
     confirm.confirm_down = true;
     confirm.source = ::ui::UiFocusSource::Keyboard;
 
-    pipeline.render_client_ui_frame(test_frame(confirm), [&](Clay_RenderCommandArray &) {
+    pipeline.render_client_ui_frame(test_frame(confirm), [&] {
         probe.render_count += 1;
         probe.pending_mutations_at_render = pipeline.client_ui().pending_mutation_count();
         probe.screen_count_at_render = pipeline.client_ui().screens().count();
@@ -255,14 +202,11 @@ static bool pipeline_invokes_retained_confirm_before_render(void) {
 }
 
 int main(void) {
-    if (!init_clay_once()) return 1;
-
     if (!ui_pipeline_frame_provider_exposes_current_frame()) return 1;
     if (!pipeline_renders_before_draining_client_mutations()) return 1;
     if (!pipeline_updates_retained_runtime_before_render()) return 1;
     if (!pipeline_invokes_retained_confirm_before_render()) return 1;
 
     react_shutdown();
-    free(g_clay_memory);
     return 0;
 }

@@ -46,33 +46,6 @@ to_retained_focus_source(::ui::UiFocusSource source) {
     };
 }
 
-bool retained_tree_has_modal(const ::ui::retained::UiTree &tree,
-                             ::ui::retained::NodeId id) {
-    ::ui::retained::NodeSnapshot node = {};
-    if (!tree.snapshot(id, &node))
-        return false;
-    if (node.interaction.modal)
-        return true;
-    for (int i = 0; i < tree.child_count(id); ++i) {
-        if (retained_tree_has_modal(tree, tree.child_at(id, i)))
-            return true;
-    }
-    return false;
-}
-
-::ui::UiInputFrame legacy_input_frame(const UiPipelineFrame &frame,
-                                      bool retained_modal_active) {
-    if (!retained_modal_active)
-        return frame.input;
-
-    ::ui::UiInputFrame input = {};
-    input.cancel_pressed = frame.input.cancel_pressed;
-    input.cancel_down = frame.input.cancel_down;
-    input.cancel_released = frame.input.cancel_released;
-    input.source = frame.input.source;
-    return input;
-}
-
 } // namespace
 
 const UiPipelineFrame *use_ui_pipeline_frame() {
@@ -82,17 +55,9 @@ const UiPipelineFrame *use_ui_pipeline_frame() {
 UiPipeline::UiPipeline()
     : retained_layout_(::ui::retained::make_yoga_flex_layout_adapter()) {}
 
-void UiPipeline::render_client_ui_frame(const UiPipelineFrame    &frame,
-                                        const RenderClayCommands &render_commands) {
-    Clay_SetLayoutDimensions(frame.layout);
-    Clay_SetPointerState(frame.pointer, frame.input.pointer_down);
-
-    bool retained_modal_active = retained_tree_has_modal(
-        client_ui_.retained_tree(), client_ui_.retained_tree().root_id());
-    ::ui::UiInputFrame legacy_input =
-        legacy_input_frame(frame, retained_modal_active);
-
-    client_ui_.begin_frame(legacy_input);
+void UiPipeline::render_client_ui_frame(const UiPipelineFrame &frame,
+                                        const RenderFrame &render_frame) {
+    client_ui_.begin_frame(frame.input);
     react_begin_frame();
     bool retained_frame_started = ::ui::retained::begin_retained_tree_frame(
         client_ui_.retained_tree(), frame.layout.width, frame.layout.height);
@@ -100,27 +65,17 @@ void UiPipeline::render_client_ui_frame(const UiPipelineFrame    &frame,
         react_report_error(
             "client/ui: failed to begin retained tree frame\n");
     }
-    Clay_BeginLayout();
-
     REACT_PROVIDER_ENTER("UiPipelineFrameProvider");
     PROVIDE(&UiPipelineFrameContext, const_cast<UiPipelineFrame *>(&frame)) {
-        CLAY({
-            .id = Clay_GetElementId(CLAY_STRING("ClientUiRoot")),
-            .layout = {
-                .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0) },
-            },
-        }) {
-            auto build = [this] { client_ui_.build_visible_screens(); };
-            if (frame_provider_) {
-                frame_provider_(build);
-            } else {
-                build();
-            }
+        auto build = [this] { client_ui_.build_visible_screens(); };
+        if (frame_provider_) {
+            frame_provider_(build);
+        } else {
+            build();
         }
     }
     REACT_PROVIDER_EXIT();
 
-    Clay_RenderCommandArray commands = Clay_EndLayout();
     bool retained_frame_ended = false;
     if (retained_frame_started) {
         retained_frame_ended = ::ui::retained::end_retained_tree_frame();
@@ -129,7 +84,7 @@ void UiPipeline::render_client_ui_frame(const UiPipelineFrame    &frame,
                 "client/ui: failed to end retained tree frame\n");
         }
     }
-    client_ui_.end_layout(legacy_input);
+    client_ui_.end_layout(frame.input);
 
     if (retained_frame_started && retained_frame_ended) {
         bool retained_updated = client_ui_.update_retained_runtime(
@@ -142,8 +97,8 @@ void UiPipeline::render_client_ui_frame(const UiPipelineFrame    &frame,
     }
     react_end_frame();
 
-    if (render_commands) {
-        render_commands(commands);
+    if (render_frame) {
+        render_frame();
     }
 
     client_ui_.drain_deferred_mutations();
