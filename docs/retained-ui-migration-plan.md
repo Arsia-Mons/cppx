@@ -147,7 +147,8 @@ and mismatch/unclosed-tag diagnostics.
      emit retained nodes through `ScreenStack`, and the runtime computes layout,
      focus, and draw commands before render callbacks.
    - control-mailbox retained focusable readback: foundation done.
-   - main menu.
+   - main menu: ported to retained panels, text, buttons, focus, confirm
+     callbacks, and CLI targeting.
    - options.
    - pause.
    - in-game HUD.

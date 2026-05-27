@@ -1,4 +1,5 @@
 #include "client/ui/client_ui.h"
+#include "client/ui/ui_pipeline.h"
 #include "react.h"
 #include "game/shooter_game.h"
 #include "client/ui/providers/app_shell.h"
@@ -100,6 +101,29 @@ static void run_client_frame(client::ui::ClientUi &client_ui,
     }
 }
 
+static void run_pipeline_frame(client::ui::UiPipeline &pipeline,
+                               const TestFrameProviders &providers,
+                               const ::ui::UiInputFrame &input = {},
+                               Clay_Vector2 pointer = { -1000.0f, -1000.0f }) {
+    pipeline.set_frame_provider([&](const std::function<void()> &build) {
+        shooter::ShooterContextValue     game_ctx { .game = providers.game };
+        client::ui::AppShellContextValue shell_ctx { .request_quit = providers.request_quit };
+        shooter::shooter_provider_push(&game_ctx);
+        client::ui::app_shell_provider_push(&shell_ctx);
+        build();
+        client::ui::app_shell_provider_pop();
+        shooter::shooter_provider_pop();
+    });
+    pipeline.render_client_ui_frame(
+        {
+            .input = input,
+            .layout = {800, 500},
+            .pointer = pointer,
+        },
+        {});
+    pipeline.set_frame_provider({});
+}
+
 static Clay_Vector2 center_of(Clay_ElementId id) {
     Clay_ElementData data = Clay_GetElementData(id);
     if (!data.found) return { -1000.0f, -1000.0f };
@@ -182,14 +206,15 @@ static bool main_menu_start_match_resets_game_and_stack(void) {
         .game = &game,
         .request_quit = [&quit_requested] { quit_requested = true; },
     };
-    client::ui::ClientUi client_ui;
+    client::ui::UiPipeline pipeline;
+    client::ui::ClientUi &client_ui = pipeline.client_ui();
     CHECK(client_ui.push_screen(std::make_unique<shooter::MainMenuScreen>()));
 
-    run_client_frame(client_ui, providers);
+    run_pipeline_frame(pipeline, providers);
     CHECK(client_ui.screens().count() == 1);
     CHECK(strcmp(client_ui.screens().top()->debug_name(), "MainMenu") == 0);
 
-    run_client_frame(client_ui, providers, keyboard_confirm());
+    run_pipeline_frame(pipeline, providers, keyboard_confirm());
 
     CHECK(client_ui.screens().count() == 1);
     CHECK(strcmp(client_ui.screens().top()->debug_name(), "ShooterGame") == 0);
@@ -205,18 +230,19 @@ static bool main_menu_options_returns_to_menu_with_cancel(void) {
     react_init(g_clay);
     shooter::ShooterGame game;
     TestFrameProviders providers { .game = &game };
-    client::ui::ClientUi client_ui;
+    client::ui::UiPipeline pipeline;
+    client::ui::ClientUi &client_ui = pipeline.client_ui();
     CHECK(client_ui.push_screen(std::make_unique<shooter::MainMenuScreen>()));
 
-    run_client_frame(client_ui, providers);
-    run_client_frame(client_ui, providers, keyboard_down());
-    run_client_frame(client_ui, providers, keyboard_confirm());
+    run_pipeline_frame(pipeline, providers);
+    run_pipeline_frame(pipeline, providers, keyboard_down());
+    run_pipeline_frame(pipeline, providers, keyboard_confirm());
 
     CHECK(client_ui.screens().count() == 2);
     CHECK(strcmp(client_ui.screens().at(0)->debug_name(), "MainMenu") == 0);
     CHECK(strcmp(client_ui.screens().top()->debug_name(), "Options") == 0);
 
-    run_client_frame(client_ui, providers, keyboard_cancel());
+    run_pipeline_frame(pipeline, providers, keyboard_cancel());
 
     CHECK(client_ui.screens().count() == 1);
     CHECK(strcmp(client_ui.screens().top()->debug_name(), "MainMenu") == 0);
@@ -231,13 +257,14 @@ static bool main_menu_quit_callback_runs(void) {
         .game = &game,
         .request_quit = [&quit_requested] { quit_requested = true; },
     };
-    client::ui::ClientUi client_ui;
+    client::ui::UiPipeline pipeline;
+    client::ui::ClientUi &client_ui = pipeline.client_ui();
     CHECK(client_ui.push_screen(std::make_unique<shooter::MainMenuScreen>()));
 
-    run_client_frame(client_ui, providers);
-    run_client_frame(client_ui, providers, keyboard_down());
-    run_client_frame(client_ui, providers, keyboard_down());
-    run_client_frame(client_ui, providers, keyboard_confirm());
+    run_pipeline_frame(pipeline, providers);
+    run_pipeline_frame(pipeline, providers, keyboard_down());
+    run_pipeline_frame(pipeline, providers, keyboard_down());
+    run_pipeline_frame(pipeline, providers, keyboard_confirm());
 
     CHECK(quit_requested);
     CHECK(client_ui.screens().count() == 1);

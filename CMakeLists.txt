@@ -88,6 +88,7 @@ add_executable(hello
   src/client/ui/providers/app_shell.cpp
   src/client/ui/providers/shooter_provider.cpp
   src/client/ui/navigation/screen_stack.cpp
+  src/client/ui/ui_pipeline.cpp
   src/client/ui/screens/in_game/in_game_screen.cpp
   src/client/ui/screens/loadout/components/confirm_dialog.cpp
   src/client/ui/screens/loadout/components/equipment_slot.cpp
@@ -97,7 +98,6 @@ add_executable(hello
   src/client/ui/screens/main_menu/main_menu_screen.cpp
   src/client/ui/screens/options/options_screen.cpp
   src/client/ui/screens/pause/pause_screen.cpp
-  src/client/ui/ui_pipeline.cpp
   src/platform/control_mailbox.cpp
   src/platform/sdl/input.cpp
   src/platform/sdl/window.cpp
@@ -431,6 +431,7 @@ add_executable(shooter_ui_tests
   src/client/ui/providers/app_shell.cpp
   src/client/ui/providers/shooter_provider.cpp
   src/client/ui/navigation/screen_stack.cpp
+  src/client/ui/ui_pipeline.cpp
   src/client/ui/screens/in_game/in_game_screen.cpp
   src/client/ui/screens/loadout/components/confirm_dialog.cpp
   src/client/ui/screens/loadout/components/equipment_slot.cpp
@@ -448,10 +449,12 @@ add_executable(shooter_ui_tests
   src/ui/primitives/focusable.cpp
   src/ui/primitives/selectable.cpp
   src/ui/primitives/toggle.cpp
+  src/ui/retained/components.cpp
   src/ui/retained/draw_list.cpp
   src/ui/retained/flex_layout.cpp
   src/ui/retained/focus.cpp
   src/ui/retained/ui_tree.cpp
+  src/ui/retained/yoga_flex_layout.cpp
   third_party/clay_impl.cpp
 )
 
@@ -463,6 +466,10 @@ target_include_directories(shooter_ui_tests PRIVATE
 
 target_compile_options(shooter_ui_tests PRIVATE
   $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall -Wextra -Wno-missing-field-initializers -Wno-c99-designator -Wno-unused-parameter>
+)
+
+target_link_libraries(shooter_ui_tests PRIVATE
+  yogacore
 )
 
 add_test(NAME shooter_ui_tests COMMAND shooter_ui_tests)

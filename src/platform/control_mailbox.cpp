@@ -198,6 +198,15 @@ std::string ControlMailbox::state_json(client::ui::UiPipeline &pipeline) {
     ::ui::ui_focus_set_current(&client_ui.focus_runtime());
     Clay_ElementId focused = ::ui::ui_focus_focused_id();
     ::ui::UiFocusSource focus_source = ::ui::ui_focus_source();
+    ::ui::retained::NodeId retained_focused =
+        ::ui::retained::focus_focused_id(client_ui.retained_focus());
+    ::ui::retained::FocusSource retained_source =
+        ::ui::retained::focus_source(client_ui.retained_focus());
+    uint64_t reported_focused =
+        focused.id != 0 ? focused.id : retained_focused;
+    const char *reported_focus_source =
+        focused.id != 0 ? focus_source_name(focus_source)
+                        : retained_focus_source_name(retained_source);
 
     std::ostringstream body;
     body << "\"result\":{"
@@ -205,11 +214,11 @@ std::string ControlMailbox::state_json(client::ui::UiPipeline &pipeline) {
          << "\"screen_count\":" << client_ui.screens().count() << ","
          << "\"top_screen\":\"" << json_escape(top ? top->debug_name() : "") << "\","
          << "\"pending_mutations\":" << client_ui.pending_mutation_count() << ","
-         << "\"focused_id\":" << focused.id << ","
-         << "\"focus_source\":\"" << focus_source_name(focus_source) << "\","
-         << "\"retained_focused_id\":" << ::ui::retained::focus_focused_id(client_ui.retained_focus()) << ","
+         << "\"focused_id\":" << reported_focused << ","
+         << "\"focus_source\":\"" << reported_focus_source << "\","
+         << "\"retained_focused_id\":" << retained_focused << ","
          << "\"retained_focus_source\":\""
-         << retained_focus_source_name(::ui::retained::focus_source(client_ui.retained_focus())) << "\","
+         << retained_focus_source_name(retained_source) << "\","
          << "\"screens\":[";
     for (int i = 0; i < client_ui.screens().count(); ++i) {
         client::ui::UiScreen *screen = client_ui.screens().at(i);

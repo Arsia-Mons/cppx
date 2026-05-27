@@ -165,6 +165,10 @@ rather than through side-car test code.
 The control mailbox now reports retained focusables in the same `focusables`
 array used by CLI pointer targeting, while preserving legacy Clay focus fields
 for screens that have not been ported.
+`MainMenuScreen` is the first screen ported to retained components end-to-end:
+its background, panel, headings, buttons, navigation, callbacks, and CLI
+targeting now run through the retained tree while the rest of the app continues
+to use the temporary Clay path.
 
 ## Component API Direction
 
