@@ -142,7 +142,10 @@ can create `UiTree` nodes and use retained hook identity without Clay layout.
 The retained component surface now also writes copied node metadata for role,
 control id, label/value, and interaction state, so retained `Button`, `Toggle`,
 and `Selectable` primitives have semantic data that focus and renderer code can
-consume without querying Clay element data.
+consume without querying Clay element data. Retained `Button` nodes can also
+store confirm callbacks; `ClientUi` invokes the confirmed node's callback after
+retained focus/event update and before render-command handoff, preserving the
+same deferred-mutation frame boundary used by existing Clay buttons.
 `src/ui/retained/draw_list.*` is the Clay-free renderer boundary: it walks
 retained snapshots after flex layout and emits app-owned rect/text draw
 commands from retained metadata.

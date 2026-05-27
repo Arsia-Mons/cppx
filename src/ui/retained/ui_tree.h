@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <functional>
 #include <stdint.h>
 
 namespace ui::retained {
@@ -115,6 +116,7 @@ struct NodeMetadata {
   const char *control_id = "";
   const char *value = "";
   NodeInteraction interaction = {};
+  std::function<void()> on_confirm = {};
 };
 
 using CleanupFn = void (*)(void *user);
@@ -159,6 +161,7 @@ public:
   bool set_metadata(NodeId id, const NodeMetadata &metadata);
   bool measure(NodeId id, MeasureInput input, Size *out) const;
   bool set_layout(NodeId id, Rect rect);
+  bool invoke_confirm(NodeId id) const;
 
   bool snapshot(NodeId id, NodeSnapshot *out) const;
   bool contains(NodeId id) const;
@@ -187,6 +190,7 @@ private:
     std::array<NodeId, UI_RETAINED_MAX_CHILDREN> children = {};
     NodeRole role = NodeRole::Generic;
     NodeInteraction interaction = {};
+    std::function<void()> on_confirm = {};
     Style style = {};
     Rect layout = {};
     CleanupFn cleanup = nullptr;

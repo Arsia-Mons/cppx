@@ -3,6 +3,8 @@
 #include "../../react.h"
 #include "ui_tree.h"
 
+#include <functional>
+
 namespace ui::retained {
 
 struct NodeProps {
@@ -28,6 +30,7 @@ struct ButtonProps {
     bool disabled = false;
     Length width = Length::points(132.0f);
     Length height = Length::points(38.0f);
+    std::function<void()> on_confirm = {};
 };
 
 struct ToggleProps {

@@ -148,6 +148,7 @@ bool UiTree::set_metadata(NodeId id, const NodeMetadata &metadata) {
     return false;
   node->role = metadata.role;
   node->interaction = metadata.interaction;
+  node->on_confirm = metadata.on_confirm;
   copy_label(node->control_id, metadata.control_id);
   copy_value(node->value, metadata.value);
   return true;
@@ -168,6 +169,15 @@ bool UiTree::set_layout(NodeId id, Rect rect) {
   if (!node)
     return false;
   node->layout = rect;
+  return true;
+}
+
+bool UiTree::invoke_confirm(NodeId id) const {
+  const Node *node = find(id);
+  if (!node || !node->interaction.focusable || node->interaction.disabled ||
+      !node->on_confirm)
+    return false;
+  node->on_confirm();
   return true;
 }
 
@@ -263,6 +273,7 @@ UiTree::Node *UiTree::ensure_node(NodeId id, NodeId parent_id, const char *type,
     existing->style = style;
     existing->role = NodeRole::Generic;
     existing->interaction = {};
+    existing->on_confirm = {};
     existing->control_id[0] = '\0';
     existing->value[0] = '\0';
     copy_label(existing->type, type);

@@ -128,6 +128,7 @@ static bool retained_primitives_write_semantic_metadata_and_layout(void) {
 static bool reused_nodes_clear_previous_primitive_metadata(void) {
     react_init_runtime();
     UiTree tree;
+    int confirm_count = 0;
 
     CHECK(begin_retained_frame(tree, 200.0f, 80.0f));
     Button(ButtonProps{
@@ -135,6 +136,7 @@ static bool reused_nodes_clear_previous_primitive_metadata(void) {
         .id = "ConfirmButton",
         .label = "Confirm",
         .disabled = true,
+        .on_confirm = [&confirm_count] { confirm_count += 1; },
     });
     CHECK(end_retained_frame());
 
@@ -143,6 +145,8 @@ static bool reused_nodes_clear_previous_primitive_metadata(void) {
     CHECK(snapshot_node(tree, button_id, &first));
     CHECK(first.interaction.disabled);
     CHECK(same_text(first.value, "Confirm"));
+    CHECK(!tree.invoke_confirm(button_id));
+    CHECK(confirm_count == 0);
 
     CHECK(begin_retained_frame(tree, 200.0f, 80.0f));
     Button(ButtonProps{
@@ -156,6 +160,30 @@ static bool reused_nodes_clear_previous_primitive_metadata(void) {
     CHECK(!second.interaction.disabled);
     CHECK(same_text(second.value, ""));
     CHECK(second.child_count == 0);
+    CHECK(!tree.invoke_confirm(button_id));
+    CHECK(confirm_count == 0);
+    return true;
+}
+
+static bool retained_button_invokes_confirm_callback(void) {
+    react_init_runtime();
+    UiTree tree;
+    int confirm_count = 0;
+
+    CHECK(begin_retained_frame(tree, 200.0f, 80.0f));
+    Button(ButtonProps{
+        .key = "confirm",
+        .id = "ConfirmButton",
+        .label = "Confirm",
+        .on_confirm = [&confirm_count] { confirm_count += 1; },
+    });
+    CHECK(end_retained_frame());
+
+    NodeId button_id = tree.child_at(tree.root_id(), 0);
+    CHECK(tree.invoke_confirm(button_id));
+    CHECK(confirm_count == 1);
+    CHECK(!tree.invoke_confirm(tree.root_id()));
+    CHECK(confirm_count == 1);
     return true;
 }
 
@@ -163,6 +191,8 @@ int main(void) {
     if (!retained_primitives_write_semantic_metadata_and_layout())
         return 1;
     if (!reused_nodes_clear_previous_primitive_metadata())
+        return 1;
+    if (!retained_button_invokes_confirm_callback())
         return 1;
     return 0;
 }

@@ -31,6 +31,8 @@ The shell files (`client_ui`, `ui_pipeline`, `navigation/`) are framework-shaped
 
 `UiPipeline` (`ui_pipeline.h`) is the standard wrapper that runs these phases plus Clay begin/end, retained tree begin/end, retained layout/focus/draw updates, render-command emission, and deferred mutation draining. Prefer using it over calling `ClientUi` directly.
 
+Retained confirm callbacks are dispatched during `ClientUi::update_retained_runtime()`, after retained focus has resolved the confirmed node and before render callbacks. Keep action handlers on retained controls as queued/deferred mutations when they change app or screen state.
+
 ## Hard rules
 
 - **Never mutate from inside `build_ui()`**. Product UI should call named hooks/actions; lower-level hooks can submit a `DeferredUiMutation` via `internal::use_deferred_ui_mutations()` or call `ClientUi::queue_*`. The mutation fires after layout, before the next frame.

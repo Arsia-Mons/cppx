@@ -187,6 +187,7 @@ void Button(const ButtonProps &props) {
                                          .focusable = true,
                                          .disabled = props.disabled,
                                      },
+                                 .on_confirm = props.on_confirm,
                              });
     if (scope.active() && props.label) {
         Text({

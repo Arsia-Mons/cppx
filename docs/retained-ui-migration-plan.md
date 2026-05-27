@@ -124,8 +124,10 @@ and mismatch/unclosed-tag diagnostics.
    - text, panel, button, toggle, and selectable retained nodes: foundation
      done through copied `UiTree` metadata, explicit retained primitive props,
      semantic control roles, labels, and interaction state.
+   - retained button confirm callbacks: foundation done through copied node
+     callbacks and `ClientUi` dispatch from retained confirmed node IDs.
    - remaining: focusable containers, scroll containers, visual draw styles,
-     and callback/event wiring.
+     toggle/selectable callbacks, and broader event wiring.
 
 6. Event and focus port:
    - hit testing from retained layout boxes: foundation done through
@@ -133,7 +135,8 @@ and mismatch/unclosed-tag diagnostics.
    - focus scopes and navigation over retained node IDs: foundation done for
      root/modal retained scopes, spatial navigation, disabled controls, pointer
      confirm, and keyboard/gamepad/mouse source tracking.
-   - deferred mutation ordering kept at the same frame boundary.
+   - button confirm dispatch now preserves deferred mutation ordering at the
+     same frame boundary.
 
 7. Screen ports:
    - shell-owned retained runtime state in `ClientUi`: foundation done.

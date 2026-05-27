@@ -91,6 +91,11 @@ bool ClientUi::update_retained_runtime(
         return false;
     if (!::ui::retained::focus_update(&retained_focus_, retained_tree_, input))
         return false;
+    ::ui::retained::NodeId confirmed =
+        ::ui::retained::focus_confirmed_id(retained_focus_);
+    if (confirmed != 0) {
+        retained_tree_.invoke_confirm(confirmed);
+    }
     return ::ui::retained::build_draw_list(retained_tree_,
                                            &retained_draw_list_);
 }

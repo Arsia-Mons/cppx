@@ -116,6 +116,23 @@ public:
     }
 };
 
+class PopOnRetainedConfirmScreen final : public UiScreen {
+public:
+    const char *debug_name() const override { return "PopOnRetainedConfirm"; }
+
+    void build_ui() override {
+        REACT_COMPONENT_BEGIN_KEY("PopOnRetainedConfirmScreenView", entry_id()) {
+            ScreenNavigator nav = client::ui::use_screen_navigator();
+            ::ui::retained::Button({
+                .key = "pop",
+                .id = "PipelineRetainedPopButton",
+                .label = "Pop",
+                .on_confirm = nav.pop_current,
+            });
+        } REACT_COMPONENT_END();
+    }
+};
+
 struct RenderProbe {
     int render_count = 0;
     int pending_mutations_at_render = 0;
@@ -209,12 +226,41 @@ static bool pipeline_updates_retained_runtime_before_render(void) {
     return true;
 }
 
+static bool pipeline_invokes_retained_confirm_before_render(void) {
+    react_init(g_clay);
+    UiPipeline pipeline;
+    RenderProbe probe = {};
+
+    CHECK(pipeline.client_ui().push_screen(
+        std::make_unique<PopOnRetainedConfirmScreen>()));
+    pipeline.render_client_ui_frame(test_frame(), {});
+    CHECK(pipeline.client_ui().screens().count() == 1);
+
+    ::ui::UiInputFrame confirm = {};
+    confirm.confirm_pressed = true;
+    confirm.confirm_down = true;
+    confirm.source = ::ui::UiFocusSource::Keyboard;
+
+    pipeline.render_client_ui_frame(test_frame(confirm), [&](Clay_RenderCommandArray &) {
+        probe.render_count += 1;
+        probe.pending_mutations_at_render = pipeline.client_ui().pending_mutation_count();
+        probe.screen_count_at_render = pipeline.client_ui().screens().count();
+    });
+
+    CHECK(probe.render_count == 1);
+    CHECK(probe.pending_mutations_at_render == 1);
+    CHECK(probe.screen_count_at_render == 1);
+    CHECK(pipeline.client_ui().screens().count() == 0);
+    return true;
+}
+
 int main(void) {
     if (!init_clay_once()) return 1;
 
     if (!ui_pipeline_frame_provider_exposes_current_frame()) return 1;
     if (!pipeline_renders_before_draining_client_mutations()) return 1;
     if (!pipeline_updates_retained_runtime_before_render()) return 1;
+    if (!pipeline_invokes_retained_confirm_before_render()) return 1;
 
     react_shutdown();
     free(g_clay_memory);
