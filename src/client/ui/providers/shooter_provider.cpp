@@ -18,7 +18,11 @@ void shooter_provider_pop() {
 ShooterGame *use_shooter_game() {
     ShooterContextValue *value =
         static_cast<ShooterContextValue *>(use_context(&ShooterContext));
-    return value ? value->game : nullptr;
+    if (!value || !value->game) {
+        react_report_error("shooter: missing ShooterProvider\n");
+        return nullptr;
+    }
+    return value->game;
 }
 
 } // namespace shooter

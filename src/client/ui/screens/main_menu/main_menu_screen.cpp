@@ -4,27 +4,31 @@
 
 #include <clay.h>
 
-#include "../in_game/in_game_screen.h"
-#include "../options/options_screen.h"
-#include "../../client_ui.h"
-#include "../../providers/app_shell.h"
 #include "../../../../react.h"
 #include "../../../../ui/focus/ui_focus.h"
 #include "../../../../ui/primitives/button.h"
 #include "../../../../ui/primitives/clay_text.h"
+#include "../../callback_deps.h"
+#include "../../client_ui.h"
+#include "../../providers/app_shell.h"
+#include "../in_game/in_game_screen.h"
+#include "../options/options_screen.h"
 
 namespace shooter {
 
 std::function<void()> use_exit_to_main_menu() {
     client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
-    return [nav] {
-        if (nav.reset_to) nav.reset_to(std::make_unique<MainMenuScreen>());
-    };
+    return use_callback(
+        [nav] {
+            if (nav.reset_to)
+                nav.reset_to(std::make_unique<MainMenuScreen>());
+        },
+        client::ui::callback_deps(nav.current_entry_id));
 }
 
 static void MainMenuScreenView() {
     REACT_COMPONENT_BEGIN("MainMenuScreenView") {
-        std::function<void()> start_match  = use_start_match();
+        std::function<void()> start_match = use_start_match();
         std::function<void()> open_options = use_push_options_screen();
         std::function<void()> request_quit = client::ui::use_request_quit();
         ::ui::ui_focus_push_scope({ .id = CLAY_ID("MainMenuScope") });
@@ -57,9 +61,11 @@ static void MainMenuScreenView() {
                 },
             }) {
                 CLAY_TEXT(::ui::clay_text("Reference Shooter"),
-                    CLAY_TEXT_CONFIG({ .textColor = { 235, 246, 242, 255 }, .fontSize = 30 }));
+                          CLAY_TEXT_CONFIG(
+                              { .textColor = { 235, 246, 242, 255 }, .fontSize = 30 }));
                 CLAY_TEXT(::ui::clay_text("SDL3 / Clay UI flow"),
-                    CLAY_TEXT_CONFIG({ .textColor = { 154, 177, 184, 255 }, .fontSize = 16 }));
+                          CLAY_TEXT_CONFIG(
+                              { .textColor = { 154, 177, 184, 255 }, .fontSize = 16 }));
                 ::ui::Button({
                     .id = CLAY_ID("StartMatchButton"),
                     .label = "Start Match",
@@ -80,13 +86,15 @@ static void MainMenuScreenView() {
         }
 
         ::ui::ui_focus_pop_scope();
-    } REACT_COMPONENT_END();
+    }
+    REACT_COMPONENT_END();
 }
 
 void MainMenuScreen::build_ui() {
     REACT_COMPONENT_BEGIN_KEY("MainMenuScreen", entry_id()) {
         MainMenuScreenView();
-    } REACT_COMPONENT_END();
+    }
+    REACT_COMPONENT_END();
 }
 
 } // namespace shooter

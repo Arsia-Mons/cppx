@@ -5,20 +5,21 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Fixed capacities. Bump if needed; "incredibly simple" hello-world doesn't need much.
-#define REACT_MAX_FIBERS        128
-#define REACT_HOOKS_PER_FIBER     8
-#define REACT_MAX_EFFECT_QUEUE   64
-#define REACT_MAX_RENDER_DEPTH  128
+// Fixed capacities. Bump if needed; "incredibly simple" hello-world doesn't
+// need much.
+#define REACT_MAX_FIBERS 128
+#define REACT_HOOKS_PER_FIBER 8
+#define REACT_MAX_EFFECT_QUEUE 64
+#define REACT_MAX_RENDER_DEPTH 128
 
 enum HookKind : uint8_t {
-    HOOK_NONE          = 0,
-    HOOK_STATE         = 1,
-    HOOK_EFFECT        = 2,
-    HOOK_REF           = 3,
+    HOOK_NONE = 0,
+    HOOK_STATE = 1,
+    HOOK_EFFECT = 2,
+    HOOK_REF = 3,
     HOOK_GENERIC_STATE = 4,
-    HOOK_CALLBACK      = 5,
-    HOOK_TEXT_STORAGE  = 6,
+    HOOK_CALLBACK = 5,
+    HOOK_TEXT_STORAGE = 6,
 };
 
 struct StateData {
@@ -27,18 +28,18 @@ struct StateData {
 
 struct EffectData {
     // What use_effect just scheduled, awaiting next flush.
-    ReactEffectFn  pending_fn;
+    ReactEffectFn pending_fn;
     ReactCleanupFn pending_cleanup;
-    void          *pending_user;
-    bool           has_pending;
+    void *pending_user;
+    bool has_pending;
 
     // The cleanup paired with the most recently executed effect, waiting
     // to be invoked on the next deps-change or on unmount.
     ReactCleanupFn active_cleanup;
-    void          *active_user;
-    bool           has_active;
+    void *active_user;
+    bool has_active;
 
-    uint64_t       deps_hash;
+    uint64_t deps_hash;
 };
 
 struct RefData {
@@ -46,75 +47,75 @@ struct RefData {
 };
 
 struct GenericStateData {
-    void                 *storage;
-    ReactSlotDestructor   destructor;
-    uint32_t              size;
+    void *storage;
+    ReactSlotDestructor destructor;
+    uint32_t size;
 };
 
 struct CallbackData {
-    void                 *storage;
-    ReactSlotDestructor   destructor;
-    uint32_t              size;
-    uint64_t              deps_hash;
-    bool                  has_value;
+    void *storage;
+    ReactSlotDestructor destructor;
+    uint32_t size;
+    uint64_t deps_hash;
+    bool has_value;
 };
 
 struct TextStorageData {
-    char                 *buffer;
+    char *buffer;
 };
 
 struct HookSlot {
     HookKind kind;
     union {
-        StateData         state;
-        EffectData        effect;
-        RefData           ref;
-        GenericStateData  generic;
-        CallbackData      callback;
-        TextStorageData   text;
+        StateData state;
+        EffectData effect;
+        RefData ref;
+        GenericStateData generic;
+        CallbackData callback;
+        TextStorageData text;
     } u;
 };
 
 struct Fiber {
-    uint32_t id;            // Clay element ID; 0 = dead/free slot
-    int32_t  next_index;    // hash collision chain
-    uint32_t generation;    // last frame seen (Clay's generation)
+    uint32_t id;         // Clay element ID; 0 = dead/free slot
+    int32_t next_index;  // hash collision chain
+    uint32_t generation; // last frame seen (Clay's generation)
     HookSlot slots[REACT_HOOKS_PER_FIBER];
-    int32_t  slot_count;    // hook count from the previous render; -1 on mount
-    int32_t  render_slot_count;
+    int32_t slot_count; // hook count from the previous render; -1 on mount
+    int32_t render_slot_count;
     uint32_t next_child_index;
 };
 
 struct EffectQueueEntry {
     uint32_t fiber_id;
-    int32_t  slot_index;
+    int32_t slot_index;
 };
 
 struct RenderFrame {
-    Fiber   *current;
-    int32_t  hook_index;
+    Fiber *current;
+    int32_t hook_index;
 };
 
 static struct {
-    Fiber             fibers[REACT_MAX_FIBERS];
-    int32_t           fiber_count;
-    int32_t           buckets[REACT_MAX_FIBERS]; // hash%cap -> fiber index, or -1
-    EffectQueueEntry  effect_queue[REACT_MAX_EFFECT_QUEUE];
-    int32_t           effect_queue_count;
-    RenderFrame       render_stack[REACT_MAX_RENDER_DEPTH];
-    int32_t           render_stack_count;
+    Fiber fibers[REACT_MAX_FIBERS];
+    int32_t fiber_count;
+    int32_t buckets[REACT_MAX_FIBERS]; // hash%cap -> fiber index, or -1
+    EffectQueueEntry effect_queue[REACT_MAX_EFFECT_QUEUE];
+    int32_t effect_queue_count;
+    RenderFrame render_stack[REACT_MAX_RENDER_DEPTH];
+    int32_t render_stack_count;
 
-    Fiber            *current;
-    int32_t           hook_index;
-    uint32_t          frame;   // our own per-frame generation counter
-    uint32_t          root_child_index;
-    int32_t           error_count;
+    Fiber *current;
+    int32_t hook_index;
+    uint32_t frame; // our own per-frame generation counter
+    uint32_t root_child_index;
+    int32_t error_count;
 } G;
 
 static void run_active_cleanup(HookSlot *s);
 static void destroy_slot_storage(HookSlot *s);
 
-static void react_report_error(const char *fmt, ...) {
+void react_report_error(const char *fmt, ...) {
     G.error_count++;
     va_list args;
     va_start(args, fmt);
@@ -123,12 +124,14 @@ static void react_report_error(const char *fmt, ...) {
 }
 
 void react_init(Clay_Context *clay_ctx) {
-    (void)clay_ctx; // reserved for future use; we don't need to read Clay internals
+    (void)
+        clay_ctx; // reserved for future use; we don't need to read Clay internals
     if (G.fiber_count > 0) {
         react_shutdown();
     }
     memset(&G, 0, sizeof(G));
-    for (int i = 0; i < REACT_MAX_FIBERS; i++) G.buckets[i] = -1;
+    for (int i = 0; i < REACT_MAX_FIBERS; i++)
+        G.buckets[i] = -1;
 }
 
 int react_error_count(void) {
@@ -136,12 +139,14 @@ int react_error_count(void) {
 }
 
 static Fiber *fiber_lookup(uint32_t id) {
-    if (id == 0) return nullptr;
+    if (id == 0)
+        return nullptr;
     uint32_t bucket = id % REACT_MAX_FIBERS;
     int32_t idx = G.buckets[bucket];
     while (idx >= 0) {
         Fiber *f = &G.fibers[idx];
-        if (f->id == id) return f;
+        if (f->id == id)
+            return f;
         idx = f->next_index;
     }
     return nullptr;
@@ -156,7 +161,8 @@ static void fiber_link_to_bucket(int32_t idx) {
 
 static void fiber_unlink_from_bucket(int32_t idx) {
     Fiber *f = &G.fibers[idx];
-    if (f->id == 0) return;
+    if (f->id == 0)
+        return;
 
     uint32_t bucket = f->id % REACT_MAX_FIBERS;
     int32_t prev = -1;
@@ -203,7 +209,8 @@ static Fiber *fiber_create(uint32_t id) {
 
 static void fiber_destroy(int32_t idx) {
     Fiber *f = &G.fibers[idx];
-    if (f->id == 0) return;
+    if (f->id == 0)
+        return;
 
     for (int j = 0; j < REACT_HOOKS_PER_FIBER; j++) {
         run_active_cleanup(&f->slots[j]);
@@ -226,7 +233,8 @@ void react_shutdown(void) {
 
 void react_enter(uint32_t fiber_id) {
     if (G.render_stack_count >= REACT_MAX_RENDER_DEPTH) {
-        react_report_error("react: render stack overflow (max=%d)\n", REACT_MAX_RENDER_DEPTH);
+        react_report_error("react: render stack overflow (max=%d)\n",
+                           REACT_MAX_RENDER_DEPTH);
         G.current = nullptr;
         G.hook_index = 0;
         return;
@@ -242,8 +250,13 @@ void react_enter(uint32_t fiber_id) {
     }
 
     Fiber *f = fiber_lookup(fiber_id);
-    if (!f) f = fiber_create(fiber_id);
-    if (!f) { G.current = nullptr; G.hook_index = 0; return; }
+    if (!f)
+        f = fiber_create(fiber_id);
+    if (!f) {
+        G.current = nullptr;
+        G.hook_index = 0;
+        return;
+    }
     f->generation = G.frame;
     f->render_slot_count = 0;
     f->next_child_index = 0;
@@ -252,11 +265,13 @@ void react_enter(uint32_t fiber_id) {
 }
 
 uint32_t react_next_child_index(void) {
-    if (!G.current) return G.root_child_index++;
+    if (!G.current)
+        return G.root_child_index++;
     return G.current->next_child_index++;
 }
 
-Clay_ElementId react_make_instance_id(Clay_String name, uint32_t index, bool keyed) {
+Clay_ElementId react_make_instance_id(Clay_String name, uint32_t index,
+                                      bool keyed) {
     uint32_t parent_id = G.current ? G.current->id : 0x811C9DC5u;
     uint32_t seed = parent_id ^ (keyed ? 0x9E3779B9u : 0x85EBCA6Bu);
     return Clay__HashString(name, index, seed);
@@ -272,9 +287,11 @@ void react_leave(void) {
 
     Fiber *leaving = G.current;
     if (leaving) {
-        if (leaving->slot_count >= 0 && leaving->slot_count != leaving->render_slot_count) {
-            react_report_error("react: hook count changed on fiber %u (was=%d now=%d)\n",
-                               leaving->id, leaving->slot_count, leaving->render_slot_count);
+        if (leaving->slot_count >= 0 &&
+            leaving->slot_count != leaving->render_slot_count) {
+            react_report_error(
+                "react: hook count changed on fiber %u (was=%d now=%d)\n",
+                leaving->id, leaving->slot_count, leaving->render_slot_count);
         }
         leaving->slot_count = leaving->render_slot_count;
     }
@@ -286,31 +303,42 @@ void react_leave(void) {
 
 static const char *hook_kind_name(HookKind kind) {
     switch (kind) {
-        case HOOK_NONE:          return "none";
-        case HOOK_STATE:         return "state";
-        case HOOK_EFFECT:        return "effect";
-        case HOOK_REF:           return "ref";
-        case HOOK_GENERIC_STATE: return "generic_state";
-        case HOOK_CALLBACK:      return "callback";
-        case HOOK_TEXT_STORAGE:  return "text_storage";
+    case HOOK_NONE:
+        return "none";
+    case HOOK_STATE:
+        return "state";
+    case HOOK_EFFECT:
+        return "effect";
+    case HOOK_REF:
+        return "ref";
+    case HOOK_GENERIC_STATE:
+        return "generic_state";
+    case HOOK_CALLBACK:
+        return "callback";
+    case HOOK_TEXT_STORAGE:
+        return "text_storage";
     }
     return "unknown";
 }
 
 static HookSlot *take_slot(HookKind expected, int32_t *index_out) {
-    if (!G.current) return nullptr;
+    if (!G.current)
+        return nullptr;
     int i = G.hook_index++;
-    if (i + 1 > G.current->render_slot_count) G.current->render_slot_count = i + 1;
+    if (i + 1 > G.current->render_slot_count)
+        G.current->render_slot_count = i + 1;
     if (i >= REACT_HOOKS_PER_FIBER) {
         react_report_error("react: hook overflow on fiber %u (max=%d)\n",
                            G.current->id, REACT_HOOKS_PER_FIBER);
         return nullptr;
     }
-    if (index_out) *index_out = i;
+    if (index_out)
+        *index_out = i;
     HookSlot *slot = &G.current->slots[i];
     if (slot->kind != HOOK_NONE && slot->kind != expected) {
-        react_report_error("react: hook kind changed on fiber %u slot %d (was=%s now=%s)\n",
-                           G.current->id, i, hook_kind_name(slot->kind), hook_kind_name(expected));
+        react_report_error(
+            "react: hook kind changed on fiber %u slot %d (was=%s now=%s)\n",
+            G.current->id, i, hook_kind_name(slot->kind), hook_kind_name(expected));
         return nullptr;
     }
     return slot;
@@ -320,7 +348,11 @@ static HookSlot *take_slot(HookKind expected, int32_t *index_out) {
 
 int *use_state_int(int initial) {
     HookSlot *s = take_slot(HOOK_STATE, nullptr);
-    if (!s) { static int sink = 0; sink = initial; return &sink; }
+    if (!s) {
+        static int sink = 0;
+        sink = initial;
+        return &sink;
+    }
     if (s->kind == HOOK_NONE) {
         s->kind = HOOK_STATE;
         s->u.state.value = initial;
@@ -328,10 +360,12 @@ int *use_state_int(int initial) {
     return &s->u.state.value;
 }
 
-void use_effect(ReactEffectFn fn, ReactCleanupFn cleanup, void *user, uint64_t deps_hash) {
+void use_effect(ReactEffectFn fn, ReactCleanupFn cleanup, void *user,
+                uint64_t deps_hash) {
     int32_t idx;
     HookSlot *s = take_slot(HOOK_EFFECT, &idx);
-    if (!s) return;
+    if (!s)
+        return;
 
     bool first = (s->kind == HOOK_NONE);
     if (first) {
@@ -342,11 +376,11 @@ void use_effect(ReactEffectFn fn, ReactCleanupFn cleanup, void *user, uint64_t d
     EffectData *e = &s->u.effect;
 
     if (first || e->deps_hash != deps_hash) {
-        e->pending_fn      = fn;
+        e->pending_fn = fn;
         e->pending_cleanup = cleanup;
-        e->pending_user    = user;
-        e->has_pending     = true;
-        e->deps_hash       = deps_hash;
+        e->pending_user = user;
+        e->has_pending = true;
+        e->deps_hash = deps_hash;
         if (G.effect_queue_count < REACT_MAX_EFFECT_QUEUE) {
             G.effect_queue[G.effect_queue_count++] = { G.current->id, idx };
         } else {
@@ -357,7 +391,11 @@ void use_effect(ReactEffectFn fn, ReactCleanupFn cleanup, void *user, uint64_t d
 
 void **use_ref(void *initial) {
     HookSlot *s = take_slot(HOOK_REF, nullptr);
-    if (!s) { static void *sink = nullptr; sink = initial; return &sink; }
+    if (!s) {
+        static void *sink = nullptr;
+        sink = initial;
+        return &sink;
+    }
     if (s->kind == HOOK_NONE) {
         s->kind = HOOK_REF;
         s->u.ref.current = initial;
@@ -377,51 +415,55 @@ static void *react_aligned_alloc(uint32_t size, uint32_t align) {
                            (unsigned)align, (size_t)alignof(max_align_t));
         return nullptr;
     }
-    if (size == 0) size = 1;
+    if (size == 0)
+        size = 1;
     return malloc(size);
 }
 
 static void destroy_slot_storage(HookSlot *s) {
     switch (s->kind) {
-        case HOOK_GENERIC_STATE: {
-            GenericStateData &g = s->u.generic;
-            if (g.storage) {
-                if (g.destructor) g.destructor(g.storage);
-                free(g.storage);
-                g.storage = nullptr;
-            }
-            break;
+    case HOOK_GENERIC_STATE: {
+        GenericStateData &g = s->u.generic;
+        if (g.storage) {
+            if (g.destructor)
+                g.destructor(g.storage);
+            free(g.storage);
+            g.storage = nullptr;
         }
-        case HOOK_CALLBACK: {
-            CallbackData &c = s->u.callback;
-            if (c.storage) {
-                if (c.has_value && c.destructor) c.destructor(c.storage);
-                free(c.storage);
-                c.storage = nullptr;
-                c.has_value = false;
-            }
-            break;
+        break;
+    }
+    case HOOK_CALLBACK: {
+        CallbackData &c = s->u.callback;
+        if (c.storage) {
+            if (c.has_value && c.destructor)
+                c.destructor(c.storage);
+            free(c.storage);
+            c.storage = nullptr;
+            c.has_value = false;
         }
-        case HOOK_TEXT_STORAGE: {
-            TextStorageData &t = s->u.text;
-            if (t.buffer) {
-                free(t.buffer);
-                t.buffer = nullptr;
-            }
-            break;
+        break;
+    }
+    case HOOK_TEXT_STORAGE: {
+        TextStorageData &t = s->u.text;
+        if (t.buffer) {
+            free(t.buffer);
+            t.buffer = nullptr;
         }
-        default:
-            break;
+        break;
+    }
+    default:
+        break;
     }
 }
 
-void *react_use_generic_state_slot(uint32_t size,
-                                   uint32_t align,
+void *react_use_generic_state_slot(uint32_t size, uint32_t align,
                                    ReactSlotDestructor destructor,
                                    bool *is_new_slot) {
-    if (is_new_slot) *is_new_slot = false;
+    if (is_new_slot)
+        *is_new_slot = false;
     HookSlot *s = take_slot(HOOK_GENERIC_STATE, nullptr);
-    if (!s) return nullptr;
+    if (!s)
+        return nullptr;
     if (s->kind == HOOK_NONE) {
         s->kind = HOOK_GENERIC_STATE;
         s->u.generic = {};
@@ -431,28 +473,30 @@ void *react_use_generic_state_slot(uint32_t size,
             s->kind = HOOK_NONE;
             return nullptr;
         }
-        s->u.generic.storage    = storage;
+        s->u.generic.storage = storage;
         s->u.generic.destructor = destructor;
-        s->u.generic.size       = size;
-        if (is_new_slot) *is_new_slot = true;
+        s->u.generic.size = size;
+        if (is_new_slot)
+            *is_new_slot = true;
     } else if (s->u.generic.size != size) {
         // Same call-site swapped T behind use_state — diagnose like hook drift.
-        react_report_error("react: use_state size changed on fiber %u (was=%u now=%u)\n",
-                           G.current ? G.current->id : 0u,
-                           (unsigned)s->u.generic.size, (unsigned)size);
+        react_report_error(
+            "react: use_state size changed on fiber %u (was=%u now=%u)\n",
+            G.current ? G.current->id : 0u, (unsigned)s->u.generic.size,
+            (unsigned)size);
         return nullptr;
     }
     return s->u.generic.storage;
 }
 
-void *react_use_callback_slot(uint32_t size,
-                              uint32_t align,
+void *react_use_callback_slot(uint32_t size, uint32_t align,
                               ReactSlotDestructor destructor,
-                              uint64_t deps_hash,
-                              bool *is_stale) {
-    if (is_stale) *is_stale = false;
+                              uint64_t deps_hash, bool *is_stale) {
+    if (is_stale)
+        *is_stale = false;
     HookSlot *s = take_slot(HOOK_CALLBACK, nullptr);
-    if (!s) return nullptr;
+    if (!s)
+        return nullptr;
     if (s->kind == HOOK_NONE) {
         s->kind = HOOK_CALLBACK;
         s->u.callback = {};
@@ -461,16 +505,18 @@ void *react_use_callback_slot(uint32_t size,
             s->kind = HOOK_NONE;
             return nullptr;
         }
-        s->u.callback.storage    = storage;
+        s->u.callback.storage = storage;
         s->u.callback.destructor = destructor;
-        s->u.callback.size       = size;
-        s->u.callback.deps_hash  = deps_hash;
-        s->u.callback.has_value  = false;
-        if (is_stale) *is_stale = true;
+        s->u.callback.size = size;
+        s->u.callback.deps_hash = deps_hash;
+        s->u.callback.has_value = false;
+        if (is_stale)
+            *is_stale = true;
     } else if (s->u.callback.size != size) {
-        react_report_error("react: use_callback size changed on fiber %u (was=%u now=%u)\n",
-                           G.current ? G.current->id : 0u,
-                           (unsigned)s->u.callback.size, (unsigned)size);
+        react_report_error(
+            "react: use_callback size changed on fiber %u (was=%u now=%u)\n",
+            G.current ? G.current->id : 0u, (unsigned)s->u.callback.size,
+            (unsigned)size);
         return nullptr;
     } else if (!s->u.callback.has_value || s->u.callback.deps_hash != deps_hash) {
         // Destroy the previous function in place before the caller reconstructs.
@@ -479,7 +525,8 @@ void *react_use_callback_slot(uint32_t size,
         }
         s->u.callback.deps_hash = deps_hash;
         s->u.callback.has_value = false;
-        if (is_stale) *is_stale = true;
+        if (is_stale)
+            *is_stale = true;
     }
     // Caller will placement-new into storage when is_stale is true; mark as
     // populated so we destroy it on next stale-rebuild or fiber teardown.
@@ -555,7 +602,8 @@ void react_begin_frame(void) {
 }
 
 static void run_active_cleanup(HookSlot *s) {
-    if (s->kind == HOOK_EFFECT && s->u.effect.has_active && s->u.effect.active_cleanup) {
+    if (s->kind == HOOK_EFFECT && s->u.effect.has_active &&
+        s->u.effect.active_cleanup) {
         s->u.effect.active_cleanup(s->u.effect.active_user);
         s->u.effect.has_active = false;
     }
@@ -567,7 +615,8 @@ void react_end_frame(void) {
     // 1. Unmount sweep: any fiber not seen this frame is dead.
     for (int i = 0; i < G.fiber_count; i++) {
         Fiber *f = &G.fibers[i];
-        if (f->id == 0) continue;
+        if (f->id == 0)
+            continue;
         if (f->generation != current_gen) {
             fiber_destroy(i);
         }
@@ -580,11 +629,14 @@ void react_end_frame(void) {
     for (int i = 0; i < G.effect_queue_count; i++) {
         EffectQueueEntry &q = G.effect_queue[i];
         Fiber *f = fiber_lookup(q.fiber_id);
-        if (!f) continue; // fiber unmounted in same frame
+        if (!f)
+            continue; // fiber unmounted in same frame
         HookSlot *s = &f->slots[q.slot_index];
-        if (s->kind != HOOK_EFFECT) continue;
+        if (s->kind != HOOK_EFFECT)
+            continue;
         EffectData *e = &s->u.effect;
-        if (!e->has_pending) continue;
+        if (!e->has_pending)
+            continue;
 
         if (e->has_active && e->active_cleanup) {
             e->active_cleanup(e->active_user);
@@ -593,9 +645,9 @@ void react_end_frame(void) {
             e->pending_fn(e->pending_user);
         }
         e->active_cleanup = e->pending_cleanup;
-        e->active_user    = e->pending_user;
-        e->has_active     = true;
-        e->has_pending    = false;
+        e->active_user = e->pending_user;
+        e->has_active = true;
+        e->has_pending = false;
     }
     G.effect_queue_count = 0;
 }

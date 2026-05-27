@@ -23,7 +23,8 @@ void ClientUi::build_visible_screens() {
     ::ui::Span<UiScreen *> visible = screens_.visible_screens();
     for (int i = 0; i < visible.count; ++i) {
         UiScreen *screen = visible[i];
-        if (!screen) continue;
+        if (!screen)
+            continue;
         auto build_screen = [&] {
             ScreenContextValue context = {
                 .client_ui = this,
@@ -37,35 +38,35 @@ void ClientUi::build_visible_screens() {
         };
 
         switch (screen->kind()) {
-            case ScreenKind::Normal:
-                CLAY({
-                    .id = CLAY_IDI("ClientUiScreenFrame", screen->entry_id()),
-                    .layout = {
-                        .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0) },
-                        .layoutDirection = CLAY_TOP_TO_BOTTOM,
-                    },
-                }) {
-                    build_screen();
-                }
-                break;
-            case ScreenKind::Overlay:
-                CLAY({
-                    .id = CLAY_IDI("ClientUiOverlayScreenFrame", screen->entry_id()),
-                    .layout = {
-                        .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0) },
-                        .childAlignment = { CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER },
-                        .layoutDirection = CLAY_TOP_TO_BOTTOM,
-                    },
-                    .backgroundColor = { 5, 8, 10, 218 },
-                    .floating = {
-                        .zIndex = static_cast<int16_t>(100 + i),
-                        .pointerCaptureMode = CLAY_POINTER_CAPTURE_MODE_CAPTURE,
-                        .attachTo = CLAY_ATTACH_TO_ROOT,
-                    },
-                }) {
-                    build_screen();
-                }
-                break;
+        case ScreenKind::Normal:
+            CLAY({
+                .id = CLAY_IDI("ClientUiScreenFrame", screen->entry_id()),
+                .layout = {
+                    .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0) },
+                    .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                },
+            }) {
+                build_screen();
+            }
+            break;
+        case ScreenKind::Overlay:
+            CLAY({
+                .id = CLAY_IDI("ClientUiOverlayScreenFrame", screen->entry_id()),
+                .layout = {
+                    .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0) },
+                    .childAlignment = { CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER },
+                    .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                },
+                .backgroundColor = { 5, 8, 10, 218 },
+                .floating = {
+                    .zIndex = static_cast<int16_t>(100 + i),
+                    .pointerCaptureMode = CLAY_POINTER_CAPTURE_MODE_CAPTURE,
+                    .attachTo = CLAY_ATTACH_TO_ROOT,
+                },
+            }) {
+                build_screen();
+            }
+            break;
         }
     }
 }
@@ -88,7 +89,8 @@ bool ClientUi::replace_top(std::unique_ptr<UiScreen> screen) {
 }
 
 bool ClientUi::queue_push_screen(std::unique_ptr<UiScreen> screen) {
-    if (!screen) return false;
+    if (!screen)
+        return false;
     return queue_write({
         .kind = WriteKind::Push,
         .screen = std::move(screen),
@@ -96,7 +98,8 @@ bool ClientUi::queue_push_screen(std::unique_ptr<UiScreen> screen) {
 }
 
 bool ClientUi::queue_reset_to_screen(std::unique_ptr<UiScreen> screen) {
-    if (!screen) return false;
+    if (!screen)
+        return false;
     return queue_write({
         .kind = WriteKind::ResetTo,
         .screen = std::move(screen),
@@ -115,7 +118,8 @@ bool ClientUi::queue_pop_top() {
 }
 
 bool ClientUi::queue_deferred_write(UiDeferredWrite write) {
-    if (!write) return false;
+    if (!write)
+        return false;
     return queue_write({
         .kind = WriteKind::Deferred,
         .deferred = std::move(write),
@@ -123,7 +127,8 @@ bool ClientUi::queue_deferred_write(UiDeferredWrite write) {
 }
 
 bool ClientUi::queue_write(QueuedWrite write) {
-    if (write_count_ >= CLIENT_UI_MAX_WRITES) return false;
+    if (write_count_ >= CLIENT_UI_MAX_WRITES)
+        return false;
     writes_[write_count_++] = std::move(write);
     return true;
 }
@@ -132,21 +137,22 @@ void ClientUi::drain_writes() {
     for (int i = 0; i < write_count_; ++i) {
         QueuedWrite &write = writes_[i];
         switch (write.kind) {
-            case WriteKind::Push:
-                screens_.push(std::move(write.screen));
-                break;
-            case WriteKind::ResetTo:
-                screens_.reset_to(std::move(write.screen));
-                break;
-            case WriteKind::PopCurrent:
-                screens_.pop_entry(write.entry_id);
-                break;
-            case WriteKind::PopTop:
-                screens_.pop_top();
-                break;
-            case WriteKind::Deferred:
-                if (write.deferred) write.deferred();
-                break;
+        case WriteKind::Push:
+            screens_.push(std::move(write.screen));
+            break;
+        case WriteKind::ResetTo:
+            screens_.reset_to(std::move(write.screen));
+            break;
+        case WriteKind::PopCurrent:
+            screens_.pop_entry(write.entry_id);
+            break;
+        case WriteKind::PopTop:
+            screens_.pop_top();
+            break;
+        case WriteKind::Deferred:
+            if (write.deferred)
+                write.deferred();
+            break;
         }
     }
     clear_writes();
@@ -162,31 +168,38 @@ void ClientUi::clear_writes() {
 ScreenNavigator use_screen_navigator() {
     ScreenContextValue *context =
         static_cast<ScreenContextValue *>(use_context(&ScreenContext));
-    if (!context || !context->client_ui) return {};
+    if (!context || !context->client_ui) {
+        react_report_error(
+            "client/ui: missing ScreenProvider for use_screen_navigator\n");
+        return {};
+    }
 
     ClientUi *client_ui = context->client_ui;
     UiScreenEntryId entry_id = context->current_entry_id;
     return {
         .current_entry_id = entry_id,
-        .push = [client_ui](std::unique_ptr<UiScreen> screen) {
-            client_ui->queue_push_screen(std::move(screen));
-        },
-        .reset_to = [client_ui](std::unique_ptr<UiScreen> screen) {
-            client_ui->queue_reset_to_screen(std::move(screen));
-        },
-        .pop_current = [client_ui, entry_id] {
-            client_ui->queue_pop_current(entry_id);
-        },
-        .pop_top = [client_ui] {
-            client_ui->queue_pop_top();
-        },
+        .push =
+            [client_ui](std::unique_ptr<UiScreen> screen) {
+                client_ui->queue_push_screen(std::move(screen));
+            },
+        .reset_to =
+            [client_ui](std::unique_ptr<UiScreen> screen) {
+                client_ui->queue_reset_to_screen(std::move(screen));
+            },
+        .pop_current = [client_ui,
+                        entry_id] { client_ui->queue_pop_current(entry_id); },
+        .pop_top = [client_ui] { client_ui->queue_pop_top(); },
     };
 }
 
 QueueUiWrite use_ui_write_queue() {
     ScreenContextValue *context =
         static_cast<ScreenContextValue *>(use_context(&ScreenContext));
-    if (!context || !context->client_ui) return {};
+    if (!context || !context->client_ui) {
+        react_report_error(
+            "client/ui: missing ScreenProvider for use_ui_write_queue\n");
+        return {};
+    }
 
     ClientUi *client_ui = context->client_ui;
     return [client_ui](UiDeferredWrite write) {

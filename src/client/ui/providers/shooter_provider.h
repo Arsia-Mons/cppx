@@ -14,8 +14,8 @@ struct ShooterContextValue {
 void shooter_provider_push(const ShooterContextValue *value);
 void shooter_provider_pop();
 
-// Hook: returns the game pointer installed by the active provider, or nullptr
-// if no provider is in scope.
+// Hook: returns the game pointer installed by the active provider. Missing
+// providers are reported to the React runtime and return nullptr.
 ShooterGame *use_shooter_game();
 
 } // namespace shooter

@@ -4,30 +4,34 @@
 
 #include <clay.h>
 
-#include "../loadout/loadout_screen.h"
-#include "../main_menu/main_menu_screen.h"
-#include "../options/options_screen.h"
-#include "../../client_ui.h"
 #include "../../../../react.h"
 #include "../../../../ui/focus/ui_focus.h"
 #include "../../../../ui/primitives/button.h"
 #include "../../../../ui/primitives/clay_text.h"
+#include "../../callback_deps.h"
+#include "../../client_ui.h"
+#include "../loadout/loadout_screen.h"
+#include "../main_menu/main_menu_screen.h"
+#include "../options/options_screen.h"
 
 namespace shooter {
 
 std::function<void()> use_push_pause_screen() {
     client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
-    return [nav] {
-        if (nav.push) nav.push(std::make_unique<PauseScreen>());
-    };
+    return use_callback(
+        [nav] {
+            if (nav.push)
+                nav.push(std::make_unique<PauseScreen>());
+        },
+        client::ui::callback_deps(nav.current_entry_id));
 }
 
 static void PauseScreenView() {
     REACT_COMPONENT_BEGIN("PauseScreenView") {
         client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
-        std::function<void()> open_options       = use_push_options_screen();
-        std::function<void()> open_loadout       = use_push_loadout_screen();
-        std::function<void()> exit_to_main_menu  = use_exit_to_main_menu();
+        std::function<void()> open_options = use_push_options_screen();
+        std::function<void()> open_loadout = use_push_loadout_screen();
+        std::function<void()> exit_to_main_menu = use_exit_to_main_menu();
         ::ui::ui_focus_push_scope({ .id = CLAY_ID("PauseScope"), .modal = true });
         ::ui::ui_focus_request_initial_focus(CLAY_ID("ResumeButton"));
 
@@ -47,7 +51,8 @@ static void PauseScreenView() {
             },
         }) {
             CLAY_TEXT(::ui::clay_text("Paused"),
-                CLAY_TEXT_CONFIG({ .textColor = { 236, 246, 242, 255 }, .fontSize = 28 }));
+                      CLAY_TEXT_CONFIG(
+                          { .textColor = { 236, 246, 242, 255 }, .fontSize = 28 }));
             ::ui::Button({
                 .id = CLAY_ID("ResumeButton"),
                 .label = "Resume",
@@ -71,13 +76,15 @@ static void PauseScreenView() {
         }
 
         ::ui::ui_focus_pop_scope();
-    } REACT_COMPONENT_END();
+    }
+    REACT_COMPONENT_END();
 }
 
 void PauseScreen::build_ui() {
     REACT_COMPONENT_BEGIN_KEY("PauseScreen", entry_id()) {
         PauseScreenView();
-    } REACT_COMPONENT_END();
+    }
+    REACT_COMPONENT_END();
 }
 
 } // namespace shooter

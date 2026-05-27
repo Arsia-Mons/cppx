@@ -18,7 +18,11 @@ void app_shell_provider_pop() {
 std::function<void()> use_request_quit() {
     AppShellContextValue *value =
         static_cast<AppShellContextValue *>(use_context(&AppShellContext));
-    return value ? value->request_quit : std::function<void()>{};
+    if (!value) {
+        react_report_error("client/ui: missing AppShellProvider\n");
+        return {};
+    }
+    return value->request_quit;
 }
 
 } // namespace client::ui

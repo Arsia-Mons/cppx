@@ -4,14 +4,15 @@
 
 #include <clay.h>
 
-#include "../loadout/loadout_screen.h"
-#include "../pause/pause_screen.h"
-#include "../../client_ui.h"
-#include "../../components/hud_band.h"
-#include "../../providers/shooter_provider.h"
 #include "../../../../react.h"
 #include "../../../../ui/focus/ui_focus.h"
 #include "../../../../ui/primitives/button.h"
+#include "../../callback_deps.h"
+#include "../../client_ui.h"
+#include "../../components/hud_band.h"
+#include "../../providers/shooter_provider.h"
+#include "../loadout/loadout_screen.h"
+#include "../pause/pause_screen.h"
 
 namespace shooter {
 
@@ -19,18 +20,22 @@ std::function<void()> use_start_match() {
     ShooterGame *game = use_shooter_game();
     client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
     client::ui::QueueUiWrite queue_write = client::ui::use_ui_write_queue();
-    return [game, nav, queue_write] {
-        if (!nav.reset_to) return;
-        if (game && queue_write) {
-            queue_write([game] { game->reset(); });
-        }
-        nav.reset_to(std::make_unique<ShooterGameScreen>());
-    };
+    return use_callback(
+        [game, nav, queue_write] {
+            if (!nav.reset_to)
+                return;
+            if (game && queue_write) {
+                queue_write([game] { game->reset(); });
+            }
+            nav.reset_to(std::make_unique<ShooterGameScreen>());
+        },
+        client::ui::callback_deps(client::ui::callback_deps_ptr(game),
+                                  nav.current_entry_id));
 }
 
 static void ShooterGameScreenView() {
     REACT_COMPONENT_BEGIN("ShooterGameScreenView") {
-        std::function<void()> open_pause   = use_push_pause_screen();
+        std::function<void()> open_pause = use_push_pause_screen();
         std::function<void()> open_loadout = use_push_loadout_screen();
         ::ui::ui_focus_push_scope({ .id = CLAY_ID("ShooterGameScope") });
         ::ui::ui_focus_request_initial_focus(CLAY_ID("OpenPauseButton"));
@@ -68,13 +73,15 @@ static void ShooterGameScreenView() {
         }
 
         ::ui::ui_focus_pop_scope();
-    } REACT_COMPONENT_END();
+    }
+    REACT_COMPONENT_END();
 }
 
 void ShooterGameScreen::build_ui() {
     REACT_COMPONENT_BEGIN_KEY("ShooterGameScreen", entry_id()) {
         ShooterGameScreenView();
-    } REACT_COMPONENT_END();
+    }
+    REACT_COMPONENT_END();
 }
 
 } // namespace shooter

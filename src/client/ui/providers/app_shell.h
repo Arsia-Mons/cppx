@@ -15,8 +15,8 @@ struct AppShellContextValue {
 void app_shell_provider_push(const AppShellContextValue *value);
 void app_shell_provider_pop();
 
-// Hook: returns the request_quit callback installed by the app, or an empty
-// std::function if no provider is in scope.
+// Hook: returns the request_quit callback installed by the app. Missing
+// providers are reported to the React runtime and return an empty callback.
 std::function<void()> use_request_quit();
 
 } // namespace client::ui

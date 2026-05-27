@@ -1,8 +1,10 @@
 #include "shooter_weapons.h"
 
+#include "../../../game/shooter_game.h"
+#include "../../../react.h"
+#include "../callback_deps.h"
 #include "../client_ui.h"
 #include "../providers/shooter_provider.h"
-#include "../../../game/shooter_game.h"
 
 namespace shooter {
 
@@ -18,53 +20,63 @@ int use_selected_weapon_index() {
 
 ShooterWeaponRead use_weapon_read(int index) {
     ShooterGame *game = use_shooter_game();
-    if (!game || index < 0 || index >= game->weapon_count()) return {};
+    if (!game || index < 0 || index >= game->weapon_count())
+        return {};
     const WeaponState &weapon = game->weapon(index);
-    bool can_buy   = game->can_buy_weapon(index);
+    bool can_buy = game->can_buy_weapon(index);
     bool can_equip = game->can_equip_weapon(index);
     return {
-        .valid     = true,
-        .name      = weapon.spec.name,
-        .role      = weapon.spec.role,
-        .cost      = weapon.spec.cost,
-        .damage    = weapon.spec.damage,
-        .ammo      = weapon.spec.ammo,
-        .owned     = weapon.owned,
-        .equipped  = weapon.equipped,
-        .can_buy   = can_buy,
+        .valid = true,
+        .name = weapon.spec.name,
+        .role = weapon.spec.role,
+        .cost = weapon.spec.cost,
+        .damage = weapon.spec.damage,
+        .ammo = weapon.spec.ammo,
+        .owned = weapon.owned,
+        .equipped = weapon.equipped,
+        .can_buy = can_buy,
         .can_equip = can_equip,
-        .disabled  = !weapon.owned && !can_buy,
+        .disabled = !weapon.owned && !can_buy,
     };
 }
 
 std::function<void()> use_select_weapon(int index) {
     ShooterGame *game = use_shooter_game();
     client::ui::QueueUiWrite queue_write = client::ui::use_ui_write_queue();
-    return [game, index, queue_write] {
-        if (game && queue_write) {
-            queue_write([game, index] { game->select_weapon(index); });
-        }
-    };
+    return use_callback(
+        [game, index, queue_write] {
+            if (game && queue_write) {
+                queue_write([game, index] { game->select_weapon(index); });
+            }
+        },
+        client::ui::callback_deps(client::ui::callback_deps_ptr(game),
+                                  static_cast<uint64_t>(index)));
 }
 
 std::function<void()> use_buy_weapon(int index) {
     ShooterGame *game = use_shooter_game();
     client::ui::QueueUiWrite queue_write = client::ui::use_ui_write_queue();
-    return [game, index, queue_write] {
-        if (game && queue_write) {
-            queue_write([game, index] { game->buy_weapon(index); });
-        }
-    };
+    return use_callback(
+        [game, index, queue_write] {
+            if (game && queue_write) {
+                queue_write([game, index] { game->buy_weapon(index); });
+            }
+        },
+        client::ui::callback_deps(client::ui::callback_deps_ptr(game),
+                                  static_cast<uint64_t>(index)));
 }
 
 std::function<void()> use_equip_weapon(int index) {
     ShooterGame *game = use_shooter_game();
     client::ui::QueueUiWrite queue_write = client::ui::use_ui_write_queue();
-    return [game, index, queue_write] {
-        if (game && queue_write) {
-            queue_write([game, index] { game->equip_weapon(index); });
-        }
-    };
+    return use_callback(
+        [game, index, queue_write] {
+            if (game && queue_write) {
+                queue_write([game, index] { game->equip_weapon(index); });
+            }
+        },
+        client::ui::callback_deps(client::ui::callback_deps_ptr(game),
+                                  static_cast<uint64_t>(index)));
 }
 
 } // namespace shooter
