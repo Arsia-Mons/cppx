@@ -98,13 +98,18 @@ NodeId UiTree::begin_keyed_node(const char *type, const char *key,
 
   Node &parent = nodes_[stack_[stack_count_ - 1]];
   uint32_t sibling_index = parent.next_child_index++;
-  parent.child_count++;
 
   bool keyed = key && key[0] != '\0';
   NodeId id = make_child_id(parent.id, type, key, sibling_index, keyed);
   Node *node = ensure_node(id, parent.id, type, keyed ? key : "", style);
   if (!node)
     return 0;
+
+  if (parent.child_count >= UI_RETAINED_MAX_CHILDREN) {
+    report_error();
+    return 0;
+  }
+  parent.children[parent.child_count++] = id;
 
   stack_[stack_count_++] = static_cast<int>(node - nodes_.data());
   return id;
@@ -170,6 +175,18 @@ int UiTree::node_count() const {
       ++count;
   }
   return count;
+}
+
+int UiTree::child_count(NodeId id) const {
+  const Node *node = find(id);
+  return node ? node->child_count : 0;
+}
+
+NodeId UiTree::child_at(NodeId id, int index) const {
+  const Node *node = find(id);
+  if (!node || index < 0 || index >= node->child_count)
+    return 0;
+  return node->children[index];
 }
 
 NodeId UiTree::unmounted_at(int index) const {

@@ -95,10 +95,9 @@ The selected migration direction is Yoga:
 - Stretch is Rust-first and older than Taffy/Yoga for this use case:
   https://github.com/vislyhq/stretch
 
-The retained tree should talk to flex layout through a narrow adapter first.
-That keeps the app-owned runtime independent from the selected flex engine and
-lets tests cover tree reconciliation before the Yoga import is wired into the
-build.
+The retained tree talks to Yoga through `src/ui/retained/FlexLayoutAdapter`.
+That keeps app code independent from Yoga headers while letting tests cover
+tree reconciliation and actual flex layout behavior separately.
 
 ## JSX-Like Authored UI
 

@@ -9,6 +9,7 @@ using NodeId = uint64_t;
 
 constexpr int UI_RETAINED_MAX_NODES = 256;
 constexpr int UI_RETAINED_MAX_DEPTH = 64;
+constexpr int UI_RETAINED_MAX_CHILDREN = 64;
 constexpr int UI_RETAINED_LABEL_CAP = 48;
 
 constexpr NodeId UI_RETAINED_ROOT_ID = 0xCBF29CE484222325ull;
@@ -114,6 +115,8 @@ public:
   NodeId root_id() const { return UI_RETAINED_ROOT_ID; }
   NodeId current_parent_id() const;
   int node_count() const;
+  int child_count(NodeId id) const;
+  NodeId child_at(NodeId id, int index) const;
   int unmounted_count() const { return unmounted_count_; }
   NodeId unmounted_at(int index) const;
   int error_count() const { return error_count_; }
@@ -128,6 +131,7 @@ private:
     bool mounted_this_frame = false;
     char type[UI_RETAINED_LABEL_CAP] = {};
     char key[UI_RETAINED_LABEL_CAP] = {};
+    std::array<NodeId, UI_RETAINED_MAX_CHILDREN> children = {};
     Style style = {};
     Rect layout = {};
     CleanupFn cleanup = nullptr;
