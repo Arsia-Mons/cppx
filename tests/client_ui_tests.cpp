@@ -420,12 +420,14 @@ static bool screen_local_hook_state_survives_rerender_and_resets_on_unmount(void
 static bool client_ui_owns_retained_runtime_outputs(void) {
     react_init_runtime();
     ClientUi client_ui;
+    int focus_count = 0;
 
     CHECK(::ui::retained::begin_retained_frame(client_ui.retained_tree(), 240.0f, 120.0f));
     ::ui::retained::Button(::ui::retained::ButtonProps{
         .key = "confirm",
         .id = "ConfirmRetainedButton",
         .label = "Confirm",
+        .on_focus = [&focus_count] { focus_count += 1; },
     });
     CHECK(::ui::retained::end_retained_frame());
 
@@ -435,6 +437,7 @@ static bool client_ui_owns_retained_runtime_outputs(void) {
     ::ui::retained::FlexLayoutAdapter adapter = ::ui::retained::make_yoga_flex_layout_adapter();
     CHECK(client_ui.update_retained_runtime(adapter, { 240.0f, 120.0f }, {}));
     CHECK(::ui::retained::focus_focused_id(client_ui.retained_focus()) == button_id);
+    CHECK(focus_count == 1);
 
     const ::ui::retained::DrawList &draw = client_ui.retained_draw_list();
     CHECK(draw.error_count == 0);

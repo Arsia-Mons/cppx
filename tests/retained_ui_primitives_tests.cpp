@@ -210,6 +210,30 @@ static bool retained_toggle_invokes_change_callback(void) {
     return true;
 }
 
+static bool retained_selectable_invokes_focus_and_confirm_callbacks(void) {
+    react_init_runtime();
+    UiTree tree;
+    int focus_count = 0;
+    int confirm_count = 0;
+
+    CHECK(begin_retained_frame(tree, 220.0f, 80.0f));
+    Selectable(SelectableProps{
+        .key = "slot",
+        .id = "PrimarySlot",
+        .label = "Primary",
+        .on_focus = [&focus_count] { focus_count += 1; },
+        .on_confirm = [&confirm_count] { confirm_count += 1; },
+    });
+    CHECK(end_retained_frame());
+
+    NodeId selectable_id = tree.child_at(tree.root_id(), 0);
+    CHECK(tree.invoke_focus(selectable_id));
+    CHECK(focus_count == 1);
+    CHECK(tree.invoke_confirm(selectable_id));
+    CHECK(confirm_count == 1);
+    return true;
+}
+
 int main(void) {
     if (!retained_primitives_write_semantic_metadata_and_layout())
         return 1;
@@ -218,6 +242,8 @@ int main(void) {
     if (!retained_button_invokes_confirm_callback())
         return 1;
     if (!retained_toggle_invokes_change_callback())
+        return 1;
+    if (!retained_selectable_invokes_focus_and_confirm_callbacks())
         return 1;
     return 0;
 }

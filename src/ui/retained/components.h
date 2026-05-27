@@ -35,6 +35,7 @@ struct ButtonProps {
     bool disabled = false;
     Length width = Length::points(132.0f);
     Length height = Length::points(38.0f);
+    std::function<void()> on_focus = {};
     std::function<void()> on_confirm = {};
 };
 
@@ -46,6 +47,7 @@ struct ToggleProps {
     bool disabled = false;
     Length width = Length::points(178.0f);
     Length height = Length::points(38.0f);
+    std::function<void()> on_focus = {};
     std::function<void(bool)> on_change = {};
 };
 
@@ -57,6 +59,18 @@ struct SelectableProps {
     bool disabled = false;
     Length width = Length::points(132.0f);
     Length height = Length::points(34.0f);
+    FlexDirection direction = FlexDirection::Column;
+    AlignItems align_items = AlignItems::Center;
+    JustifyContent justify_content = JustifyContent::Center;
+    EdgeSizes padding = {12.0f, 12.0f, 7.0f, 7.0f};
+    float gap = 0.0f;
+    Color background = {};
+    Color border = {};
+    Color text_color = {};
+    float border_width = 0.0f;
+    uint16_t font_size = 0;
+    std::function<void()> on_focus = {};
+    std::function<void()> on_confirm = {};
 };
 
 bool begin_retained_frame(UiTree &tree, float width, float height);
@@ -66,7 +80,9 @@ bool end_retained_tree_frame();
 UiTree *current_retained_tree();
 
 Style style_from_props(const NodeProps &props);
+Style style_from_props(const SelectableProps &props);
 VisualStyle visual_from_props(const NodeProps &props);
+VisualStyle visual_from_props(const SelectableProps &props);
 
 class RetainedNodeScope {
   public:
@@ -92,6 +108,30 @@ void cppx_text(const char *value);
 void Button(const ButtonProps &props);
 void Toggle(const ToggleProps &props);
 void Selectable(const SelectableProps &props);
+
+template <typename Children>
+void Selectable(const SelectableProps &props, Children children) {
+    RetainedNodeScope scope("Selectable", props.key ? props.key : props.id,
+                            style_from_props(props));
+    if (scope.active()) {
+        scope.tree()->set_metadata(scope.id(),
+                                   {
+                                       .role = NodeRole::Selectable,
+                                       .control_id = props.id,
+                                       .value = props.label,
+                                       .interaction =
+                                           {
+                                               .focusable = true,
+                                               .disabled = props.disabled,
+                                               .selected = props.selected,
+                                           },
+                                       .visual = visual_from_props(props),
+                                       .on_focus = props.on_focus,
+                                       .on_confirm = props.on_confirm,
+                                   });
+        children();
+    }
+}
 
 template <typename Children>
 void Panel(const NodeProps &props, Children children) {

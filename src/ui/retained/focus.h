@@ -54,7 +54,9 @@ struct FocusRuntime {
   int focusable_count = 0;
 
   NodeId active_scope_id = 0;
+  NodeId previous_focus_before_modal = 0;
   NodeId focused_id = 0;
+  NodeId focus_changed_id = 0;
   NodeId pointer_press_origin = 0;
   NodeId confirmed_id = 0;
   FocusSource source = FocusSource::None;
@@ -66,6 +68,7 @@ bool focus_update(FocusRuntime *runtime, const UiTree &tree,
                   const InputFrame &input);
 
 NodeId focus_focused_id(const FocusRuntime &runtime);
+NodeId focus_changed_id(const FocusRuntime &runtime);
 NodeId focus_confirmed_id(const FocusRuntime &runtime);
 FocusSource focus_source(const FocusRuntime &runtime);
 int focus_error_count(const FocusRuntime &runtime);

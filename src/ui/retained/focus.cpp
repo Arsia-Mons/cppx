@@ -152,6 +152,15 @@ bool contains_enabled(const FocusRuntime &runtime, NodeId id) {
   return layout && !layout->disabled;
 }
 
+bool set_focus(FocusRuntime &runtime, NodeId id, FocusSource source) {
+  if (same_id(runtime.focused_id, id))
+    return false;
+  runtime.focused_id = id;
+  runtime.focus_changed_id = id;
+  runtime.source = source;
+  return true;
+}
+
 NodeId first_enabled(const FocusRuntime &runtime) {
   for (int i = 0; i < runtime.focusable_count; ++i) {
     if (!runtime.focusables[i].disabled)
@@ -233,11 +242,18 @@ bool focus_update(FocusRuntime *runtime, const UiTree &tree,
 
   runtime->focusable_count = 0;
   runtime->confirmed_id = 0;
+  runtime->focus_changed_id = 0;
 
   NodeId active_scope = tree.root_id();
   if (!find_active_modal(tree, tree.root_id(), &active_scope)) {
     ++runtime->error_count;
     return false;
+  }
+  NodeId previous_scope = runtime->active_scope_id;
+  if (!same_id(previous_scope, active_scope) &&
+      same_id(previous_scope, tree.root_id()) &&
+      !same_id(active_scope, tree.root_id())) {
+    runtime->previous_focus_before_modal = runtime->focused_id;
   }
   runtime->active_scope_id = active_scope;
 
@@ -245,18 +261,28 @@ bool focus_update(FocusRuntime *runtime, const UiTree &tree,
   if (!collect_focusables(tree, *runtime, active_scope, &order))
     return false;
 
-  if (!contains_enabled(*runtime, runtime->focused_id)) {
-    runtime->focused_id = first_enabled(*runtime);
-    runtime->source = runtime->focused_id != 0 ? FocusSource::Programmatic
-                                               : FocusSource::None;
+  bool restore_parent_focus = previous_scope != 0 &&
+                              !same_id(previous_scope, active_scope) &&
+                              same_id(active_scope, tree.root_id()) &&
+                              runtime->previous_focus_before_modal != 0 &&
+                              contains_enabled(
+                                  *runtime,
+                                  runtime->previous_focus_before_modal);
+  if (restore_parent_focus) {
+    set_focus(*runtime, runtime->previous_focus_before_modal,
+              FocusSource::Programmatic);
+    runtime->previous_focus_before_modal = 0;
+  } else if (!contains_enabled(*runtime, runtime->focused_id)) {
+    NodeId next = first_enabled(*runtime);
+    set_focus(*runtime, next,
+              next != 0 ? FocusSource::Programmatic : FocusSource::None);
   }
 
   FocusDirection dir = FocusDirection::Down;
   if (read_nav_dir(input, &dir)) {
     NodeId next = resolve_spatial(*runtime, runtime->focused_id, dir);
     if (next != 0 && !same_id(next, runtime->focused_id)) {
-      runtime->focused_id = next;
-      runtime->source = navigation_source(input);
+      set_focus(*runtime, next, navigation_source(input));
     }
   }
 
@@ -264,8 +290,7 @@ bool focus_update(FocusRuntime *runtime, const UiTree &tree,
     NodeId hovered = hovered_enabled(*runtime, input);
     runtime->pointer_press_origin = hovered;
     if (hovered != 0) {
-      runtime->focused_id = hovered;
-      runtime->source = pointer_source(input);
+      set_focus(*runtime, hovered, pointer_source(input));
     }
   }
 
@@ -289,6 +314,10 @@ bool focus_update(FocusRuntime *runtime, const UiTree &tree,
 
 NodeId focus_focused_id(const FocusRuntime &runtime) {
   return runtime.focused_id;
+}
+
+NodeId focus_changed_id(const FocusRuntime &runtime) {
+  return runtime.focus_changed_id;
 }
 
 NodeId focus_confirmed_id(const FocusRuntime &runtime) {

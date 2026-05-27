@@ -155,7 +155,9 @@ styled panels and headings while preserving default control styles.
 `src/ui/retained/focus.*` is the retained focus/event boundary: it collects
 focusable retained nodes, uses computed `UiTree` layout boxes for spatial
 navigation and pointer hit testing, and treats modal retained nodes as active
-focus scopes.
+focus scopes. Focus changes and confirmed retained controls dispatch copied
+callbacks from `ClientUi` at the frame boundary, and modal retained scopes
+restore the parent focused node when they close.
 `renderer/sdl_retained_renderer.*` consumes retained draw commands directly and
 the app-owned game loop now renders `ClientUi::retained_draw_list()` after the
 legacy Clay pass. Until screens are ported the list is usually empty, but the

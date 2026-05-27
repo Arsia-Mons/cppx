@@ -113,6 +113,7 @@ static bool navigation_uses_retained_layout_and_skips_disabled(void) {
 
     CHECK(focus_update(&focus, frame.tree, {}));
     CHECK(focus_focused_id(focus) == frame.start);
+    CHECK(focus_changed_id(focus) == frame.start);
     CHECK(focus_source(focus) == FocusSource::Programmatic);
 
     CHECK(focus_update(&focus, frame.tree,
@@ -121,6 +122,7 @@ static bool navigation_uses_retained_layout_and_skips_disabled(void) {
                            .source = FocusSource::Keyboard,
                        }));
     CHECK(focus_focused_id(focus) == frame.options);
+    CHECK(focus_changed_id(focus) == frame.options);
     CHECK(focus_source(focus) == FocusSource::Keyboard);
 
     CHECK(focus_update(&focus, frame.tree,
@@ -129,6 +131,7 @@ static bool navigation_uses_retained_layout_and_skips_disabled(void) {
                            .source = FocusSource::Gamepad,
                        }));
     CHECK(focus_focused_id(focus) == frame.start);
+    CHECK(focus_changed_id(focus) == frame.start);
     CHECK(focus_source(focus) == FocusSource::Gamepad);
     return true;
 }
@@ -145,6 +148,9 @@ static bool pointer_release_confirms_original_retained_target(void) {
     FocusRuntime focus = {};
     focus_init(&focus);
     CHECK(focus_update(&focus, frame.tree, {}));
+    CHECK(focus_changed_id(focus) == frame.start);
+    CHECK(focus_update(&focus, frame.tree, {}));
+    CHECK(focus_changed_id(focus) == 0);
 
     CHECK(focus_update(&focus, frame.tree,
                        {
@@ -179,6 +185,12 @@ static bool modal_node_traps_focus_to_modal_subtree(void) {
     focus_init(&focus);
     CHECK(focus_update(&focus, base.tree, {}));
     CHECK(focus_focused_id(focus) == base.start);
+    CHECK(focus_update(&focus, base.tree,
+                       {
+                           .nav_down = true,
+                           .source = FocusSource::Keyboard,
+                       }));
+    CHECK(focus_focused_id(focus) == base.options);
 
     FocusTree modal = {};
     CHECK(layout_tree(&modal, true));
@@ -194,7 +206,8 @@ static bool modal_node_traps_focus_to_modal_subtree(void) {
 
     CHECK(focus_update(&focus, base.tree, {}));
     CHECK(focus.active_scope_id == base.tree.root_id());
-    CHECK(focus_focused_id(focus) == base.start);
+    CHECK(focus_focused_id(focus) == base.options);
+    CHECK(focus_changed_id(focus) == base.options);
     return true;
 }
 

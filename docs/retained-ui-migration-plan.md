@@ -129,8 +129,10 @@ and mismatch/unclosed-tag diagnostics.
      foundation done.
    - retained button confirm callbacks: foundation done through copied node
      callbacks and `ClientUi` dispatch from retained confirmed node IDs.
+   - retained selectable focus/confirm callbacks: foundation done, including
+     custom retained selectable content for complex screen controls.
    - remaining: focusable containers, scroll containers, richer draw styles,
-     toggle/selectable callbacks, and broader event wiring.
+     and broader event wiring.
 
 6. Event and focus port:
    - hit testing from retained layout boxes: foundation done through
@@ -140,6 +142,8 @@ and mismatch/unclosed-tag diagnostics.
      confirm, and keyboard/gamepad/mouse source tracking.
    - button confirm dispatch now preserves deferred mutation ordering at the
      same frame boundary.
+   - retained focus changes now dispatch copied focus callbacks at the client
+     frame boundary and restore parent focus after modal retained scopes close.
 
 7. Screen ports:
    - shell-owned retained runtime state in `ClientUi`: foundation done.

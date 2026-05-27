@@ -40,17 +40,6 @@ Style toggle_style(Length width, Length height) {
     };
 }
 
-Style selectable_style(Length width, Length height) {
-    return {
-        .width = width,
-        .height = height,
-        .direction = FlexDirection::Column,
-        .align_items = AlignItems::Center,
-        .justify_content = JustifyContent::Center,
-        .padding = {12.0f, 12.0f, 7.0f, 7.0f},
-    };
-}
-
 void set_node_metadata(RetainedNodeScope &scope, const NodeMetadata &metadata) {
     if (scope.active() && scope.tree()) {
         scope.tree()->set_metadata(scope.id(), metadata);
@@ -106,6 +95,28 @@ Style style_from_props(const NodeProps &props) {
 }
 
 VisualStyle visual_from_props(const NodeProps &props) {
+    return {
+        .background = props.background,
+        .border = props.border,
+        .text = props.text_color,
+        .border_width = props.border_width,
+        .font_size = props.font_size,
+    };
+}
+
+Style style_from_props(const SelectableProps &props) {
+    return {
+        .width = props.width,
+        .height = props.height,
+        .direction = props.direction,
+        .align_items = props.align_items,
+        .justify_content = props.justify_content,
+        .padding = props.padding,
+        .gap = props.gap,
+    };
+}
+
+VisualStyle visual_from_props(const SelectableProps &props) {
     return {
         .background = props.background,
         .border = props.border,
@@ -201,6 +212,7 @@ void Button(const ButtonProps &props) {
                                          .focusable = true,
                                          .disabled = props.disabled,
                                      },
+                                 .on_focus = props.on_focus,
                                  .on_confirm = props.on_confirm,
                              });
     if (scope.active() && props.label) {
@@ -224,6 +236,7 @@ void Toggle(const ToggleProps &props) {
                                          .disabled = props.disabled,
                                          .checked = props.checked,
                                      },
+                                 .on_focus = props.on_focus,
                                  .on_confirm =
                                      [checked = props.checked,
                                       on_change = props.on_change] {
@@ -249,7 +262,7 @@ void Toggle(const ToggleProps &props) {
 
 void Selectable(const SelectableProps &props) {
     RetainedNodeScope scope("Selectable", props.key ? props.key : props.id,
-                            selectable_style(props.width, props.height));
+                            style_from_props(props));
     set_node_metadata(scope, {
                                  .role = NodeRole::Selectable,
                                  .control_id = props.id,
@@ -260,6 +273,9 @@ void Selectable(const SelectableProps &props) {
                                          .disabled = props.disabled,
                                          .selected = props.selected,
                                      },
+                                 .visual = visual_from_props(props),
+                                 .on_focus = props.on_focus,
+                                 .on_confirm = props.on_confirm,
                              });
     if (scope.active() && props.label) {
         Text({

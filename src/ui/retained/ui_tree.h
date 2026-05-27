@@ -132,6 +132,7 @@ struct NodeMetadata {
   const char *value = "";
   NodeInteraction interaction = {};
   VisualStyle visual = {};
+  std::function<void()> on_focus = {};
   std::function<void()> on_confirm = {};
 };
 
@@ -178,6 +179,7 @@ public:
   bool set_metadata(NodeId id, const NodeMetadata &metadata);
   bool measure(NodeId id, MeasureInput input, Size *out) const;
   bool set_layout(NodeId id, Rect rect);
+  bool invoke_focus(NodeId id) const;
   bool invoke_confirm(NodeId id) const;
 
   bool snapshot(NodeId id, NodeSnapshot *out) const;
@@ -207,6 +209,7 @@ private:
     std::array<NodeId, UI_RETAINED_MAX_CHILDREN> children = {};
     NodeRole role = NodeRole::Generic;
     NodeInteraction interaction = {};
+    std::function<void()> on_focus = {};
     std::function<void()> on_confirm = {};
     Style style = {};
     VisualStyle visual = {};

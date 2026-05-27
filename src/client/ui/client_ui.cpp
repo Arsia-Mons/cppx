@@ -93,6 +93,11 @@ bool ClientUi::update_retained_runtime(
         return false;
     if (!::ui::retained::focus_update(&retained_focus_, retained_tree_, input))
         return false;
+    ::ui::retained::NodeId focused =
+        ::ui::retained::focus_changed_id(retained_focus_);
+    if (focused != 0) {
+        retained_tree_.invoke_focus(focused);
+    }
     ::ui::retained::NodeId confirmed =
         ::ui::retained::focus_confirmed_id(retained_focus_);
     if (confirmed != 0) {
