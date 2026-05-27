@@ -5,6 +5,7 @@
 #include "../platform/sdl/window.h"
 #include "../renderer/font_registry.h"
 #include "../renderer/sdl_clay_renderer.h"
+#include "../renderer/sdl_retained_renderer.h"
 #include "../game/shooter_game.h"
 
 #include <clay.h>
@@ -37,6 +38,7 @@ private:
     platform::sdl::Window      window_         = {};
     renderer::FontRegistry     fonts_          = {};
     renderer::SdlClayRenderer  clay_render_    = {};
+    renderer::SdlRetainedRenderer retained_render_ = {};
     void                      *clay_arena_mem_ = nullptr;
     Clay_Context              *clay_ctx_       = nullptr;
     client::ui::UiPipeline     ui_pipeline_    = {};

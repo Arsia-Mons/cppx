@@ -146,7 +146,9 @@ and mismatch/unclosed-tag diagnostics.
    - retained draw command list: foundation done through
      `src/ui/retained/draw_list.*`, which emits rect/text commands from retained
      primitive metadata and computed layout boxes.
-   - SDL renderer consumes retained commands.
+   - SDL renderer consumes retained commands: foundation done through
+     `renderer/sdl_retained_renderer.*`, wired into the app frame after the
+     legacy Clay pass.
    - font measurement moved behind retained layout text measurement.
 
 9. Clay removal:

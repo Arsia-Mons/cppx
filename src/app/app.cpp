@@ -92,6 +92,9 @@ bool App::initialize(const AppOptions &options) {
     if (!clay_render_.initialize(window_.renderer(), fonts_)) {
         return false;
     }
+    if (!retained_render_.initialize(window_.renderer(), fonts_)) {
+        return false;
+    }
 
     uint32_t clay_mem_size = Clay_MinMemorySize();
     clay_arena_mem_ = SDL_malloc(clay_mem_size);
@@ -131,7 +134,8 @@ bool App::initialize(const AppOptions &options) {
 
 int App::run() {
     if (!initialized_) return 1;
-    GameLoop loop(window_, clay_render_, ui_pipeline_, control_, running_);
+    GameLoop loop(window_, clay_render_, retained_render_, ui_pipeline_,
+                  control_, running_);
     while (running_) {
         loop.tick();
     }

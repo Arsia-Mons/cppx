@@ -103,6 +103,7 @@ add_executable(hello
   src/platform/sdl/window.cpp
   src/renderer/font_registry.cpp
   src/renderer/sdl_clay_renderer.cpp
+  src/renderer/sdl_retained_renderer.cpp
   src/game/inventory.cpp
   src/game/economy.cpp
   src/game/shooter_game.cpp

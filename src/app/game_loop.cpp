@@ -9,11 +9,13 @@ namespace app {
 
 GameLoop::GameLoop(platform::sdl::Window      &window,
                    renderer::SdlClayRenderer  &clay_render,
+                   renderer::SdlRetainedRenderer &retained_render,
                    client::ui::UiPipeline     &ui_pipeline,
                    platform::ControlMailbox   &control,
                    bool                       &running)
     : window_(window),
       clay_render_(clay_render),
+      retained_render_(retained_render),
       ui_pipeline_(ui_pipeline),
       control_(control),
       running_(running) {}
@@ -71,6 +73,7 @@ void GameLoop::tick() {
     ui_pipeline_.render_client_ui_frame(frame, [&](Clay_RenderCommandArray &cmds) {
         clay_render_.clear({ 12, 14, 22, 255 });
         clay_render_.render(cmds);
+        retained_render_.render(ui_pipeline_.client_ui().retained_draw_list());
         control_.capture_after_render(clay_render_.sdl_renderer(), ui_pipeline_);
         clay_render_.present();
     });

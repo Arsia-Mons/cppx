@@ -6,12 +6,12 @@ Source tree. Boundaries here are deliberate — see `../architecture.md` for the
 
 ```text
 app/      process lifecycle and the per-frame loop
-ui/       generic Clay toolkit (no game vocabulary)
+ui/       generic UI toolkit/runtime (no game vocabulary)
 client/   client UI shell (screen stack, mutation queue, focus glue) + the game's screens
 game/     game rules and state (player, weapons, economy, inventory)
 platform/ OS/library adapters (SDL window/input, control mailbox)
-renderer/ font + Clay→SDL render glue
-react.{h,cpp}  React-style hook runtime layered on Clay
+renderer/ font + UI→SDL render glue
+react.{h,cpp}  React-style hook runtime over Clay/retained component trees
 main.cpp  ~15-line entrypoint: builds AppOptions, hands off to app::App
 ```
 

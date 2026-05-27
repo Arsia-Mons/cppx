@@ -148,6 +148,10 @@ commands from retained metadata.
 focusable retained nodes, uses computed `UiTree` layout boxes for spatial
 navigation and pointer hit testing, and treats modal retained nodes as active
 focus scopes.
+`renderer/sdl_retained_renderer.*` consumes retained draw commands directly and
+the app-owned game loop now renders `ClientUi::retained_draw_list()` after the
+legacy Clay pass. Until screens are ported the list is usually empty, but the
+SDL retained path is now present in the real frame.
 
 ## Component API Direction
 
