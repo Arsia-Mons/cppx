@@ -1,0 +1,13 @@
+#include "panel_components.h"
+
+void BuildPauseMenu(Actions &actions) {
+  <Panel key="pause" width={Length::points(320)} modal>
+    <Panel.Header>
+      <Text value="Paused" />
+    </Panel.Header>
+    <Panel.Body>
+      <Button id="ResumeButton" onConfirm={actions.resume}>Resume</Button>
+      <Button id="OptionsButton" onConfirm={actions.options} />
+    </Panel.Body>
+  </Panel>
+}

@@ -63,10 +63,10 @@ Generated extensions:
 
 Tool placement:
 
-- `tools/cppx_transpile.py` or a small C++ tool under `tools/`, selected after
-  the grammar is pinned.
+- `tools/cppx_transpile.py`.
+- `cmake/cppx_transpile.cmake` for generated build-tree outputs.
 - Golden tests in `tests/` that feed `.cppx`/`.hx` fixtures and compare exact
-  generated output.
+  generated output and diagnostics.
 
 Grammar principles:
 
@@ -76,6 +76,11 @@ Grammar principles:
 - Children lower to slot callbacks; they are invoked synchronously and never
   stored past the component call.
 - Diagnostics include source filename and line mapping.
+
+Current status: the transpiler handles JSX statement lines, compound component
+names (`Panel.Header` -> `Panel::Header`), string/expression/bool props, text
+children, expression children, `#line` source mappings, deterministic output,
+and mismatch/unclosed-tag diagnostics.
 
 ## Migration Slices
 
@@ -93,10 +98,13 @@ Grammar principles:
    - remaining before primitive port: broader alignment coverage as needed by
      the first retained primitives.
 
-3. Transpiler:
+3. Transpiler: foundation done.
    - lexer/parser/generator.
    - golden fixtures.
    - CMake generated-source integration.
+   - remaining before screen ports: expand the grammar only where real retained
+     primitives need it, and start authoring migrated UI files as `.cppx` /
+     `.hx`.
 
 4. Retained hook runtime:
    - replace Clay-derived component IDs with retained parent/key identity.

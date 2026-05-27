@@ -125,6 +125,11 @@ mapping in diagnostics. The generated code should call retained runtime
 builders and normal C++ component functions. It must not introduce a JS runtime,
 DOM assumptions, or React imports.
 
+Current implementation: `tools/cppx_transpile.py` lowers `.cppx` / `.hx` JSX-like
+lines to normal C++ component calls with prop initializers and synchronous child
+lambdas. The CMake helper in `cmake/cppx_transpile.cmake` generates build-tree
+`.cpp` / `.h` outputs, and golden tests pin output plus diagnostics.
+
 ## Component API Direction
 
 Use React-style composition conventions adapted to C++:

@@ -42,6 +42,8 @@ endif()
 find_package(CURL REQUIRED)
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
+include(cmake/cppx_transpile.cmake)
+
 FetchContent_Declare(
   yoga
   GIT_REPOSITORY https://github.com/facebook/yoga.git
@@ -52,6 +54,23 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(yoga)
 
 enable_testing()
+
+cppx_transpile(CPPX_FIXTURE_GENERATED
+  tests/fixtures/cppx/panel.cppx
+  tests/fixtures/cppx/components.hx
+)
+add_custom_target(cppx_generated_fixtures ALL DEPENDS ${CPPX_FIXTURE_GENERATED})
+
+add_test(
+  NAME cppx_transpiler_tests
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/cppx_transpiler_tests.py
+    --tool ${CMAKE_CURRENT_SOURCE_DIR}/tools/cppx_transpile.py
+    --fixtures ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/cppx
+)
+set_tests_properties(cppx_transpiler_tests PROPERTIES
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
 
 add_executable(hello
   src/main.cpp
