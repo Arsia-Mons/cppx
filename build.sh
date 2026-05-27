@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fast macOS/Linux build entry point for the SDL3/Clay UI reference app.
+# Fast macOS/Linux build entry point for the SDL3 retained UI reference app.
 # Mirrors build.ps1's Windows behavior.
 #
 # Usage:

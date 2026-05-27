@@ -1,27 +1,26 @@
 # Retained UI Migration Plan
 
 This plan implements `retained-ui-migration-prompt.md` without redefining the
-goal around the current Clay implementation. It is a living checklist for the
-branch and PR.
+goal around the previous immediate-mode implementation. It is a living
+checklist for the branch and PR.
 
 ## Current Findings
 
 - `architecture.md` was missing in the current worktree even though the root
   contract says it is canonical. This slice restores it with the retained-mode
   target described explicitly.
-- `src/react.{h,cpp}` is still used by Clay-backed screens, but hook fiber
-  identity now has an app-owned 64-bit path. It already proves useful
-  semantics: stable hook storage, keyed siblings, providers/context, effects,
-  refs, callbacks, text storage, and unmount cleanup.
+- `src/react.{h,cpp}` is backend-free. Hook fiber identity has an app-owned
+  64-bit path and preserves stable hook storage, keyed siblings,
+  providers/context, effects, refs, callbacks, text storage, and unmount
+  cleanup.
 - `ClientUi`, `UiPipeline`, and `ScreenStack` own the retained app path:
   retained screens, retained frame sequencing, focus runtime lifetime, retained
   draw outputs, and deferred mutation draining. `UiPipeline` updates retained
   layout/focus/draw state before renderer handoff.
-- `src/ui/focus` and `src/ui/primitives` still exist as legacy Clay modules for
-  tests, but they are no longer part of the `hello` app target.
+- `src/ui/focus`, `src/ui/primitives`, and their tests have been removed after
+  their retained replacements reached parity.
 - `renderer/` now renders the app from retained draw commands through
-  `SdlRetainedRenderer`. The legacy Clay renderer remains only as a file-level
-  compatibility artifact until the final cleanup slice deletes it.
+  `SdlRetainedRenderer`.
 - `tools/ui_cli.py` drives the app through the control mailbox. That path must
   remain deterministic through the migration. Retained focusables now appear in
   the same inspect/state `focusables` array used by CLI pointer targeting.
@@ -109,15 +108,13 @@ and mismatch/unclosed-tag diagnostics.
      `.hx`.
 
 4. Retained hook runtime:
-   - replace Clay-derived component IDs with retained parent/key identity:
-     foundation done through `ReactFiberId`, `react_init_runtime()`, and
-     `REACT_RETAINED_COMPONENT_*`.
+   - retained parent/key identity: done through `ReactFiberId`,
+     `react_init_runtime()`, and component macros.
    - preserve hooks, providers, effects, refs, callbacks, and unmount cleanup.
    - bind retained component entry to authored `.cppx` output and `UiTree` node
      creation: done through `src/ui/retained/components.*` and
      `retained_cppx_component_tests`.
-   - remaining before primitive ports: expand the generic component surface only
-     where real primitives need it.
+   - backend-free runtime cleanup: done.
 
 5. Primitive port:
    - text, panel, button, toggle, and selectable retained nodes: foundation
@@ -153,8 +150,6 @@ and mismatch/unclosed-tag diagnostics.
      callbacks, and CLI targeting.
    - options: ported to retained modal panel, text, toggles, back button,
      focus, confirm callbacks, and CLI targeting.
-   - mixed retained modal over Clay screen input gating: foundation done in
-     `UiPipeline`.
    - retained overlay top-screen gating: foundation done through
      `ScreenProvider`.
    - pause: ported to retained modal panel, text, buttons, focus, confirm
@@ -172,18 +167,17 @@ and mismatch/unclosed-tag diagnostics.
    - SDL renderer consumes retained commands: foundation done through
      `renderer/sdl_retained_renderer.*`, wired as the app frame's only UI
      renderer.
-   - app frame no longer initializes Clay, begins/ends a Clay layout pass, or
-     renders `Clay_RenderCommandArray`.
+   - app frame uses retained draw commands only.
    - retained text rendering now uses `FontRegistry` for SDL_ttf font/text
-     engine ownership without exposing Clay measurement callbacks.
+     engine ownership.
 
-9. Clay removal:
-   - remove `third_party/clay*` once `src/react.*` compatibility macros are
-     deleted.
-   - remove `renderer/sdl_clay_renderer.*`.
-   - delete `src/ui/focus`, `src/ui/primitives`, and Clay-specific tests or
-     migrate assertions to retained snapshots.
-   - add grep/guard tests for Clay re-entry into app/client/ui/react paths.
+9. Runtime dependency removal:
+   - removed obsolete vendored layout-runtime files.
+   - removed obsolete renderer glue.
+   - deleted `src/ui/focus`, `src/ui/primitives`, and their tests after
+     retained assertions covered the behavior.
+   - added `runtime_dependency_guard` to prevent obsolete UI runtime
+     dependencies from re-entering source and CMake paths.
 
 ## Verification Gates
 
@@ -198,11 +192,7 @@ Per meaningful slice:
 
 ## Risks
 
-- `src/react.h` still includes Clay for compatibility macros. That final link
-  must be cut without weakening retained hook identity or provider semantics.
-- Legacy Clay tests can mask accidental regressions unless the final cleanup
-  adds guard coverage for the app/client/runtime paths.
 - The transpiler can easily become a separate language. Keep it as syntax sugar
   over ordinary C++ component calls.
-- Partial Clay removal is dangerous if it leaves compatibility facades that
-  still encode Clay semantics. Guard tests are required at the end.
+- Runtime dependency drift is now guarded by `runtime_dependency_guard`; update
+  that test if new source roots are added to the UI runtime path.

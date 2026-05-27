@@ -150,7 +150,7 @@ void ControlMailbox::write_ready(void) {
     std::ostringstream body;
     body << "{"
          << "\"ok\":true,"
-         << "\"protocol\":\"sdl3-clay-mailbox-v1\","
+         << "\"protocol\":\"sdl3-retained-mailbox-v1\","
          << "\"requests\":\"" << json_escape(requests_dir_.string()) << "\","
          << "\"replies\":\"" << json_escape(replies_dir_.string()) << "\","
          << "\"artifacts\":\"" << json_escape(artifacts_dir_.string()) << "\""

@@ -8,8 +8,6 @@ The generic UI toolkit. **This directory must not know which game is being built
 input.h      UI-shaped input frame shared by app/client/runtime code
 span.h       tiny non-owning span used by framework containers
 retained/    UiTree, retained components, flex layout, focus, draw commands
-focus/       legacy Clay focus runtime kept until final cleanup
-primitives/  legacy Clay primitives kept until final cleanup
 ```
 
 The retained runtime is the app path. Add new subdirectories only when they
@@ -35,4 +33,4 @@ Retained primitives are React-style hook components — see `../../react.h`. The
 
 ## Testing
 
-Retained runtime coverage lives in `retained_ui_*_tests`. Legacy Clay tests still exist during the cleanup window. If a new primitive needs SDL, it doesn't belong here.
+Retained runtime coverage lives in `retained_ui_*_tests`. If a new primitive needs SDL, it doesn't belong here.

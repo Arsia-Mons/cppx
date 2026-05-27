@@ -7,13 +7,12 @@
 // generation.
 //
 // Public API:
-//   react_init_runtime()           - initialize without a layout backend.
-//   react_init(clay_ctx)           - compatibility wrapper for Clay apps.
+//   react_init_runtime()           - initialize the hook runtime.
 //   react_begin_frame()            - call once per frame, before component
-//   tree. react_end_frame()              - call once per frame, after
-//   layout. REACT_COMPONENT_BEGIN/END      - bracket a Clay-backed component's
-//   body. REACT_RETAINED_COMPONENT_BEGIN/END - bracket a retained component
-//   body without emitting a layout node. REACT_PROVIDER_ENTER/EXIT      -
+//   tree. react_end_frame()        - call once per frame, after layout.
+//   REACT_COMPONENT_BEGIN/END      - bracket a component body without emitting
+//   a layout node. REACT_RETAINED_COMPONENT_BEGIN/END - compatibility alias for
+//   retained component bodies. REACT_PROVIDER_ENTER/EXIT      -
 //   bracket a transparent provider body. use_state_int(initial)         -
 //   returns int* that persists across frames. use_effect(fn, cleanup, user,
 //   deps_hash) - runs after commit when deps change. PROVIDE(ctx_ptr, value) {
@@ -37,8 +36,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include <clay.h>
-
 #ifdef __cplusplus
 #include <functional>
 #include <new>
@@ -53,7 +50,6 @@ extern "C" {
 typedef uint64_t ReactFiberId;
 
 void react_init_runtime(void);
-void react_init(Clay_Context *clay_ctx);
 void react_begin_frame(void);
 void react_end_frame(void);
 void react_shutdown(void);
@@ -74,8 +70,6 @@ ReactFiberId react_make_instance_fiber_id(const char *name, uint32_t index,
                                           bool keyed);
 ReactFiberId react_make_instance_fiber_key_id(const char *name,
                                               const char *key);
-Clay_ElementId react_make_instance_clay_id(Clay_String name, uint32_t index,
-                                           bool keyed);
 
 #define REACT_INSTANCE_ID(name_literal)                                        \
     react_make_instance_fiber_id((name_literal), react_next_child_index(),     \
@@ -88,24 +82,11 @@ Clay_ElementId react_make_instance_clay_id(Clay_String name, uint32_t index,
 
 #define REACT_COMPONENT_BEGIN(name_literal)                                    \
     {                                                                          \
-        uint32_t _react_index = react_next_child_index();                      \
-        ReactFiberId _react_fid =                                              \
-            react_make_instance_fiber_id((name_literal), _react_index, false); \
-        Clay_ElementId _react_cid = react_make_instance_clay_id(               \
-            CLAY_STRING(name_literal), _react_index, false);                   \
-        react_enter(_react_fid);                                               \
-        CLAY({.id = _react_cid})
+        react_enter(REACT_INSTANCE_ID(name_literal));
 
 #define REACT_COMPONENT_BEGIN_KEY(name_literal, key_index)                     \
     {                                                                          \
-        uint32_t _react_index =                                                \
-            ((void)react_next_child_index(), (uint32_t)(key_index));           \
-        ReactFiberId _react_fid =                                              \
-            react_make_instance_fiber_id((name_literal), _react_index, true);  \
-        Clay_ElementId _react_cid = react_make_instance_clay_id(               \
-            CLAY_STRING(name_literal), _react_index, true);                    \
-        react_enter(_react_fid);                                               \
-        CLAY({.id = _react_cid})
+        react_enter(REACT_INSTANCE_ID_KEY(name_literal, key_index));
 
 #define REACT_COMPONENT_END()                                                  \
     react_leave();                                                             \
@@ -132,16 +113,13 @@ Clay_ElementId react_make_instance_clay_id(Clay_String name, uint32_t index,
 #define REACT_PROVIDER_EXIT() react_leave()
 
 #define REACT_RETAINED_COMPONENT_BEGIN(name_literal)                           \
-    {                                                                          \
-        react_enter(REACT_INSTANCE_ID(name_literal));
+    REACT_COMPONENT_BEGIN(name_literal)
 
 #define REACT_RETAINED_COMPONENT_BEGIN_KEY(name_literal, key_index)            \
-    {                                                                          \
-        react_enter(REACT_INSTANCE_ID_KEY(name_literal, key_index));
+    REACT_COMPONENT_BEGIN_KEY(name_literal, key_index)
 
 #define REACT_RETAINED_COMPONENT_END()                                         \
-    react_leave();                                                             \
-    }
+    REACT_COMPONENT_END()
 
 typedef struct ReactNoProps {
     uint8_t unused;
@@ -225,7 +203,7 @@ void react_provider_push(ReactContext *ctx, void *value);
 void react_provider_pop(ReactContext *ctx);
 void *use_context(ReactContext *ctx);
 
-// Scoped provider via the same for-loop trick Clay uses for CLAY(...).
+// Scoped provider via a single-iteration for-loop.
 #define PROVIDE(ctx_ptr, value)                                                \
     for (int _react_once = (react_provider_push((ctx_ptr), (value)), 0);       \
          !_react_once; _react_once = 1, react_provider_pop((ctx_ptr)))
@@ -274,7 +252,7 @@ template <typename T> T *use_state(T initial) {
 // function is destroyed and rebuilt from `fn`.
 //
 // The returned reference is to per-fiber slot storage; callers typically copy
-// it into a handler field (Clay configs take std::function by value).
+// it into retained handler fields.
 
 namespace react_detail {
 

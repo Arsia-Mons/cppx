@@ -1,10 +1,8 @@
 # Architecture Notes
 
-This project is a C++20 / SDL3 game-UI reference. The checked-in app now runs
-through a retained-mode UI runtime owned by this repo. The active migration
-goal is to finish deleting the temporary Clay compatibility that remains in
-legacy tests and `src/react.*` while preserving the React-like programming
-model.
+This project is a C++20 / SDL3 game-UI reference. The checked-in app runs
+through a retained-mode UI runtime owned by this repo, with React-like
+composition and hooks over retained nodes.
 
 ## Layers
 
@@ -34,15 +32,14 @@ details. `ui/` must stay generic and free of shooter/game vocabulary.
 The app/runtime path now builds retained screens only. `UiPipeline` opens the
 retained tree frame, updates retained flex layout through Yoga, resolves
 retained focus/events, emits retained draw commands, and hands those commands
-to the SDL retained renderer. `App` and `GameLoop` no longer initialize a Clay
-context or request Clay render command arrays.
+to the SDL retained renderer. `App` and `GameLoop` do not own a separate UI
+layout backend.
 
 The current React-style hook runtime stores hook state per component instance
 and already has useful concepts the migration should preserve: component
 identity, keyed siblings, providers/context, effects, refs, callbacks, and
-per-frame unmount cleanup. Hook fiber identity is now an app-owned 64-bit ID;
-Clay-backed component macros still exist only as temporary compatibility for
-legacy tests and modules that have not been deleted yet.
+per-frame unmount cleanup. Hook fiber identity is an app-owned 64-bit ID built
+from the parent fiber and positional or keyed child identity.
 
 `ClientUi` owns retained screens through `ScreenStack`, retained runtime
 outputs, focus runtime lifetime, and the deferred mutation queue. That
@@ -82,9 +79,8 @@ src/ui/retained/
     retained draw commands consumed by renderer/
 ```
 
-Clay-specific IDs, `CLAY(...)` layout calls, and Clay render command arrays are
-legacy compatibility details. They must be removed rather than preserved behind
-renamed facades.
+The runtime boundary is retained-node based: component identity, layout, input
+routing, and render output all use repo-owned data structures.
 
 ## Flexbox Strategy
 
@@ -136,15 +132,16 @@ lambdas. The CMake helper in `cmake/cppx_transpile.cmake` generates build-tree
 `.cpp` / `.h` outputs, and golden tests pin output plus diagnostics.
 Generated `.cppx` output is now also compiled against generic retained
 components in `src/ui/retained/components.*`, proving the authored syntax path
-can create `UiTree` nodes and use retained hook identity without Clay layout.
+can create `UiTree` nodes and use retained hook identity without an external
+layout runtime.
 The retained component surface now also writes copied node metadata for role,
 control id, label/value, and interaction state, so retained `Button`, `Toggle`,
 and `Selectable` primitives have semantic data that focus and renderer code can
-consume without querying Clay element data. Retained `Button` nodes can also
+consume without querying external element data. Retained `Button` nodes can also
 store confirm callbacks; `ClientUi` invokes the confirmed node's callback after
 retained focus/event update and before render-command handoff, preserving the
-same deferred-mutation frame boundary used by existing Clay buttons.
-`src/ui/retained/draw_list.*` is the Clay-free renderer boundary: it walks
+same deferred-mutation frame boundary used by other controls.
+`src/ui/retained/draw_list.*` is the renderer boundary: it walks
 retained snapshots after flex layout and emits app-owned rect/text draw
 commands from retained metadata.
 Retained nodes now carry optional visual metadata for panel backgrounds,
@@ -157,12 +154,11 @@ focus scopes. Focus changes and confirmed retained controls dispatch copied
 callbacks from `ClientUi` at the frame boundary, and modal retained scopes
 restore the parent focused node when they close.
 `renderer/sdl_retained_renderer.*` consumes retained draw commands directly and
-the app-owned game loop now renders `ClientUi::retained_draw_list()` without a
-Clay pass. `UiPipeline` owns the retained frame lifecycle, so the list is
+the app-owned game loop renders `ClientUi::retained_draw_list()`. `UiPipeline`
+owns the retained frame lifecycle, so the list is
 computed before renderer handoff rather than through side-car test code.
 The control mailbox now reports retained focusables in the same `focusables`
-array used by CLI pointer targeting. The app path no longer reports legacy Clay
-focusables.
+array used by CLI pointer targeting.
 The app screens are retained end-to-end. `MainMenuScreen`, `OptionsScreen`,
 `PauseScreen`, `ShooterGameScreen`, `HudBand`, `LoadoutScreen`, and
 `LoadoutConfirmDialog` emit retained panels, text, buttons, selectables,
@@ -191,15 +187,14 @@ DOM, Next.js, or JavaScript APIs.
 1. Keep this architecture document current.
 2. Land the retained tree and flex-layout adapter skeleton with tests.
 3. Add the `.cppx`/`.hx` transpiler with golden tests and CMake integration.
-4. Port generic primitives from Clay to retained nodes.
+4. Port generic primitives to retained nodes.
 5. Port screens one coherent slice at a time through `ClientUi`.
-6. Move focus/event routing from Clay element data to retained layout boxes.
-7. Replace Clay renderer glue with retained draw commands consumed by
-   `renderer/`.
-8. Remove Clay dependencies, Clay tests, and stale Clay docs once parity is
-   proven.
-9. Add guard tests that prevent Clay from re-entering `src/ui`, `src/client/ui`,
-   and `src/react.*`.
+6. Move focus/event routing to retained layout boxes.
+7. Render retained draw commands through `renderer/`.
+8. Remove obsolete layout-runtime dependencies, tests, and stale docs once
+   parity is proven.
+9. Add guard tests that prevent obsolete UI runtime dependencies from
+   re-entering `src/ui`, `src/client/ui`, and `src/react.*`.
 
 ## Hard Rules
 
@@ -208,6 +203,6 @@ DOM, Next.js, or JavaScript APIs.
 - Do not move game rules into UI components.
 - Do not move screen-local state into `game/`.
 - Do not add game vocabulary to `src/ui`.
-- Do not keep Clay semantics behind retained-looking names.
+- Do not keep external layout-runtime semantics behind retained-looking names.
 - Do not treat deterministic tests as optional; the CLI control path must
   remain scriptable through `tools/ui_cli.py`.

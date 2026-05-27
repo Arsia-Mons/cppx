@@ -132,12 +132,6 @@ void react_init_runtime(void) {
         G.buckets[i] = -1;
 }
 
-void react_init(Clay_Context *clay_ctx) {
-    (void)
-        clay_ctx; // compatibility wrapper; hooks no longer read Clay internals
-    react_init_runtime();
-}
-
 int react_error_count(void) { return G.error_count; }
 
 static Fiber *fiber_lookup(ReactFiberId id) {
@@ -312,15 +306,6 @@ ReactFiberId react_make_instance_fiber_key_id(const char *name,
     hash = mix_fiber_id(hash, 0x9E3779B97F4A7C15ull);
     hash = hash_bytes(hash, key);
     return hash == 0 ? 1ull : hash;
-}
-
-Clay_ElementId react_make_instance_clay_id(Clay_String name, uint32_t index,
-                                           bool keyed) {
-    uint32_t parent_id =
-        G.current ? (uint32_t)(G.current->id ^ (G.current->id >> 32u))
-                  : 0x811C9DC5u;
-    uint32_t seed = parent_id ^ (keyed ? 0x9E3779B9u : 0x85EBCA6Bu);
-    return Clay__HashString(name, index, seed);
 }
 
 void react_leave(void) {

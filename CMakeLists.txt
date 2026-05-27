@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
 
-project(sdl3_clay_hello LANGUAGES C CXX)
+project(sdl3_retained_ui LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -76,6 +76,15 @@ set_tests_properties(cppx_transpiler_tests PROPERTIES
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
+add_test(
+  NAME runtime_dependency_guard
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_dependency_guard.py
+)
+set_tests_properties(runtime_dependency_guard PROPERTIES
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
 add_executable(hello
   src/main.cpp
   src/react.cpp
@@ -112,14 +121,12 @@ add_executable(hello
   src/ui/retained/focus.cpp
   src/ui/retained/ui_tree.cpp
   src/ui/retained/yoga_flex_layout.cpp
-  third_party/clay_impl.cpp
   third_party/stb_image_impl.cpp
 )
 
 target_include_directories(hello PRIVATE
   src
   third_party
-  third_party/clay
 )
 
 target_compile_options(hello PRIVATE
@@ -145,13 +152,11 @@ endif()
 add_executable(react_runtime_tests
   tests/react_runtime_tests.cpp
   src/react.cpp
-  third_party/clay_impl.cpp
 )
 
 target_include_directories(react_runtime_tests PRIVATE
   src
   third_party
-  third_party/clay
 )
 
 target_compile_options(react_runtime_tests PRIVATE
@@ -159,24 +164,6 @@ target_compile_options(react_runtime_tests PRIVATE
 )
 
 add_test(NAME react_runtime_tests COMMAND react_runtime_tests)
-
-add_executable(ui_focus_tests
-  tests/ui_focus_tests.cpp
-  src/ui/focus/ui_focus.cpp
-  third_party/clay_impl.cpp
-)
-
-target_include_directories(ui_focus_tests PRIVATE
-  src
-  third_party
-  third_party/clay
-)
-
-target_compile_options(ui_focus_tests PRIVATE
-  $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall -Wextra -Wno-missing-field-initializers -Wno-c99-designator -Wno-unused-parameter>
-)
-
-add_test(NAME ui_focus_tests COMMAND ui_focus_tests)
 
 add_executable(retained_ui_runtime_tests
   tests/retained_ui_runtime_tests.cpp
@@ -223,14 +210,12 @@ add_executable(retained_cppx_component_tests
   src/ui/retained/ui_tree.cpp
   src/ui/retained/flex_layout.cpp
   src/ui/retained/yoga_flex_layout.cpp
-  third_party/clay_impl.cpp
 )
 
 target_include_directories(retained_cppx_component_tests PRIVATE
   src
   ${CMAKE_CURRENT_SOURCE_DIR}
   third_party
-  third_party/clay
 )
 
 target_compile_options(retained_cppx_component_tests PRIVATE
@@ -250,13 +235,11 @@ add_executable(retained_ui_primitives_tests
   src/ui/retained/ui_tree.cpp
   src/ui/retained/flex_layout.cpp
   src/ui/retained/yoga_flex_layout.cpp
-  third_party/clay_impl.cpp
 )
 
 target_include_directories(retained_ui_primitives_tests PRIVATE
   src
   third_party
-  third_party/clay
 )
 
 target_compile_options(retained_ui_primitives_tests PRIVATE
@@ -277,13 +260,11 @@ add_executable(retained_ui_draw_list_tests
   src/ui/retained/ui_tree.cpp
   src/ui/retained/flex_layout.cpp
   src/ui/retained/yoga_flex_layout.cpp
-  third_party/clay_impl.cpp
 )
 
 target_include_directories(retained_ui_draw_list_tests PRIVATE
   src
   third_party
-  third_party/clay
 )
 
 target_compile_options(retained_ui_draw_list_tests PRIVATE
@@ -304,13 +285,11 @@ add_executable(retained_ui_focus_tests
   src/ui/retained/ui_tree.cpp
   src/ui/retained/flex_layout.cpp
   src/ui/retained/yoga_flex_layout.cpp
-  third_party/clay_impl.cpp
 )
 
 target_include_directories(retained_ui_focus_tests PRIVATE
   src
   third_party
-  third_party/clay
 )
 
 target_compile_options(retained_ui_focus_tests PRIVATE
@@ -323,29 +302,6 @@ target_link_libraries(retained_ui_focus_tests PRIVATE
 
 add_test(NAME retained_ui_focus_tests COMMAND retained_ui_focus_tests)
 
-add_executable(ui_primitives_tests
-  tests/ui_primitives_tests.cpp
-  src/react.cpp
-  src/ui/focus/ui_focus.cpp
-  src/ui/primitives/button.cpp
-  src/ui/primitives/focusable.cpp
-  src/ui/primitives/selectable.cpp
-  src/ui/primitives/toggle.cpp
-  third_party/clay_impl.cpp
-)
-
-target_include_directories(ui_primitives_tests PRIVATE
-  src
-  third_party
-  third_party/clay
-)
-
-target_compile_options(ui_primitives_tests PRIVATE
-  $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall -Wextra -Wno-missing-field-initializers -Wno-c99-designator -Wno-unused-parameter>
-)
-
-add_test(NAME ui_primitives_tests COMMAND ui_primitives_tests)
-
 add_executable(client_ui_tests
   tests/client_ui_tests.cpp
   src/react.cpp
@@ -357,13 +313,11 @@ add_executable(client_ui_tests
   src/ui/retained/focus.cpp
   src/ui/retained/ui_tree.cpp
   src/ui/retained/yoga_flex_layout.cpp
-  third_party/clay_impl.cpp
 )
 
 target_include_directories(client_ui_tests PRIVATE
   src
   third_party
-  third_party/clay
 )
 
 target_compile_options(client_ui_tests PRIVATE
@@ -388,13 +342,11 @@ add_executable(ui_pipeline_tests
   src/ui/retained/focus.cpp
   src/ui/retained/ui_tree.cpp
   src/ui/retained/yoga_flex_layout.cpp
-  third_party/clay_impl.cpp
 )
 
 target_include_directories(ui_pipeline_tests PRIVATE
   src
   third_party
-  third_party/clay
 )
 
 target_compile_options(ui_pipeline_tests PRIVATE
@@ -436,13 +388,11 @@ add_executable(shooter_ui_tests
   src/ui/retained/focus.cpp
   src/ui/retained/ui_tree.cpp
   src/ui/retained/yoga_flex_layout.cpp
-  third_party/clay_impl.cpp
 )
 
 target_include_directories(shooter_ui_tests PRIVATE
   src
   third_party
-  third_party/clay
 )
 
 target_compile_options(shooter_ui_tests PRIVATE
