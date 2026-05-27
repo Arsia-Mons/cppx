@@ -9,7 +9,7 @@ namespace app {
 
 GameLoop::GameLoop(platform::sdl::Window      &window,
                    renderer::SdlClayRenderer  &clay_render,
-                   game::ui::GameUiPipeline   &ui_pipeline,
+                   client::ui::UiPipeline     &ui_pipeline,
                    platform::ControlMailbox   &control,
                    bool                       &running)
     : window_(window),
@@ -62,7 +62,7 @@ void GameLoop::tick() {
 
     int frame_w = 800, frame_h = 500;
     window_.size(&frame_w, &frame_h);
-    game::ui::GameUiFrame frame = {
+    client::ui::UiPipelineFrame frame = {
         .input   = ui_input,
         .layout  = { (float)frame_w, (float)frame_h },
         .pointer = { mx, my },

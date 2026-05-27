@@ -180,7 +180,7 @@ void ControlMailbox::write_error(int id, const char *code, const std::string &me
     write_reply(id, false, body.str());
 }
 
-std::string ControlMailbox::state_json(game::ui::GameUiPipeline &pipeline) {
+std::string ControlMailbox::state_json(client::ui::UiPipeline &pipeline) {
     client::ui::ClientUi &client_ui = pipeline.client_ui();
     client::ui::UiScreen *top = client_ui.screens().top();
     ::ui::ui_focus_set_current(&client_ui.focus_runtime());
@@ -244,7 +244,7 @@ std::string ControlMailbox::state_json(game::ui::GameUiPipeline &pipeline) {
 void ControlMailbox::poll(::ui::UiInputFrame &ui_input,
                           bool &running,
                           SDL_Window *window,
-                          game::ui::GameUiPipeline &pipeline) {
+                          client::ui::UiPipeline &pipeline) {
     if (!active_) return;
 
     std::vector<std::filesystem::path> requests;
@@ -386,7 +386,7 @@ bool ControlMailbox::save_screenshot(SDL_Renderer *renderer,
 }
 
 void ControlMailbox::capture_after_render(SDL_Renderer *renderer,
-                                          game::ui::GameUiPipeline &pipeline) {
+                                          client::ui::UiPipeline &pipeline) {
     if (!active_) return;
 
     for (const PendingScreenshot &shot : pending_screenshots_) {
@@ -430,7 +430,7 @@ void ControlMailbox::capture_after_render(SDL_Renderer *renderer,
     (void)pipeline;
 }
 
-void ControlMailbox::finish_frame(game::ui::GameUiPipeline &pipeline) {
+void ControlMailbox::finish_frame(client::ui::UiPipeline &pipeline) {
     if (!active_) return;
     frame_index_ += 1;
     for (auto it = pending_waits_.begin(); it != pending_waits_.end();) {

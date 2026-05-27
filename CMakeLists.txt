@@ -51,7 +51,7 @@ add_executable(hello
   src/app/game_loop.cpp
   src/client/ui/client_ui.cpp
   src/client/ui/screen_stack.cpp
-  src/game/ui/game_ui_pipeline.cpp
+  src/client/ui/ui_pipeline.cpp
   src/platform/control_mailbox.cpp
   src/platform/sdl/input.cpp
   src/platform/sdl/window.cpp
@@ -177,29 +177,29 @@ target_compile_options(client_ui_tests PRIVATE
 
 add_test(NAME client_ui_tests COMMAND client_ui_tests)
 
-add_executable(game_ui_pipeline_tests
-  tests/game_ui_pipeline_tests.cpp
+add_executable(ui_pipeline_tests
+  tests/ui_pipeline_tests.cpp
   src/react.cpp
   src/client/ui/client_ui.cpp
   src/client/ui/screen_stack.cpp
-  src/game/ui/game_ui_pipeline.cpp
+  src/client/ui/ui_pipeline.cpp
   src/ui/focus/ui_focus.cpp
   src/ui/primitives/button.cpp
   src/ui/primitives/focusable.cpp
   third_party/clay_impl.cpp
 )
 
-target_include_directories(game_ui_pipeline_tests PRIVATE
+target_include_directories(ui_pipeline_tests PRIVATE
   src
   third_party
   third_party/clay
 )
 
-target_compile_options(game_ui_pipeline_tests PRIVATE
+target_compile_options(ui_pipeline_tests PRIVATE
   $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall -Wextra -Wno-missing-field-initializers -Wno-c99-designator -Wno-unused-parameter>
 )
 
-add_test(NAME game_ui_pipeline_tests COMMAND game_ui_pipeline_tests)
+add_test(NAME ui_pipeline_tests COMMAND ui_pipeline_tests)
 
 add_executable(shooter_ui_tests
   tests/shooter_ui_tests.cpp

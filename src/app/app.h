@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../game/ui/game_ui_pipeline.h"
+#include "../client/ui/ui_pipeline.h"
 #include "../platform/control_mailbox.h"
 #include "../platform/sdl/window.h"
 #include "../renderer/font_registry.h"
@@ -39,7 +39,7 @@ private:
     renderer::SdlClayRenderer  clay_render_    = {};
     void                      *clay_arena_mem_ = nullptr;
     Clay_Context              *clay_ctx_       = nullptr;
-    game::ui::GameUiPipeline   ui_pipeline_    = {};
+    client::ui::UiPipeline     ui_pipeline_    = {};
     shooter::ShooterGame       shooter_game_   = {};
     platform::ControlMailbox   control_        = {};
     bool                       initialized_    = false;

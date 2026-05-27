@@ -1,17 +1,17 @@
-#include "game_ui_pipeline.h"
+#include "ui_pipeline.h"
 
 #include "../../react.h"
 
-namespace game::ui {
+namespace client::ui {
 
-static ReactContext GameUiFrameContext = {};
+static ReactContext UiPipelineFrameContext = {};
 
-const GameUiFrame *use_game_ui_frame() {
-    return static_cast<const GameUiFrame *>(use_context(&GameUiFrameContext));
+const UiPipelineFrame *use_ui_pipeline_frame() {
+    return static_cast<const UiPipelineFrame *>(use_context(&UiPipelineFrameContext));
 }
 
-void GameUiPipeline::render_client_ui_frame(const GameUiFrame &frame,
-                                            const RenderClayCommands &render_commands) {
+void UiPipeline::render_client_ui_frame(const UiPipelineFrame    &frame,
+                                        const RenderClayCommands &render_commands) {
     Clay_SetLayoutDimensions(frame.layout);
     Clay_SetPointerState(frame.pointer, frame.input.pointer_down);
 
@@ -19,8 +19,8 @@ void GameUiPipeline::render_client_ui_frame(const GameUiFrame &frame,
     react_begin_frame();
     Clay_BeginLayout();
 
-    REACT_PROVIDER_ENTER("GameUiFrameProvider");
-    PROVIDE(&GameUiFrameContext, const_cast<GameUiFrame *>(&frame)) {
+    REACT_PROVIDER_ENTER("UiPipelineFrameProvider");
+    PROVIDE(&UiPipelineFrameContext, const_cast<UiPipelineFrame *>(&frame)) {
         CLAY({
             .id = Clay_GetElementId(CLAY_STRING("ClientUiRoot")),
             .layout = {
@@ -43,4 +43,4 @@ void GameUiPipeline::render_client_ui_frame(const GameUiFrame &frame,
     client_ui_.drain_writes();
 }
 
-} // namespace game::ui
+} // namespace client::ui

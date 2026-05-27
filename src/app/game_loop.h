@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../game/ui/game_ui_pipeline.h"
+#include "../client/ui/ui_pipeline.h"
 #include "../platform/control_mailbox.h"
 #include "../platform/sdl/window.h"
 #include "../renderer/sdl_clay_renderer.h"
@@ -11,7 +11,7 @@ class GameLoop {
 public:
     GameLoop(platform::sdl::Window      &window,
              renderer::SdlClayRenderer  &clay_render,
-             game::ui::GameUiPipeline   &ui_pipeline,
+             client::ui::UiPipeline   &ui_pipeline,
              platform::ControlMailbox   &control,
              bool                       &running);
 
@@ -20,7 +20,7 @@ public:
 private:
     platform::sdl::Window      &window_;
     renderer::SdlClayRenderer  &clay_render_;
-    game::ui::GameUiPipeline   &ui_pipeline_;
+    client::ui::UiPipeline   &ui_pipeline_;
     platform::ControlMailbox   &control_;
     bool                       &running_;
     bool                        previous_pointer_down_ = false;

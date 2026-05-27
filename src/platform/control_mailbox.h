@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include "../game/ui/game_ui_pipeline.h"
+#include "../client/ui/ui_pipeline.h"
 #include "../ui/focus/ui_focus.h"
 
 namespace platform {
@@ -21,11 +21,11 @@ public:
     void poll(::ui::UiInputFrame &ui_input,
               bool &running,
               SDL_Window *window,
-              game::ui::GameUiPipeline &pipeline);
+              client::ui::UiPipeline &pipeline);
 
     bool apply_pointer_override(float &x, float &y, bool &down) const;
-    void capture_after_render(SDL_Renderer *renderer, game::ui::GameUiPipeline &pipeline);
-    void finish_frame(game::ui::GameUiPipeline &pipeline);
+    void capture_after_render(SDL_Renderer *renderer, client::ui::UiPipeline &pipeline);
+    void finish_frame(client::ui::UiPipeline &pipeline);
     void shutdown(void);
 
 private:
@@ -50,7 +50,7 @@ private:
     void write_ready(void);
     void write_reply(int id, bool ok, const std::string &body);
     void write_error(int id, const char *code, const std::string &message);
-    std::string state_json(game::ui::GameUiPipeline &pipeline);
+    std::string state_json(client::ui::UiPipeline &pipeline);
     bool save_screenshot(SDL_Renderer *renderer, const std::filesystem::path &out,
                          std::string *error);
 

@@ -1,4 +1,4 @@
-#include "game/ui/game_ui_pipeline.h"
+#include "client/ui/ui_pipeline.h"
 
 #include "client/ui/ui_screen.h"
 #include "react.h"
@@ -22,8 +22,8 @@
 
 using client::ui::ScreenNavigator;
 using client::ui::UiScreen;
-using game::ui::GameUiFrame;
-using game::ui::GameUiPipeline;
+using client::ui::UiPipeline;
+using client::ui::UiPipelineFrame;
 
 static Clay_Context *g_clay = nullptr;
 static void *g_clay_memory = nullptr;
@@ -53,7 +53,7 @@ static bool init_clay_once(void) {
     return true;
 }
 
-static GameUiFrame test_frame(::ui::UiInputFrame input = {}) {
+static UiPipelineFrame test_frame(::ui::UiInputFrame input = {}) {
     return {
         .input = input,
         .layout = { 640, 480 },
@@ -68,7 +68,7 @@ public:
     const char *debug_name() const override { return "FrameProviderProbe"; }
 
     void build_ui() override {
-        const GameUiFrame *frame = game::ui::use_game_ui_frame();
+        const UiPipelineFrame *frame = client::ui::use_ui_pipeline_frame();
         *observed_ = frame && frame->input.nav_right;
     }
 
@@ -103,9 +103,9 @@ struct RenderProbe {
     int screen_count_at_render = 0;
 };
 
-static bool game_ui_frame_provider_exposes_current_frame(void) {
+static bool ui_pipeline_frame_provider_exposes_current_frame(void) {
     react_init(g_clay);
-    GameUiPipeline pipeline;
+    UiPipeline pipeline;
     bool observed = false;
 
     CHECK(pipeline.client_ui().push_screen(
@@ -120,7 +120,7 @@ static bool game_ui_frame_provider_exposes_current_frame(void) {
 
 static bool pipeline_renders_before_draining_client_writes(void) {
     react_init(g_clay);
-    GameUiPipeline pipeline;
+    UiPipeline pipeline;
     RenderProbe probe = {};
 
     CHECK(pipeline.client_ui().push_screen(std::make_unique<PopOnConfirmScreen>()));
@@ -148,7 +148,7 @@ static bool pipeline_renders_before_draining_client_writes(void) {
 int main(void) {
     if (!init_clay_once()) return 1;
 
-    if (!game_ui_frame_provider_exposes_current_frame()) return 1;
+    if (!ui_pipeline_frame_provider_exposes_current_frame()) return 1;
     if (!pipeline_renders_before_draining_client_writes()) return 1;
 
     react_shutdown();
