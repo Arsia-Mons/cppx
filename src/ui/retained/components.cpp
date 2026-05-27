@@ -126,6 +126,27 @@ VisualStyle visual_from_props(const SelectableProps &props) {
     };
 }
 
+Style style_from_props(const FocusableProps &props) {
+    return {
+        .width = props.width,
+        .height = props.height,
+        .flex_grow = props.flex_grow,
+        .direction = props.direction,
+        .align_items = props.align_items,
+        .justify_content = props.justify_content,
+        .padding = props.padding,
+        .gap = props.gap,
+    };
+}
+
+VisualStyle visual_from_props(const FocusableProps &props) {
+    return {
+        .background = props.background,
+        .border = props.border,
+        .border_width = props.border_width,
+    };
+}
+
 RetainedNodeScope::RetainedNodeScope(const char *type, const char *key,
                                      const Style &style) {
     tree_ = current_retained_tree();
@@ -289,6 +310,35 @@ void Selectable(const SelectableProps &props) {
             .value = props.label,
         });
     }
+}
+
+void Focusable(const FocusableProps &props) {
+    RetainedNodeScope scope("Focusable", props.key ? props.key : props.id,
+                            style_from_props(props));
+    set_node_metadata(scope, {
+                                 .role = NodeRole::Focusable,
+                                 .control_id = props.id,
+                                 .control_offset = props.offset,
+                                 .interaction =
+                                     {
+                                         .focusable = true,
+                                         .disabled = props.disabled,
+                                         .initial_focus = props.initial_focus,
+                                     },
+                                 .visual = visual_from_props(props),
+                                 .on_focus = props.on_focus,
+                                 .on_confirm = props.on_confirm,
+                             });
+}
+
+void ScrollContainer(const NodeProps &props) {
+    RetainedNodeScope scope("ScrollContainer", props.key ? props.key : props.id,
+                            style_from_props(props));
+    set_node_metadata(scope, {
+                                 .role = NodeRole::ScrollContainer,
+                                 .control_id = props.id,
+                                 .visual = visual_from_props(props),
+                             });
 }
 
 void cppx_text(const char *value) {

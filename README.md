@@ -7,6 +7,8 @@ flex layout, retained focus/event routing, and SDL render-command output.
 The app demonstrates:
 
 - Main menu, options, pause, in-game HUD, and loadout screens.
+- Retained panels, text, buttons, toggles, selectables, generic focusable
+  containers, and scroll containers.
 - Keyboard/gamepad/pointer focus navigation over retained layout boxes.
 - Deferred UI mutations so game and screen state are not changed during the
   declaration pass.

@@ -234,6 +234,88 @@ static bool retained_selectable_invokes_focus_and_confirm_callbacks(void) {
     return true;
 }
 
+static bool retained_container_primitives_write_metadata_and_layout(void) {
+    react_init_runtime();
+    UiTree tree;
+    int focus_count = 0;
+    int confirm_count = 0;
+
+    CHECK(begin_retained_frame(tree, 260.0f, 180.0f));
+    Panel(
+        {
+            .key = "root",
+            .width = Length::points(260.0f),
+            .height = Length::points(180.0f),
+            .gap = 4.0f,
+        },
+        [&] {
+            Focusable(
+                FocusableProps{
+                    .key = "focusable",
+                    .id = "FocusableCard",
+                    .width = Length::points(120.0f),
+                    .height = Length::points(44.0f),
+                    .initial_focus = true,
+                    .background = {20, 28, 32, 255},
+                    .on_focus = [&focus_count] { focus_count += 1; },
+                    .on_confirm = [&confirm_count] { confirm_count += 1; },
+                },
+                [] {
+                    Text({
+                        .key = "label",
+                        .value = "Focusable",
+                    });
+                });
+            ScrollContainer(
+                {
+                    .key = "scroll",
+                    .id = "ScrollArea",
+                    .width = Length::points(200.0f),
+                    .height = Length::points(80.0f),
+                    .gap = 2.0f,
+                    .background = {8, 10, 12, 255},
+                },
+                [] {
+                    Text({
+                        .key = "row",
+                        .value = "Scrollable row",
+                    });
+                });
+        });
+    CHECK(end_retained_frame());
+
+    FlexLayoutAdapter adapter = make_yoga_flex_layout_adapter();
+    CHECK(compute_flex_layout(adapter, tree, {260.0f, 180.0f}));
+
+    NodeSnapshot root = {};
+    CHECK(snapshot_node(tree, tree.child_at(tree.root_id(), 0), &root));
+    CHECK(root.child_count == 2);
+
+    NodeSnapshot focusable = {};
+    CHECK(snapshot_node(tree, tree.child_at(root.id, 0), &focusable));
+    CHECK(focusable.role == NodeRole::Focusable);
+    CHECK(same_text(focusable.control_id, "FocusableCard"));
+    CHECK(focusable.interaction.focusable);
+    CHECK(focusable.interaction.initial_focus);
+    CHECK(focusable.layout.width == 120.0f);
+    CHECK(focusable.layout.height == 44.0f);
+    CHECK(focusable.child_count == 1);
+    CHECK(tree.invoke_focus(focusable.id));
+    CHECK(tree.invoke_confirm(focusable.id));
+    CHECK(focus_count == 1);
+    CHECK(confirm_count == 1);
+
+    NodeSnapshot scroll = {};
+    CHECK(snapshot_node(tree, tree.child_at(root.id, 1), &scroll));
+    CHECK(scroll.role == NodeRole::ScrollContainer);
+    CHECK(same_text(scroll.control_id, "ScrollArea"));
+    CHECK(!scroll.interaction.focusable);
+    CHECK(scroll.layout.width == 200.0f);
+    CHECK(scroll.layout.height == 80.0f);
+    CHECK(scroll.child_count == 1);
+    return true;
+}
+
 int main(void) {
     if (!retained_primitives_write_semantic_metadata_and_layout())
         return 1;
@@ -244,6 +326,8 @@ int main(void) {
     if (!retained_toggle_invokes_change_callback())
         return 1;
     if (!retained_selectable_invokes_focus_and_confirm_callbacks())
+        return 1;
+    if (!retained_container_primitives_write_metadata_and_layout())
         return 1;
     return 0;
 }

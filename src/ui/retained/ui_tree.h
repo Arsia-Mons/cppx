@@ -58,6 +58,8 @@ enum class NodeRole : uint8_t {
   Button,
   Toggle,
   Selectable,
+  Focusable,
+  ScrollContainer,
 };
 
 struct EdgeSizes {

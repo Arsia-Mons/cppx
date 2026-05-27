@@ -126,8 +126,8 @@ and mismatch/unclosed-tag diagnostics.
      callbacks and `ClientUi` dispatch from retained confirmed node IDs.
    - retained selectable focus/confirm callbacks: foundation done, including
      custom retained selectable content for complex screen controls.
-   - remaining: focusable containers, scroll containers, richer draw styles,
-     and broader event wiring.
+   - generic focusable containers and scroll containers: foundation done.
+   - remaining: richer draw styles and broader event wiring.
 
 6. Event and focus port:
    - hit testing from retained layout boxes: foundation done through
