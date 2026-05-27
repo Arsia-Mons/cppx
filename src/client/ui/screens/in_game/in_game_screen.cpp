@@ -2,11 +2,8 @@
 
 #include <memory>
 
-#include <clay.h>
-
 #include "../../../../react.h"
-#include "../../../../ui/focus/ui_focus.h"
-#include "../../../../ui/primitives/button.h"
+#include "../../../../ui/retained/components.h"
 #include "../../callback_deps.h"
 #include "../../client_ui.h"
 #include "../../components/hud_band.h"
@@ -37,54 +34,55 @@ std::function<void()> use_start_match() {
 }
 
 static void ShooterGameScreenView() {
-    REACT_COMPONENT_BEGIN("ShooterGameScreenView") {
+    REACT_RETAINED_COMPONENT_BEGIN("ShooterGameScreenView") {
+        bool is_top = client::ui::use_screen_is_top();
         std::function<void()> open_pause = use_push_pause_screen();
         std::function<void()> open_loadout = use_push_loadout_screen();
-        ::ui::ui_focus_push_scope({ .id = CLAY_ID("ShooterGameScope") });
-        ::ui::ui_focus_request_initial_focus(CLAY_ID("OpenPauseButton"));
+        namespace retained = ::ui::retained;
 
-        CLAY({
-            .id = CLAY_ID("ShooterGameRoot"),
-            .layout = {
-                .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0) },
-                .padding = CLAY_PADDING_ALL(24),
-                .childGap = 18,
-                .layoutDirection = CLAY_TOP_TO_BOTTOM,
-            },
-            .backgroundColor = { 10, 16, 18, 255 },
-        }) {
-            HudBand();
-            CLAY({
-                .id = CLAY_ID("ShooterGameActions"),
-                .layout = {
-                    .sizing = { CLAY_SIZING_FIT(0), CLAY_SIZING_FIT(0) },
-                    .childGap = 12,
-                    .layoutDirection = CLAY_LEFT_TO_RIGHT,
+        if (is_top) {
+            retained::Panel(
+                {
+                    .key = "root",
+                    .width = retained::Length::percent(100.0f),
+                    .height = retained::Length::percent(100.0f),
+                    .direction = retained::FlexDirection::Column,
+                    .padding = {24.0f, 24.0f, 24.0f, 24.0f},
+                    .gap = 18.0f,
+                    .background = {10, 16, 18, 255},
                 },
-            }) {
-                ::ui::Button({
-                    .id = CLAY_ID("OpenPauseButton"),
-                    .label = "Pause",
-                    .on_confirm = open_pause,
+                [&] {
+                    HudBand();
+                    retained::Panel(
+                        {
+                            .key = "actions",
+                            .direction = retained::FlexDirection::Row,
+                            .align_items = retained::AlignItems::Start,
+                            .gap = 12.0f,
+                        },
+                        [&] {
+                            retained::Button({
+                                .key = "pause",
+                                .id = "OpenPauseButton",
+                                .label = "Pause",
+                                .on_confirm = open_pause,
+                            });
+                            retained::Button({
+                                .key = "loadout",
+                                .id = "OpenLoadoutButton",
+                                .label = "Loadout",
+                                .on_confirm = open_loadout,
+                            });
+                        });
                 });
-                ::ui::Button({
-                    .id = CLAY_ID("OpenLoadoutButton"),
-                    .label = "Loadout",
-                    .on_confirm = open_loadout,
-                });
-            }
         }
-
-        ::ui::ui_focus_pop_scope();
-    }
-    REACT_COMPONENT_END();
+    } REACT_RETAINED_COMPONENT_END();
 }
 
 void ShooterGameScreen::build_ui() {
-    REACT_COMPONENT_BEGIN_KEY("ShooterGameScreen", entry_id()) {
+    REACT_RETAINED_COMPONENT_BEGIN_KEY("ShooterGameScreen", entry_id()) {
         ShooterGameScreenView();
-    }
-    REACT_COMPONENT_END();
+    } REACT_RETAINED_COMPONENT_END();
 }
 
 } // namespace shooter

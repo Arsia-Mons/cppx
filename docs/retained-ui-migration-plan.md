@@ -157,7 +157,8 @@ and mismatch/unclosed-tag diagnostics.
      `ScreenProvider`.
    - pause: ported to retained modal panel, text, buttons, focus, confirm
      callbacks, and CLI targeting.
-   - in-game HUD.
+   - in-game HUD/action buttons: ported to retained panels, text, buttons,
+     focus, confirm callbacks, and top-screen gating.
    - loadout and dialogs.
 
 8. Renderer replacement:

@@ -175,6 +175,10 @@ mixed retained/Clay stacks do not dispatch actions through covered screens.
 Retained overlay screens consult the `ScreenProvider` top-screen flag before
 emitting retained modal nodes, so a retained overlay does not render or trap
 input after a higher Clay overlay covers it.
+`ShooterGameScreen` and the shared `HudBand` component are now retained too:
+the in-game root, HUD text, and pause/loadout action buttons emit through the
+retained tree, and the screen uses the top-screen flag so it does not keep
+interactive retained controls alive behind overlays.
 
 ## Component API Direction
 
