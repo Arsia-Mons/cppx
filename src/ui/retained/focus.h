@@ -1,0 +1,73 @@
+#pragma once
+
+#include "ui_tree.h"
+
+#include <array>
+
+namespace ui::retained {
+
+constexpr int UI_RETAINED_MAX_FOCUSABLES = UI_RETAINED_MAX_NODES;
+
+enum class FocusDirection {
+  Up,
+  Down,
+  Left,
+  Right,
+};
+
+enum class FocusSource {
+  None,
+  Keyboard,
+  Gamepad,
+  Mouse,
+  Touch,
+  Programmatic,
+};
+
+struct InputFrame {
+  bool nav_up = false;
+  bool nav_down = false;
+  bool nav_left = false;
+  bool nav_right = false;
+
+  bool confirm_pressed = false;
+
+  bool pointer_pressed = false;
+  bool pointer_down = false;
+  bool pointer_released = false;
+  bool pointer_valid = false;
+  float pointer_x = 0.0f;
+  float pointer_y = 0.0f;
+
+  FocusSource source = FocusSource::Keyboard;
+};
+
+struct FocusableLayout {
+  NodeId id = 0;
+  Rect rect = {};
+  bool disabled = false;
+  uint32_t order = 0;
+};
+
+struct FocusRuntime {
+  std::array<FocusableLayout, UI_RETAINED_MAX_FOCUSABLES> focusables = {};
+  int focusable_count = 0;
+
+  NodeId active_scope_id = 0;
+  NodeId focused_id = 0;
+  NodeId pointer_press_origin = 0;
+  NodeId confirmed_id = 0;
+  FocusSource source = FocusSource::None;
+  int error_count = 0;
+};
+
+void focus_init(FocusRuntime *runtime);
+bool focus_update(FocusRuntime *runtime, const UiTree &tree,
+                  const InputFrame &input);
+
+NodeId focus_focused_id(const FocusRuntime &runtime);
+NodeId focus_confirmed_id(const FocusRuntime &runtime);
+FocusSource focus_source(const FocusRuntime &runtime);
+int focus_error_count(const FocusRuntime &runtime);
+
+} // namespace ui::retained

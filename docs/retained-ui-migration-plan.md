@@ -126,8 +126,11 @@ and mismatch/unclosed-tag diagnostics.
      and callback/event wiring.
 
 6. Event and focus port:
-   - hit testing from retained layout boxes.
-   - focus scopes and navigation over retained node IDs.
+   - hit testing from retained layout boxes: foundation done through
+     `src/ui/retained/focus.*`.
+   - focus scopes and navigation over retained node IDs: foundation done for
+     root/modal retained scopes, spatial navigation, disabled controls, pointer
+     confirm, and keyboard/gamepad/mouse source tracking.
    - deferred mutation ordering kept at the same frame boundary.
 
 7. Screen ports:

@@ -140,6 +140,10 @@ consume without querying Clay element data.
 `src/ui/retained/draw_list.*` is the Clay-free renderer boundary: it walks
 retained snapshots after flex layout and emits app-owned rect/text draw
 commands from retained metadata.
+`src/ui/retained/focus.*` is the retained focus/event boundary: it collects
+focusable retained nodes, uses computed `UiTree` layout boxes for spatial
+navigation and pointer hit testing, and treats modal retained nodes as active
+focus scopes.
 
 ## Component API Direction
 
