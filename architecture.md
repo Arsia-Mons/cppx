@@ -41,8 +41,9 @@ The current runtime still uses Clay for:
 The current React-style hook runtime stores hook state per component instance
 and already has useful concepts the migration should preserve: component
 identity, keyed siblings, providers/context, effects, refs, callbacks, and
-per-frame unmount cleanup. It currently derives identity from Clay IDs, so it is
-not the long-term owner of retained node identity.
+per-frame unmount cleanup. Hook fiber identity is now an app-owned 64-bit ID;
+Clay-backed components still emit separate Clay IDs only for the temporary Clay
+layout path.
 
 `ClientUi` owns retained screens through `ScreenStack`, focus runtime lifetime,
 and the deferred mutation queue. That ownership remains correct. The migration

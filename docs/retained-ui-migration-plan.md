@@ -9,9 +9,10 @@ branch and PR.
 - `architecture.md` was missing in the current worktree even though the root
   contract says it is canonical. This slice restores it with the retained-mode
   target described explicitly.
-- `src/react.{h,cpp}` is still Clay-backed. It already proves useful semantics:
-  stable hook storage, keyed siblings, providers/context, effects, refs,
-  callbacks, text storage, and unmount cleanup.
+- `src/react.{h,cpp}` is still used by Clay-backed screens, but hook fiber
+  identity now has an app-owned 64-bit path. It already proves useful
+  semantics: stable hook storage, keyed siblings, providers/context, effects,
+  refs, callbacks, text storage, and unmount cleanup.
 - `ClientUi` and `ScreenStack` already own the correct client-shell concerns:
   retained screens, focus runtime lifetime, per-frame sequencing, and deferred
   mutation draining.
@@ -107,8 +108,12 @@ and mismatch/unclosed-tag diagnostics.
      `.hx`.
 
 4. Retained hook runtime:
-   - replace Clay-derived component IDs with retained parent/key identity.
+   - replace Clay-derived component IDs with retained parent/key identity:
+     foundation done through `ReactFiberId`, `react_init_runtime()`, and
+     `REACT_RETAINED_COMPONENT_*`.
    - preserve hooks, providers, effects, refs, callbacks, and unmount cleanup.
+   - remaining before primitive ports: bind retained component entry to authored
+     `.cppx` output and `UiTree` node creation.
 
 5. Primitive port:
    - text, button, toggle, selectable, focusable containers, panels, scroll
