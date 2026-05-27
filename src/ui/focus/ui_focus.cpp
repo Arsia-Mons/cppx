@@ -28,6 +28,10 @@ static int clamp_limit(int value, int fallback, int max_value) {
 void ui_focus_init(UiFocusRuntime *runtime, UiRuntimeLimits limits) {
     if (!runtime) return;
     *runtime = {};
+    runtime->pending_storage = std::make_unique<UiFocusableRegistration[]>(
+        UI_FOCUS_MAX_SCOPES * UI_FOCUS_MAX_FOCUSABLES_PER_SCOPE);
+    runtime->layout_storage = std::make_unique<UiFocusableLayout[]>(
+        UI_FOCUS_MAX_SCOPES * UI_FOCUS_MAX_FOCUSABLES_PER_SCOPE);
     runtime->limits.max_focus_scopes = clamp_limit(
         limits.max_focus_scopes, UI_FOCUS_MAX_SCOPES, UI_FOCUS_MAX_SCOPES);
     runtime->limits.max_focusables_per_scope = clamp_limit(
@@ -73,8 +77,13 @@ static UiFocusScope *create_scope(UiFocusRuntime *runtime, const UiFocusScopeDes
         report_error(runtime, "scope overflow");
         return nullptr;
     }
-    UiFocusScope *scope = &runtime->scopes[runtime->scope_count++];
+    int scope_index = runtime->scope_count++;
+    UiFocusScope *scope = &runtime->scopes[scope_index];
     *scope = {};
+    scope->pending = runtime->pending_storage.get() +
+        scope_index * UI_FOCUS_MAX_FOCUSABLES_PER_SCOPE;
+    scope->layout = runtime->layout_storage.get() +
+        scope_index * UI_FOCUS_MAX_FOCUSABLES_PER_SCOPE;
     scope->id = desc.id;
     scope->modal = desc.modal;
     scope->wrap = desc.wrap;

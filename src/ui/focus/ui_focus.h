@@ -2,6 +2,7 @@
 
 #include <array>
 #include <functional>
+#include <memory>
 #include <stdint.h>
 
 #include <clay.h>
@@ -134,10 +135,10 @@ struct UiFocusScope {
     uint32_t declared_frame = 0;
     uint32_t declaration_order = 0;
 
-    std::array<UiFocusableRegistration, UI_FOCUS_MAX_FOCUSABLES_PER_SCOPE> pending = {};
+    UiFocusableRegistration *pending = nullptr;
     int pending_count = 0;
 
-    std::array<UiFocusableLayout, UI_FOCUS_MAX_FOCUSABLES_PER_SCOPE> layout = {};
+    UiFocusableLayout *layout = nullptr;
     int layout_count = 0;
 };
 
@@ -145,6 +146,9 @@ struct UiFocusRuntime {
     UiRuntimeLimits limits = {};
     std::array<UiFocusScope, UI_FOCUS_MAX_SCOPES> scopes = {};
     int scope_count = 0;
+
+    std::unique_ptr<UiFocusableRegistration[]> pending_storage = {};
+    std::unique_ptr<UiFocusableLayout[]> layout_storage = {};
 
     int scope_stack[UI_FOCUS_MAX_SCOPES] = {};
     int scope_stack_count = 0;

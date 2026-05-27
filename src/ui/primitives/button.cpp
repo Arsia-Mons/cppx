@@ -68,11 +68,11 @@ void Button(const ButtonProps &props) {
                     .childAlignment = { CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER },
                 },
                 .backgroundColor = style.background,
-                .border = {
-                    .width = CLAY_BORDER_OUTSIDE(style.border_width),
-                    .color = style.border,
-                },
                 .cornerRadius = CLAY_CORNER_RADIUS(4),
+                .border = {
+                    .color = style.border,
+                    .width = CLAY_BORDER_OUTSIDE(style.border_width),
+                },
             }) {
                 CLAY_TEXT(clay_text(props.label),
                     CLAY_TEXT_CONFIG({

@@ -70,8 +70,8 @@ static void run_primitive_frame(UiFocusRuntime &focus,
         .id = test_id("PrimitiveRoot"),
         .layout = {
             .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0) },
-            .layoutDirection = CLAY_TOP_TO_BOTTOM,
             .childGap = 8,
+            .layoutDirection = CLAY_TOP_TO_BOTTOM,
         },
     }) {
         build();
@@ -302,6 +302,64 @@ static bool selectable_uses_caller_owned_selection(void) {
     return true;
 }
 
+static int g_focusable_component_values[2] = {};
+
+static void StatefulFocusableTile(Clay_ElementId id, int slot, int initial, int write_value) {
+    Focusable({
+        .id = id,
+    }, [&](const UiFocusableState &focus) {
+        int *value = use_state_int(initial);
+        if (write_value >= 0) {
+            *value = write_value;
+        }
+        g_focusable_component_values[slot] = *value;
+
+        CLAY({
+            .id = focus.id,
+            .layout = {
+                .sizing = { CLAY_SIZING_FIXED(20), CLAY_SIZING_FIXED(20) },
+            },
+        }) {}
+    });
+}
+
+static bool focusable_render_body_has_component_owned_hook_state(void) {
+    react_init(g_clay);
+    UiFocusRuntime focus;
+    ui_focus_init(&focus);
+    g_focusable_component_values[0] = 0;
+    g_focusable_component_values[1] = 0;
+
+    Clay_ElementId scope = test_id("FocusableComponentScope");
+    Clay_ElementId first = CLAY_IDI("StatefulFocusableTile", 0);
+    Clay_ElementId second = CLAY_IDI("StatefulFocusableTile", 1);
+
+    auto build_initial = [&] {
+        ui_focus_push_scope({ .id = scope });
+        StatefulFocusableTile(first, 0, 1, 10);
+        StatefulFocusableTile(second, 1, 2, 20);
+        ui_focus_pop_scope();
+    };
+
+    run_primitive_frame(focus, {}, build_initial);
+    CHECK(react_error_count() == 0);
+    CHECK(g_focusable_component_values[0] == 10);
+    CHECK(g_focusable_component_values[1] == 20);
+
+    auto build_reordered = [&] {
+        ui_focus_push_scope({ .id = scope });
+        StatefulFocusableTile(second, 1, 99, -1);
+        StatefulFocusableTile(first, 0, 99, -1);
+        ui_focus_pop_scope();
+    };
+
+    run_primitive_frame(focus, {}, build_reordered);
+    CHECK(react_error_count() == 0);
+    CHECK(g_focusable_component_values[0] == 10);
+    CHECK(g_focusable_component_values[1] == 20);
+    return true;
+}
+
 int main(void) {
     if (!init_clay_once()) return 1;
 
@@ -310,6 +368,7 @@ int main(void) {
     if (!pointer_press_drag_and_release_confirm_button_once()) return 1;
     if (!toggle_calls_caller_owned_setter()) return 1;
     if (!selectable_uses_caller_owned_selection()) return 1;
+    if (!focusable_render_body_has_component_owned_hook_state()) return 1;
 
     react_shutdown();
     free(g_clay_memory);

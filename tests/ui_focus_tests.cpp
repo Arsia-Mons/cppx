@@ -89,8 +89,8 @@ static void run_focus_frame(UiFocusRuntime &focus,
         .id = test_id("TestRoot"),
         .layout = {
             .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0) },
-            .layoutDirection = CLAY_TOP_TO_BOTTOM,
             .childGap = 8,
+            .layoutDirection = CLAY_TOP_TO_BOTTOM,
         },
     }) {
         build();
@@ -108,8 +108,8 @@ static void simple_stack_scope(Clay_ElementId scope,
     CLAY({
         .id = test_id("Stack"),
         .layout = {
-            .layoutDirection = CLAY_TOP_TO_BOTTOM,
             .childGap = 8,
+            .layoutDirection = CLAY_TOP_TO_BOTTOM,
         },
     }) {
         focus_box(a);
@@ -165,8 +165,8 @@ static bool grid_navigation_uses_geometry_without_neighbor_tables(void) {
         CLAY({
             .id = test_id("GridRows"),
             .layout = {
-                .layoutDirection = CLAY_TOP_TO_BOTTOM,
                 .childGap = 8,
+                .layoutDirection = CLAY_TOP_TO_BOTTOM,
             },
         }) {
             CLAY({ .id = test_id("GridRowTop") }) {
@@ -175,8 +175,8 @@ static bool grid_navigation_uses_geometry_without_neighbor_tables(void) {
             CLAY({
                 .id = test_id("GridRowBottom"),
                 .layout = {
-                    .layoutDirection = CLAY_LEFT_TO_RIGHT,
                     .childGap = 8,
+                    .layoutDirection = CLAY_LEFT_TO_RIGHT,
                 },
             }) {
                 focus_box(lower_left);
@@ -250,8 +250,8 @@ static bool local_boundary_rules_stop_wrap_and_explicit_targets(void) {
         CLAY({
             .id = test_id("RulesRow"),
             .layout = {
-                .layoutDirection = CLAY_LEFT_TO_RIGHT,
                 .childGap = 8,
+                .layoutDirection = CLAY_LEFT_TO_RIGHT,
             },
         }) {
             focus_box(a, false, a_rules);
@@ -523,8 +523,8 @@ static bool focus_survives_reflow_and_next_navigation_uses_new_rectangles(void) 
         CLAY({
             .id = test_id("ReflowBody"),
             .layout = {
-                .layoutDirection = horizontal ? CLAY_LEFT_TO_RIGHT : CLAY_TOP_TO_BOTTOM,
                 .childGap = 8,
+                .layoutDirection = horizontal ? CLAY_LEFT_TO_RIGHT : CLAY_TOP_TO_BOTTOM,
             },
         }) {
             focus_box(a);

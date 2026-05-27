@@ -38,17 +38,17 @@ void Toggle(const ToggleProps &props) {
                     .sizing = { CLAY_SIZING_FIXED(178), CLAY_SIZING_FIXED(38) },
                     .padding = { 10, 10, 8, 8 },
                     .childGap = 10,
-                    .layoutDirection = CLAY_LEFT_TO_RIGHT,
                     .childAlignment = { CLAY_ALIGN_X_LEFT, CLAY_ALIGN_Y_CENTER },
+                    .layoutDirection = CLAY_LEFT_TO_RIGHT,
                 },
                 .backgroundColor = toggle_background(visual),
+                .cornerRadius = CLAY_CORNER_RADIUS(4),
                 .border = {
-                    .width = CLAY_BORDER_OUTSIDE(border_width),
                     .color = visual.chosen
                         ? Clay_Color{ 136, 210, 148, 255 }
                         : Clay_Color{ 78, 88, 104, 255 },
+                    .width = CLAY_BORDER_OUTSIDE(border_width),
                 },
-                .cornerRadius = CLAY_CORNER_RADIUS(4),
             }) {
                 CLAY({
                     .id = CLAY_ID_LOCAL("ToggleMark"),

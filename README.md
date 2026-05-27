@@ -13,13 +13,17 @@ The app demonstrates:
 
 ## Build
 
-```sh
-cmake -S . -B build
-cmake --build build
-./build/sdl3_clay_reference
+On Windows, use the wrapper:
+
+```powershell
+./build.ps1
+./build.ps1 -Run
+./build.ps1 -Tests
 ```
 
-SDL3 is expected to be available through CMake package discovery. SDL3_ttf and Clay are fetched when needed.
+The wrapper finds Visual Studio, uses `VCPKG_ROOT` when available, configures
+`cmake-build-debug`, and builds the `hello` target by default. SDL3 and
+SDL3_ttf are fetched when needed.
 
 ## Structure
 

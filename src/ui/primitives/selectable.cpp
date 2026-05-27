@@ -31,13 +31,13 @@ void Selectable(const SelectableProps &props) {
                 .backgroundColor = visual.chosen
                     ? Clay_Color{ 42, 80, 60, 255 }
                     : Clay_Color{ 24, 28, 36, 255 },
+                .cornerRadius = CLAY_CORNER_RADIUS(4),
                 .border = {
-                    .width = CLAY_BORDER_OUTSIDE(border_width),
                     .color = visual.targeted
                         ? Clay_Color{ 122, 176, 238, 255 }
                         : Clay_Color{ 78, 88, 104, 255 },
+                    .width = CLAY_BORDER_OUTSIDE(border_width),
                 },
-                .cornerRadius = CLAY_CORNER_RADIUS(4),
             }) {
                 CLAY_TEXT(clay_text(props.label),
                     CLAY_TEXT_CONFIG({

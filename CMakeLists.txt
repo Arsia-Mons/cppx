@@ -83,6 +83,15 @@ target_link_libraries(hello PRIVATE
   CURL::libcurl
 )
 
+if(WIN32)
+  add_custom_command(TARGET hello POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+      $<TARGET_RUNTIME_DLLS:hello>
+      $<TARGET_FILE_DIR:hello>
+    COMMAND_EXPAND_LISTS
+  )
+endif()
+
 add_executable(react_runtime_tests
   tests/react_runtime_tests.cpp
   src/react.cpp

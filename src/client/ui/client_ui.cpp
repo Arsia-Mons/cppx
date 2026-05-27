@@ -53,8 +53,8 @@ void ClientUi::build_visible_screens() {
             .id = CLAY_IDI("ClientUiOverlayScreenFrame", screen->entry_id()),
             .layout = {
                 .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0) },
-                .layoutDirection = CLAY_TOP_TO_BOTTOM,
                 .childAlignment = { CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER },
+                .layoutDirection = CLAY_TOP_TO_BOTTOM,
             },
             .backgroundColor = { 5, 8, 10, 218 },
             .floating = {

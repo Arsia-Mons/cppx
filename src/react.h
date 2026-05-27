@@ -11,6 +11,7 @@
 //   react_end_frame()              - call once per frame, after Clay_EndLayout.
 //   REACT_COMPONENT_BEGIN/END      - bracket a component's body.
 //   REACT_COMPONENT_BEGIN_KEY/END  - bracket a repeated/keyed component body.
+//   REACT_FRAGMENT_COMPONENT_*     - bracket a component that emits its own Clay root.
 //   REACT_PROVIDER_ENTER/EXIT      - bracket a transparent provider body.
 //   use_state_int(initial)         - returns int* that persists across frames.
 //   use_effect(fn, cleanup, user, deps_hash) - runs after commit when deps change.
@@ -72,6 +73,18 @@ Clay_ElementId react_make_instance_id(Clay_String name, uint32_t index, bool key
         CLAY({ .id = _react_cid })
 
 #define REACT_COMPONENT_END()                                                     \
+        react_leave();                                                            \
+    }
+
+#define REACT_FRAGMENT_COMPONENT_BEGIN(name_literal)                              \
+    {                                                                             \
+        react_enter(REACT_INSTANCE_ID(name_literal).id);
+
+#define REACT_FRAGMENT_COMPONENT_BEGIN_KEY(name_literal, key_index)                \
+    {                                                                             \
+        react_enter(REACT_INSTANCE_ID_KEY(name_literal, key_index).id);
+
+#define REACT_FRAGMENT_COMPONENT_END()                                             \
         react_leave();                                                            \
     }
 
