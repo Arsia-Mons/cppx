@@ -20,6 +20,8 @@
 #include "platform/control_mailbox.h"
 #include "platform/input_adapter.h"
 #include "react.h"
+#include "renderer/font_registry.h"
+#include "renderer/sdl_clay_renderer.h"
 #include "shooter/shooter_game.h"
 #include "shooter/shooter_ui.h"
 
@@ -37,44 +39,6 @@
 
 static SDL_Window           *g_window   = nullptr;
 static SDL_Renderer         *g_renderer = nullptr;
-static TTF_TextEngine       *g_text_eng = nullptr;
-static TTF_Font             *g_font     = nullptr;
-static Clay_SDL3RendererData g_clay_rd  = {};
-
-// ----------------------------------------------------------------------------
-// Font discovery + Clay text measurement.
-// ----------------------------------------------------------------------------
-
-static TTF_Font *open_some_font(float ptsize) {
-    const char *candidates[] = {
-        "/System/Library/Fonts/Helvetica.ttc",
-        "/System/Library/Fonts/Supplemental/Arial.ttf",
-        "/Library/Fonts/Arial.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "/usr/share/fonts/TTF/DejaVuSans.ttf",
-        "C:\\Windows\\Fonts\\arial.ttf",
-    };
-    for (const char *p : candidates) {
-        TTF_Font *f = TTF_OpenFont(p, ptsize);
-        if (f) {
-            SDL_Log("loaded font: %s", p);
-            return f;
-        }
-    }
-    return nullptr;
-}
-
-static Clay_Dimensions measure_text(Clay_StringSlice text,
-                                    Clay_TextElementConfig *cfg,
-                                    void *user_data) {
-    (void)user_data;
-    TTF_Font *font = g_font;
-    if (!font) return { 0, 0 };
-    TTF_SetFontSize(font, cfg->fontSize);
-    int w = 0, h = 0;
-    TTF_GetStringSize(font, text.chars, (size_t)text.length, &w, &h);
-    return { (float)w, (float)h };
-}
 
 static void on_clay_error(Clay_ErrorData err) {
     fprintf(stderr, "clay: %.*s\n", (int)err.errorText.length, err.errorText.chars);
@@ -154,16 +118,14 @@ int main(int argc, char **argv) {
     if (!g_renderer) { fprintf(stderr, "SDL_CreateRenderer: %s\n", SDL_GetError()); return 1; }
     SDL_SetRenderVSync(g_renderer, control_dir ? 0 : 1);
 
-    g_text_eng = TTF_CreateRendererTextEngine(g_renderer);
-    g_font = open_some_font(16.0f);
-    if (!g_font) {
-        fprintf(stderr, "no font found; tried system defaults\n");
+    renderer::FontRegistry fonts;
+    if (!fonts.initialize(g_renderer)) {
         return 1;
     }
-    TTF_Font *fonts[1] = { g_font };
-    g_clay_rd.renderer   = g_renderer;
-    g_clay_rd.textEngine = g_text_eng;
-    g_clay_rd.fonts      = fonts;
+    renderer::SdlClayRenderer clay_renderer;
+    if (!clay_renderer.initialize(g_renderer, fonts)) {
+        return 1;
+    }
 
     // --- Clay init ---
     uint32_t clay_mem = Clay_MinMemorySize();
@@ -175,7 +137,7 @@ int main(int argc, char **argv) {
         clay_arena,
         Clay_Dimensions{ (float)win_w, (float)win_h },
         Clay_ErrorHandler{ on_clay_error, 0 });
-    Clay_SetMeasureTextFunction(measure_text, nullptr);
+    Clay_SetMeasureTextFunction(renderer::FontRegistry::measure_thunk, &fonts);
 
     react_init(clay_ctx);
 
@@ -246,11 +208,10 @@ int main(int argc, char **argv) {
         };
 
         ui_pipeline.render_client_ui_frame(frame, [&](Clay_RenderCommandArray &cmds) {
-            SDL_SetRenderDrawColor(g_renderer, 12, 14, 22, 255);
-            SDL_RenderClear(g_renderer);
-            SDL_Clay_RenderClayCommands(&g_clay_rd, &cmds);
+            clay_renderer.clear({ 12, 14, 22, 255 });
+            clay_renderer.render(cmds);
             control.capture_after_render(g_renderer, ui_pipeline);
-            SDL_RenderPresent(g_renderer);
+            clay_renderer.present();
         });
         control.finish_frame(ui_pipeline);
     }
@@ -258,8 +219,6 @@ int main(int argc, char **argv) {
     control.shutdown();
     react_shutdown();
     SDL_free(clay_buf);
-    TTF_CloseFont(g_font);
-    TTF_DestroyRendererTextEngine(g_text_eng);
     SDL_DestroyRenderer(g_renderer);
     SDL_DestroyWindow(g_window);
     TTF_Quit();

@@ -52,6 +52,8 @@ add_executable(hello
   src/game/ui/game_ui_pipeline.cpp
   src/platform/control_mailbox.cpp
   src/platform/input_adapter.cpp
+  src/renderer/font_registry.cpp
+  src/renderer/sdl_clay_renderer.cpp
   src/shooter/shooter_game.cpp
   src/shooter/shooter_ui.cpp
   src/ui/focus/ui_focus.cpp
