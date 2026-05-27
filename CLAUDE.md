@@ -45,3 +45,4 @@ Headless tests live in `tests/`. The Python smoke tests drive the binary through
 - `docs/eve-window-system-functional-requirements.md` — window-system spec being designed against.
 - `docs/eve-window-system-planning-process.md` — planning notes for the same.
 - `src/react.h` — full hook-runtime API reference (header comment is the docs).
+- `.claude/skills/composition-patterns/` — Vercel's React composition-patterns skill (compound components, lifted state, explicit variants, no boolean-prop proliferation). This UI is C++ on Clay, not real React, but the hook runtime in `src/react.h` is intentionally React-shaped — apply these patterns when designing components, hooks, and provider/context layouts to the extent the language allows. Mirrored into `.codex/skills/composition-patterns/` for Codex.
