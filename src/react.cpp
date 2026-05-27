@@ -303,6 +303,17 @@ ReactFiberId react_make_instance_fiber_id(const char *name, uint32_t index,
     return hash == 0 ? 1ull : hash;
 }
 
+ReactFiberId react_make_instance_fiber_key_id(const char *name,
+                                              const char *key) {
+    ReactFiberId parent_id = G.current ? G.current->id : 0xCBF29CE484222325ull;
+    ReactFiberId hash = 1469598103934665603ull;
+    hash = mix_fiber_id(hash, parent_id);
+    hash = hash_bytes(hash, name);
+    hash = mix_fiber_id(hash, 0x9E3779B97F4A7C15ull);
+    hash = hash_bytes(hash, key);
+    return hash == 0 ? 1ull : hash;
+}
+
 Clay_ElementId react_make_instance_clay_id(Clay_String name, uint32_t index,
                                            bool keyed) {
     uint32_t parent_id =

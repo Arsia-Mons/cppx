@@ -61,6 +61,10 @@ cppx_transpile(CPPX_FIXTURE_GENERATED
 )
 add_custom_target(cppx_generated_fixtures ALL DEPENDS ${CPPX_FIXTURE_GENERATED})
 
+cppx_transpile(CPPX_RETAINED_COMPONENT_GENERATED
+  tests/fixtures/retained_cppx/generated_tree.cppx
+)
+
 add_test(
   NAME cppx_transpiler_tests
   COMMAND ${Python3_EXECUTABLE}
@@ -212,6 +216,34 @@ target_link_libraries(retained_ui_yoga_tests PRIVATE
 )
 
 add_test(NAME retained_ui_yoga_tests COMMAND retained_ui_yoga_tests)
+
+add_executable(retained_cppx_component_tests
+  tests/retained_cppx_component_tests.cpp
+  ${CPPX_RETAINED_COMPONENT_GENERATED}
+  src/react.cpp
+  src/ui/retained/components.cpp
+  src/ui/retained/ui_tree.cpp
+  src/ui/retained/flex_layout.cpp
+  src/ui/retained/yoga_flex_layout.cpp
+  third_party/clay_impl.cpp
+)
+
+target_include_directories(retained_cppx_component_tests PRIVATE
+  src
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  third_party
+  third_party/clay
+)
+
+target_compile_options(retained_cppx_component_tests PRIVATE
+  $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall -Wextra -Wno-missing-field-initializers -Wno-c99-designator -Wno-unused-parameter>
+)
+
+target_link_libraries(retained_cppx_component_tests PRIVATE
+  yogacore
+)
+
+add_test(NAME retained_cppx_component_tests COMMAND retained_cppx_component_tests)
 
 add_executable(ui_primitives_tests
   tests/ui_primitives_tests.cpp

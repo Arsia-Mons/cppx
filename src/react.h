@@ -72,6 +72,8 @@ void react_leave(void);
 uint32_t react_next_child_index(void);
 ReactFiberId react_make_instance_fiber_id(const char *name, uint32_t index,
                                           bool keyed);
+ReactFiberId react_make_instance_fiber_key_id(const char *name,
+                                              const char *key);
 Clay_ElementId react_make_instance_clay_id(Clay_String name, uint32_t index,
                                            bool keyed);
 

@@ -112,8 +112,11 @@ and mismatch/unclosed-tag diagnostics.
      foundation done through `ReactFiberId`, `react_init_runtime()`, and
      `REACT_RETAINED_COMPONENT_*`.
    - preserve hooks, providers, effects, refs, callbacks, and unmount cleanup.
-   - remaining before primitive ports: bind retained component entry to authored
-     `.cppx` output and `UiTree` node creation.
+   - bind retained component entry to authored `.cppx` output and `UiTree` node
+     creation: done through `src/ui/retained/components.*` and
+     `retained_cppx_component_tests`.
+   - remaining before primitive ports: expand the generic component surface only
+     where real primitives need it.
 
 5. Primitive port:
    - text, button, toggle, selectable, focusable containers, panels, scroll

@@ -130,6 +130,9 @@ Current implementation: `tools/cppx_transpile.py` lowers `.cppx` / `.hx` JSX-lik
 lines to normal C++ component calls with prop initializers and synchronous child
 lambdas. The CMake helper in `cmake/cppx_transpile.cmake` generates build-tree
 `.cpp` / `.h` outputs, and golden tests pin output plus diagnostics.
+Generated `.cppx` output is now also compiled against generic retained
+components in `src/ui/retained/components.*`, proving the authored syntax path
+can create `UiTree` nodes and use retained hook identity without Clay layout.
 
 ## Component API Direction
 
