@@ -141,12 +141,60 @@ static bool yoga_applies_padding_to_child_layout(void) {
   return true;
 }
 
+struct MeasureProbe {
+  int count = 0;
+  MeasureInput input = {};
+};
+
+static Size measure_text_node(MeasureInput input, void *user) {
+  MeasureProbe *probe = static_cast<MeasureProbe *>(user);
+  if (probe) {
+    probe->count += 1;
+    probe->input = input;
+  }
+  return {72.0f, 18.0f};
+}
+
+static bool yoga_uses_retained_measure_function(void) {
+  UiTree tree;
+  MeasureProbe probe = {};
+
+  Style panel = {};
+  panel.width = Length::points(160.0f);
+  panel.height = Length::points(80.0f);
+  panel.align_items = AlignItems::Start;
+
+  tree.begin_frame(160.0f, 80.0f);
+  NodeId panel_id = tree.begin_keyed_node("Panel", "text-container", panel);
+  NodeId text_id = tree.begin_keyed_node("Text", "label");
+  CHECK(tree.set_measure(text_id, measure_text_node, &probe));
+  CHECK(tree.end_node());
+  CHECK(tree.end_node());
+  CHECK(tree.end_frame());
+
+  CHECK(compute_flex_layout(make_yoga_flex_layout_adapter(), tree,
+                            {160.0f, 80.0f}));
+
+  NodeSnapshot panel_snapshot = {};
+  NodeSnapshot text_snapshot = {};
+  CHECK(snapshot(tree, panel_id, &panel_snapshot));
+  CHECK(snapshot(tree, text_id, &text_snapshot));
+
+  CHECK(probe.count > 0);
+  CHECK(panel_snapshot.layout.width == 160.0f);
+  CHECK(text_snapshot.layout.width == 72.0f);
+  CHECK(text_snapshot.layout.height == 18.0f);
+  return true;
+}
+
 int main(void) {
   if (!yoga_computes_column_gap_and_grow())
     return 1;
   if (!yoga_computes_row_percent_and_grow())
     return 1;
   if (!yoga_applies_padding_to_child_layout())
+    return 1;
+  if (!yoga_uses_retained_measure_function())
     return 1;
   return 0;
 }

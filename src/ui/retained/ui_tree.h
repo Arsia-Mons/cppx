@@ -75,7 +75,26 @@ struct Rect {
   float height = 0.0f;
 };
 
+enum class MeasureMode : uint8_t {
+  Undefined,
+  Exactly,
+  AtMost,
+};
+
+struct MeasureInput {
+  float width = 0.0f;
+  float height = 0.0f;
+  MeasureMode width_mode = MeasureMode::Undefined;
+  MeasureMode height_mode = MeasureMode::Undefined;
+};
+
+struct Size {
+  float width = 0.0f;
+  float height = 0.0f;
+};
+
 using CleanupFn = void (*)(void *user);
+using MeasureFn = Size (*)(MeasureInput input, void *user);
 
 struct NodeSnapshot {
   NodeId id = 0;
@@ -85,6 +104,7 @@ struct NodeSnapshot {
   Style style = {};
   Rect layout = {};
   int child_count = 0;
+  bool has_measure = false;
   bool mounted_this_frame = false;
 };
 
@@ -107,6 +127,8 @@ public:
   bool end_node();
 
   bool set_cleanup(NodeId id, CleanupFn cleanup, void *user);
+  bool set_measure(NodeId id, MeasureFn measure, void *user);
+  bool measure(NodeId id, MeasureInput input, Size *out) const;
   bool set_layout(NodeId id, Rect rect);
 
   bool snapshot(NodeId id, NodeSnapshot *out) const;
@@ -136,6 +158,8 @@ private:
     Rect layout = {};
     CleanupFn cleanup = nullptr;
     void *cleanup_user = nullptr;
+    MeasureFn measure = nullptr;
+    void *measure_user = nullptr;
   };
 
   Node *find_mutable(NodeId id);

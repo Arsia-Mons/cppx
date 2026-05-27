@@ -6,6 +6,50 @@ namespace ui::retained {
 
 namespace {
 
+struct MeasureContext {
+  UiTree *tree = nullptr;
+  NodeId id = 0;
+};
+
+struct BuildContext {
+  std::array<MeasureContext, UI_RETAINED_MAX_NODES> measure_contexts = {};
+  int measure_context_count = 0;
+};
+
+MeasureMode map_measure_mode(YGMeasureMode mode) {
+  switch (mode) {
+  case YGMeasureModeUndefined:
+    return MeasureMode::Undefined;
+  case YGMeasureModeExactly:
+    return MeasureMode::Exactly;
+  case YGMeasureModeAtMost:
+    return MeasureMode::AtMost;
+  }
+  return MeasureMode::Undefined;
+}
+
+YGSize measure_yoga_node(YGNodeConstRef node, float width,
+                         YGMeasureMode width_mode, float height,
+                         YGMeasureMode height_mode) {
+  const MeasureContext *context =
+      static_cast<const MeasureContext *>(YGNodeGetContext(node));
+  if (!context || !context->tree)
+    return {0.0f, 0.0f};
+
+  Size measured = {};
+  if (!context->tree->measure(context->id,
+                              {
+                                  .width = width,
+                                  .height = height,
+                                  .width_mode = map_measure_mode(width_mode),
+                                  .height_mode = map_measure_mode(height_mode),
+                              },
+                              &measured)) {
+    return {0.0f, 0.0f};
+  }
+  return {measured.width, measured.height};
+}
+
 YGFlexDirection map_direction(FlexDirection direction) {
   switch (direction) {
   case FlexDirection::Row:
@@ -105,7 +149,8 @@ void apply_style(YGNodeRef yoga_node, const NodeSnapshot &snapshot,
     YGNodeStyleSetFlexGrow(yoga_node, style.flex_grow);
 }
 
-YGNodeRef build_yoga_tree(UiTree &tree, NodeId id, LayoutViewport viewport) {
+YGNodeRef build_yoga_tree(UiTree &tree, BuildContext &context, NodeId id,
+                          LayoutViewport viewport) {
   NodeSnapshot snapshot = {};
   if (!tree.snapshot(id, &snapshot))
     return nullptr;
@@ -115,9 +160,24 @@ YGNodeRef build_yoga_tree(UiTree &tree, NodeId id, LayoutViewport viewport) {
     return nullptr;
 
   apply_style(yoga_node, snapshot, viewport);
+  if (snapshot.has_measure) {
+    if (context.measure_context_count >= UI_RETAINED_MAX_NODES) {
+      YGNodeFree(yoga_node);
+      return nullptr;
+    }
+    MeasureContext &measure_context =
+        context.measure_contexts[context.measure_context_count++];
+    measure_context = {
+        .tree = &tree,
+        .id = id,
+    };
+    YGNodeSetContext(yoga_node, &measure_context);
+    YGNodeSetMeasureFunc(yoga_node, measure_yoga_node);
+  }
 
   for (int i = 0; i < tree.child_count(id); ++i) {
-    YGNodeRef child = build_yoga_tree(tree, tree.child_at(id, i), viewport);
+    YGNodeRef child =
+        build_yoga_tree(tree, context, tree.child_at(id, i), viewport);
     if (!child) {
       YGNodeFreeRecursive(yoga_node);
       return nullptr;
@@ -151,7 +211,8 @@ bool write_layout(UiTree &tree, NodeId id, YGNodeRef yoga_node, float parent_x,
 
 bool compute_yoga_layout(UiTree &tree, NodeId root_id, LayoutViewport viewport,
                          void *) {
-  YGNodeRef root = build_yoga_tree(tree, root_id, viewport);
+  BuildContext context = {};
+  YGNodeRef root = build_yoga_tree(tree, context, root_id, viewport);
   if (!root)
     return false;
 

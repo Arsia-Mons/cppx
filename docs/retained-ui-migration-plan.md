@@ -46,7 +46,7 @@ Implementation rule: keep Yoga behind `FlexLayoutAdapter`. Do not build app
 code against Yoga directly.
 
 Current status: Yoga is wired behind `make_yoga_flex_layout_adapter()`, with
-tests for column gap/grow and row percent/grow behavior.
+tests for column gap/grow, row percent/grow, padding, and measured nodes.
 
 ## Transpiler Design
 
@@ -85,12 +85,13 @@ Grammar principles:
    - `FlexLayoutAdapter` boundary.
    - focused runtime tests.
 
-2. Yoga integration: adapter foundation done; text measurement expansion remains.
+2. Yoga integration: foundation done.
    - CMake `FetchContent` or vendored dependency decision.
    - adapter maps retained style to Yoga nodes.
-   - tests for row/column, fixed, percent, grow, gap, and padding.
-   - remaining before primitive port: measured text nodes and broader alignment
-     coverage.
+   - tests for row/column, fixed, percent, grow, gap, padding, and measured
+     nodes.
+   - remaining before primitive port: broader alignment coverage as needed by
+     the first retained primitives.
 
 3. Transpiler:
    - lexer/parser/generator.

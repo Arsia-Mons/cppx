@@ -133,6 +133,25 @@ bool UiTree::set_cleanup(NodeId id, CleanupFn cleanup, void *user) {
   return true;
 }
 
+bool UiTree::set_measure(NodeId id, MeasureFn measure, void *user) {
+  Node *node = find_mutable(id);
+  if (!node)
+    return false;
+  node->measure = measure;
+  node->measure_user = user;
+  return true;
+}
+
+bool UiTree::measure(NodeId id, MeasureInput input, Size *out) const {
+  if (!out)
+    return false;
+  const Node *node = find(id);
+  if (!node || !node->measure)
+    return false;
+  *out = node->measure(input, node->measure_user);
+  return true;
+}
+
 bool UiTree::set_layout(NodeId id, Rect rect) {
   Node *node = find_mutable(id);
   if (!node)
@@ -155,6 +174,7 @@ bool UiTree::snapshot(NodeId id, NodeSnapshot *out) const {
       .style = node->style,
       .layout = node->layout,
       .child_count = node->child_count,
+      .has_measure = node->measure != nullptr,
       .mounted_this_frame = node->mounted_this_frame,
   };
   return true;
