@@ -50,7 +50,19 @@ add_executable(hello
   src/app/app.cpp
   src/app/game_loop.cpp
   src/client/ui/client_ui.cpp
+  src/client/ui/components/hud_band.cpp
+  src/client/ui/hooks/shooter_hud.cpp
+  src/client/ui/hooks/shooter_weapons.cpp
+  src/client/ui/providers/shooter_provider.cpp
   src/client/ui/screen_stack.cpp
+  src/client/ui/screens/in_game/in_game_screen.cpp
+  src/client/ui/screens/loadout/components/confirm_dialog.cpp
+  src/client/ui/screens/loadout/components/equipment_slot.cpp
+  src/client/ui/screens/loadout/components/weapon_tile.cpp
+  src/client/ui/screens/loadout/loadout_screen.cpp
+  src/client/ui/screens/main_menu/main_menu_screen.cpp
+  src/client/ui/screens/options/options_screen.cpp
+  src/client/ui/screens/pause/pause_screen.cpp
   src/client/ui/ui_pipeline.cpp
   src/platform/control_mailbox.cpp
   src/platform/sdl/input.cpp
@@ -60,7 +72,6 @@ add_executable(hello
   src/game/inventory.cpp
   src/game/economy.cpp
   src/game/shooter_game.cpp
-  src/shooter/shooter_ui.cpp
   src/ui/focus/ui_focus.cpp
   src/ui/primitives/button.cpp
   src/ui/primitives/focusable.cpp
@@ -207,11 +218,22 @@ add_executable(shooter_ui_tests
   tests/shooter_ui_tests.cpp
   src/react.cpp
   src/client/ui/client_ui.cpp
+  src/client/ui/components/hud_band.cpp
+  src/client/ui/hooks/shooter_hud.cpp
+  src/client/ui/hooks/shooter_weapons.cpp
+  src/client/ui/providers/shooter_provider.cpp
   src/client/ui/screen_stack.cpp
+  src/client/ui/screens/in_game/in_game_screen.cpp
+  src/client/ui/screens/loadout/components/confirm_dialog.cpp
+  src/client/ui/screens/loadout/components/equipment_slot.cpp
+  src/client/ui/screens/loadout/components/weapon_tile.cpp
+  src/client/ui/screens/loadout/loadout_screen.cpp
+  src/client/ui/screens/main_menu/main_menu_screen.cpp
+  src/client/ui/screens/options/options_screen.cpp
+  src/client/ui/screens/pause/pause_screen.cpp
   src/game/inventory.cpp
   src/game/economy.cpp
   src/game/shooter_game.cpp
-  src/shooter/shooter_ui.cpp
   src/ui/focus/ui_focus.cpp
   src/ui/primitives/button.cpp
   src/ui/primitives/focusable.cpp

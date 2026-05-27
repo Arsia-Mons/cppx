@@ -13,7 +13,6 @@ public:
     int credits()         const { return player_.credits; }
     int selected_weapon() const { return inventory_.selected(); }
     int ammo()            const;
-    bool compare_enabled() const { return compare_enabled_; }
 
     const WeaponState &weapon(int index) const { return inventory_.weapon(index); }
     int  weapon_count()      const { return inventory_.weapon_count(); }
@@ -24,15 +23,13 @@ public:
     bool buy_weapon(int index);
     bool equip_weapon(int index)  { return inventory_.equip(index); }
     void reset();
-    void set_compare_enabled(bool enabled) { compare_enabled_ = enabled; }
 
     PlayerState &player()    { return player_; }
     Inventory   &inventory() { return inventory_; }
 
 private:
-    PlayerState player_         = {};
-    Inventory   inventory_      = {};
-    bool        compare_enabled_ = false;
+    PlayerState player_    = {};
+    Inventory   inventory_ = {};
 };
 
 } // namespace shooter

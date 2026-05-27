@@ -1,7 +1,11 @@
 #include "client/ui/client_ui.h"
 #include "react.h"
 #include "game/shooter_game.h"
-#include "shooter/shooter_ui.h"
+#include "client/ui/screens/in_game/in_game_screen.h"
+#include "client/ui/screens/loadout/loadout_screen.h"
+#include "client/ui/screens/main_menu/main_menu_screen.h"
+#include "client/ui/screens/options/options_screen.h"
+#include "client/ui/screens/pause/pause_screen.h"
 
 #include <clay.h>
 

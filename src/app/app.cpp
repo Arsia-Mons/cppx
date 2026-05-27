@@ -2,7 +2,7 @@
 
 #include "game_loop.h"
 #include "../react.h"
-#include "../shooter/shooter_ui.h"
+#include "../client/ui/screens/main_menu/main_menu_screen.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
@@ -38,8 +38,7 @@ static std::string shooter_state_json(const shooter::ShooterGame &game) {
         << "\"armor\":" << game.armor() << ","
         << "\"ammo\":" << game.ammo() << ","
         << "\"credits\":" << game.credits() << ","
-        << "\"selected_weapon\":" << game.selected_weapon() << ","
-        << "\"compare_enabled\":" << (game.compare_enabled() ? "true" : "false")
+        << "\"selected_weapon\":" << game.selected_weapon()
         << ",\"weapons\":[";
     for (int i = 0; i < game.weapon_count(); ++i) {
         const shooter::WeaponState &weapon = game.weapon(i);
