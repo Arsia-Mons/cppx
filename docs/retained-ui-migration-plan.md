@@ -138,7 +138,9 @@ and mismatch/unclosed-tag diagnostics.
    - loadout and dialogs.
 
 8. Renderer replacement:
-   - retained draw command list.
+   - retained draw command list: foundation done through
+     `src/ui/retained/draw_list.*`, which emits rect/text commands from retained
+     primitive metadata and computed layout boxes.
    - SDL renderer consumes retained commands.
    - font measurement moved behind retained layout text measurement.
 

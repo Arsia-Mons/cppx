@@ -271,6 +271,33 @@ target_link_libraries(retained_ui_primitives_tests PRIVATE
 
 add_test(NAME retained_ui_primitives_tests COMMAND retained_ui_primitives_tests)
 
+add_executable(retained_ui_draw_list_tests
+  tests/retained_ui_draw_list_tests.cpp
+  src/react.cpp
+  src/ui/retained/components.cpp
+  src/ui/retained/draw_list.cpp
+  src/ui/retained/ui_tree.cpp
+  src/ui/retained/flex_layout.cpp
+  src/ui/retained/yoga_flex_layout.cpp
+  third_party/clay_impl.cpp
+)
+
+target_include_directories(retained_ui_draw_list_tests PRIVATE
+  src
+  third_party
+  third_party/clay
+)
+
+target_compile_options(retained_ui_draw_list_tests PRIVATE
+  $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall -Wextra -Wno-missing-field-initializers -Wno-c99-designator -Wno-unused-parameter>
+)
+
+target_link_libraries(retained_ui_draw_list_tests PRIVATE
+  yogacore
+)
+
+add_test(NAME retained_ui_draw_list_tests COMMAND retained_ui_draw_list_tests)
+
 add_executable(ui_primitives_tests
   tests/ui_primitives_tests.cpp
   src/react.cpp

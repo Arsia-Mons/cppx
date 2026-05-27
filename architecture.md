@@ -137,6 +137,9 @@ The retained component surface now also writes copied node metadata for role,
 control id, label/value, and interaction state, so retained `Button`, `Toggle`,
 and `Selectable` primitives have semantic data that focus and renderer code can
 consume without querying Clay element data.
+`src/ui/retained/draw_list.*` is the Clay-free renderer boundary: it walks
+retained snapshots after flex layout and emits app-owned rect/text draw
+commands from retained metadata.
 
 ## Component API Direction
 
