@@ -5,9 +5,10 @@ Client UI shell: the screen stack, focus glue, the deferred-mutation queue that 
 ## Files
 
 ```text
-client_ui.{h,cpp}                ClientUi shell: owns ScreenStack + UiFocusRuntime,
-                                 runs per-frame phases, queues deferred mutations.
-ui_pipeline.{h,cpp}              UiPipeline: wraps ClientUi in a Clay frame pass.
+client_ui.{h,cpp}                ClientUi shell: owns ScreenStack, legacy focus,
+                                 retained tree/focus/draw runtime, and queued mutations.
+ui_pipeline.{h,cpp}              UiPipeline: wraps ClientUi in the frame pass,
+                                 including temporary Clay and retained runtime phases.
 navigation/screen_stack.{h,cpp}  Retained screens, overlay flag, build order, entry IDs.
 navigation/ui_screen.h           UiScreen / OverlayScreen base classes — override build_ui(); inherit OverlayScreen for floating screens.
 providers/                       Cross-screen React context providers (e.g., shooter_provider, app_shell).
@@ -22,13 +23,13 @@ The shell files (`client_ui`, `ui_pipeline`, `navigation/`) are framework-shaped
 
 ## Per-frame contract
 
-`ClientUi` runs three phases each frame — keep them ordered and don't fold work into the wrong one:
+`ClientUi` runs three legacy phases each frame — keep them ordered and don't fold work into the wrong one:
 
 1. `begin_frame(input)` — feed input to focus runtime; reset per-frame state.
 2. `build_visible_screens()` — invoke each visible screen's `build_ui()` (a Clay layout pass).
 3. `end_layout(input)` — finalize focus, then **callers must `drain_deferred_mutations()`** before the next frame's `begin_frame`.
 
-`UiPipeline` (`ui_pipeline.h`) is the standard wrapper that runs these phases plus Clay begin/end and render-command emission. Prefer using it over calling `ClientUi` directly.
+`UiPipeline` (`ui_pipeline.h`) is the standard wrapper that runs these phases plus Clay begin/end, retained tree begin/end, retained layout/focus/draw updates, render-command emission, and deferred mutation draining. Prefer using it over calling `ClientUi` directly.
 
 ## Hard rules
 
@@ -39,4 +40,4 @@ The shell files (`client_ui`, `ui_pipeline`, `navigation/`) are framework-shaped
 
 ## Testing
 
-`client_ui_tests` in `../../../tests/client_ui_tests.cpp` covers the screen stack + mutation queue; `ui_pipeline_tests` covers the Clay frame wrapper. Add cases there when extending the per-frame contract.
+`client_ui_tests` in `../../../tests/client_ui_tests.cpp` covers the screen stack + mutation queue; `ui_pipeline_tests` covers the frame wrapper, including retained runtime updates before render callbacks. Add cases there when extending the per-frame contract.

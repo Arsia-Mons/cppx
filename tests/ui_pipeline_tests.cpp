@@ -4,12 +4,16 @@
 #include "react.h"
 #include "ui/focus/ui_focus.h"
 #include "ui/primitives/button.h"
+#include "ui/retained/components.h"
+#include "ui/retained/draw_list.h"
+#include "ui/retained/focus.h"
 
 #include <clay.h>
 
 #include <memory>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define CHECK(expr)                                                              \
     do {                                                                         \
@@ -97,10 +101,34 @@ public:
     }
 };
 
+class RetainedProbeScreen final : public UiScreen {
+public:
+    const char *debug_name() const override { return "RetainedProbe"; }
+
+    void build_ui() override {
+        REACT_COMPONENT_BEGIN_KEY("RetainedProbeScreenView", entry_id()) {
+            ::ui::retained::Button({
+                .key = "confirm",
+                .id = "PipelineRetainedButton",
+                .label = "Retained",
+            });
+        } REACT_COMPONENT_END();
+    }
+};
+
 struct RenderProbe {
     int render_count = 0;
     int pending_mutations_at_render = 0;
     int screen_count_at_render = 0;
+};
+
+struct RetainedRenderProbe {
+    int render_count = 0;
+    int draw_count = 0;
+    bool saw_button_rect = false;
+    bool saw_label_text = false;
+    ::ui::retained::NodeId button_id = 0;
+    ::ui::retained::NodeId focused_id = 0;
 };
 
 static bool ui_pipeline_frame_provider_exposes_current_frame(void) {
@@ -145,11 +173,48 @@ static bool pipeline_renders_before_draining_client_mutations(void) {
     return true;
 }
 
+static bool pipeline_updates_retained_runtime_before_render(void) {
+    react_init(g_clay);
+    UiPipeline pipeline;
+    RetainedRenderProbe probe = {};
+
+    CHECK(pipeline.client_ui().push_screen(std::make_unique<RetainedProbeScreen>()));
+
+    pipeline.render_client_ui_frame(test_frame(), [&](Clay_RenderCommandArray &) {
+        probe.render_count += 1;
+        const ::ui::retained::DrawList &draw =
+            pipeline.client_ui().retained_draw_list();
+        probe.draw_count = draw.count;
+        probe.focused_id =
+            ::ui::retained::focus_focused_id(pipeline.client_ui().retained_focus());
+        for (int i = 0; i < draw.count; ++i) {
+            const ::ui::retained::DrawCommand &command = draw.commands[i];
+            if (command.kind == ::ui::retained::DrawCommandKind::Rect) {
+                probe.saw_button_rect = true;
+                probe.button_id = command.node_id;
+            }
+            if (command.kind == ::ui::retained::DrawCommandKind::Text &&
+                strcmp(command.text, "Retained") == 0) {
+                probe.saw_label_text = true;
+            }
+        }
+    });
+
+    CHECK(probe.render_count == 1);
+    CHECK(probe.draw_count == 2);
+    CHECK(probe.saw_button_rect);
+    CHECK(probe.saw_label_text);
+    CHECK(probe.button_id != 0);
+    CHECK(probe.focused_id == probe.button_id);
+    return true;
+}
+
 int main(void) {
     if (!init_clay_once()) return 1;
 
     if (!ui_pipeline_frame_provider_exposes_current_frame()) return 1;
     if (!pipeline_renders_before_draining_client_mutations()) return 1;
+    if (!pipeline_updates_retained_runtime_before_render()) return 1;
 
     react_shutdown();
     free(g_clay_memory);

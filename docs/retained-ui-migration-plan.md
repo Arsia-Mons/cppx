@@ -13,16 +13,17 @@ branch and PR.
   identity now has an app-owned 64-bit path. It already proves useful
   semantics: stable hook storage, keyed siblings, providers/context, effects,
   refs, callbacks, text storage, and unmount cleanup.
-- `ClientUi` and `ScreenStack` already own the correct client-shell concerns:
-  retained screens, focus runtime lifetime, per-frame sequencing, and deferred
-  mutation draining. `ClientUi` now also owns retained tree/focus/draw runtime
-  state for upcoming screen ports.
+- `ClientUi`, `UiPipeline`, and `ScreenStack` already own the correct
+  client-shell concerns: retained screens, retained frame sequencing, focus
+  runtime lifetime, and deferred mutation draining. `ClientUi` owns retained
+  tree/focus/draw runtime state for upcoming screen ports, and `UiPipeline`
+  updates those outputs before renderer handoff.
 - `src/ui/focus` and `src/ui/primitives` still use Clay IDs and Clay layout
   queries. Those modules will need retained node IDs and retained layout boxes
   before Clay can be removed.
-- `renderer/` still emits from `Clay_RenderCommandArray`. The retained runtime
-  needs an app-owned draw command boundary before the renderer can stop
-  depending on Clay.
+- `renderer/` still emits legacy screens from `Clay_RenderCommandArray`, but
+  the retained runtime now also has an app-owned draw command boundary consumed
+  by the SDL retained renderer.
 - `tools/ui_cli.py` drives the app through the control mailbox. That path must
   remain deterministic through the migration.
 
@@ -136,6 +137,9 @@ and mismatch/unclosed-tag diagnostics.
 
 7. Screen ports:
    - shell-owned retained runtime state in `ClientUi`: foundation done.
+   - pipeline-owned retained frame lifecycle: foundation done; screens can now
+     emit retained nodes through `ScreenStack`, and the runtime computes layout,
+     focus, and draw commands before render callbacks.
    - main menu.
    - options.
    - pause.

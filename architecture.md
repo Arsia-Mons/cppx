@@ -50,9 +50,11 @@ and the deferred mutation queue. That ownership remains correct. The migration
 changes the generic UI runtime under the screens, not the fact that `ClientUi`
 is the shell that sequences frames and drains mutations.
 `ClientUi` now also owns the retained `UiTree`, retained focus runtime, and
-retained draw list. The current Clay pipeline still renders existing screens,
-but retained screen ports have a shell-owned place to compute flex layout,
-focus/event state, and draw commands before SDL renderer integration.
+retained draw list. `UiPipeline` now opens the retained tree frame alongside the
+temporary Clay frame and refreshes retained flex layout, focus/event state, and
+draw commands before the render callback. Existing screens still render through
+Clay until they are ported, but retained screen ports can now emit nodes through
+the real screen stack and app frame.
 
 ## Target Runtime
 
@@ -151,7 +153,9 @@ focus scopes.
 `renderer/sdl_retained_renderer.*` consumes retained draw commands directly and
 the app-owned game loop now renders `ClientUi::retained_draw_list()` after the
 legacy Clay pass. Until screens are ported the list is usually empty, but the
-SDL retained path is now present in the real frame.
+SDL retained path is now present in the real frame. `UiPipeline` owns the
+retained frame lifecycle, so the list is computed before renderer handoff
+rather than through side-car test code.
 
 ## Component API Direction
 

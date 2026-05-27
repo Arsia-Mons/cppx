@@ -52,6 +52,8 @@ struct SelectableProps {
 
 bool begin_retained_frame(UiTree &tree, float width, float height);
 bool end_retained_frame();
+bool begin_retained_tree_frame(UiTree &tree, float width, float height);
+bool end_retained_tree_frame();
 UiTree *current_retained_tree();
 
 Style style_from_props(const NodeProps &props);

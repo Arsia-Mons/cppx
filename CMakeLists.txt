@@ -112,10 +112,12 @@ add_executable(hello
   src/ui/primitives/focusable.cpp
   src/ui/primitives/selectable.cpp
   src/ui/primitives/toggle.cpp
+  src/ui/retained/components.cpp
   src/ui/retained/draw_list.cpp
   src/ui/retained/flex_layout.cpp
   src/ui/retained/focus.cpp
   src/ui/retained/ui_tree.cpp
+  src/ui/retained/yoga_flex_layout.cpp
   third_party/clay_impl.cpp
   third_party/clay/clay_renderer_SDL3.c
   third_party/stb_image_impl.cpp
@@ -138,6 +140,7 @@ target_link_libraries(hello PRIVATE
   SDL3::SDL3
   SDL3_ttf::SDL3_ttf
   CURL::libcurl
+  yogacore
 )
 
 if(WIN32)
@@ -393,10 +396,12 @@ add_executable(ui_pipeline_tests
   src/ui/focus/ui_focus.cpp
   src/ui/primitives/button.cpp
   src/ui/primitives/focusable.cpp
+  src/ui/retained/components.cpp
   src/ui/retained/draw_list.cpp
   src/ui/retained/flex_layout.cpp
   src/ui/retained/focus.cpp
   src/ui/retained/ui_tree.cpp
+  src/ui/retained/yoga_flex_layout.cpp
   third_party/clay_impl.cpp
 )
 
@@ -408,6 +413,10 @@ target_include_directories(ui_pipeline_tests PRIVATE
 
 target_compile_options(ui_pipeline_tests PRIVATE
   $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall -Wextra -Wno-missing-field-initializers -Wno-c99-designator -Wno-unused-parameter>
+)
+
+target_link_libraries(ui_pipeline_tests PRIVATE
+  yogacore
 )
 
 add_test(NAME ui_pipeline_tests COMMAND ui_pipeline_tests)

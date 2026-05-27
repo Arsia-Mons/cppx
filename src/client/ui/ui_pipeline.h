@@ -1,11 +1,13 @@
 #pragma once
 
 #include <functional>
+#include <utility>
 
 #include <clay.h>
 
 #include "client_ui.h"
 #include "../../ui/focus/ui_focus.h"
+#include "../../ui/retained/flex_layout.h"
 
 namespace client::ui {
 
@@ -26,6 +28,8 @@ using FrameProvider = std::function<void(const std::function<void()> &build)>;
 
 class UiPipeline {
 public:
+    UiPipeline();
+
     ClientUi       &client_ui()       { return client_ui_; }
     const ClientUi &client_ui() const { return client_ui_; }
 
@@ -35,8 +39,9 @@ public:
                                 const RenderClayCommands &render_commands);
 
 private:
-    ClientUi      client_ui_;
-    FrameProvider frame_provider_;
+    ClientUi                         client_ui_;
+    FrameProvider                    frame_provider_;
+    ::ui::retained::FlexLayoutAdapter retained_layout_ = {};
 };
 
 const UiPipelineFrame *use_ui_pipeline_frame();

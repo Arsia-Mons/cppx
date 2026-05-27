@@ -60,10 +60,8 @@ void set_node_metadata(RetainedNodeScope &scope, const NodeMetadata &metadata) {
 } // namespace
 
 bool begin_retained_frame(UiTree &tree, float width, float height) {
-    if (G_current_tree)
+    if (!begin_retained_tree_frame(tree, width, height))
         return false;
-    G_current_tree = &tree;
-    tree.begin_frame(width, height);
     react_begin_frame();
     return true;
 }
@@ -71,8 +69,23 @@ bool begin_retained_frame(UiTree &tree, float width, float height) {
 bool end_retained_frame() {
     if (!G_current_tree)
         return false;
-    bool ok = G_current_tree->end_frame();
+    bool ok = end_retained_tree_frame();
     react_end_frame();
+    return ok;
+}
+
+bool begin_retained_tree_frame(UiTree &tree, float width, float height) {
+    if (G_current_tree)
+        return false;
+    G_current_tree = &tree;
+    tree.begin_frame(width, height);
+    return true;
+}
+
+bool end_retained_tree_frame() {
+    if (!G_current_tree)
+        return false;
+    bool ok = G_current_tree->end_frame();
     G_current_tree = nullptr;
     return ok;
 }
