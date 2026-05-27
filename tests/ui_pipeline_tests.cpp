@@ -1,6 +1,6 @@
 #include "client/ui/ui_pipeline.h"
 
-#include "client/ui/ui_screen.h"
+#include "client/ui/navigation/ui_screen.h"
 #include "react.h"
 #include "ui/focus/ui_focus.h"
 #include "ui/primitives/button.h"

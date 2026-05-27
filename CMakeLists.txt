@@ -54,7 +54,7 @@ add_executable(hello
   src/client/ui/hooks/shooter_hud.cpp
   src/client/ui/hooks/shooter_weapons.cpp
   src/client/ui/providers/shooter_provider.cpp
-  src/client/ui/screen_stack.cpp
+  src/client/ui/navigation/screen_stack.cpp
   src/client/ui/screens/in_game/in_game_screen.cpp
   src/client/ui/screens/loadout/components/confirm_dialog.cpp
   src/client/ui/screens/loadout/components/equipment_slot.cpp
@@ -173,7 +173,7 @@ add_executable(client_ui_tests
   tests/client_ui_tests.cpp
   src/react.cpp
   src/client/ui/client_ui.cpp
-  src/client/ui/screen_stack.cpp
+  src/client/ui/navigation/screen_stack.cpp
   src/ui/focus/ui_focus.cpp
   third_party/clay_impl.cpp
 )
@@ -194,7 +194,7 @@ add_executable(ui_pipeline_tests
   tests/ui_pipeline_tests.cpp
   src/react.cpp
   src/client/ui/client_ui.cpp
-  src/client/ui/screen_stack.cpp
+  src/client/ui/navigation/screen_stack.cpp
   src/client/ui/ui_pipeline.cpp
   src/ui/focus/ui_focus.cpp
   src/ui/primitives/button.cpp
@@ -222,7 +222,7 @@ add_executable(shooter_ui_tests
   src/client/ui/hooks/shooter_hud.cpp
   src/client/ui/hooks/shooter_weapons.cpp
   src/client/ui/providers/shooter_provider.cpp
-  src/client/ui/screen_stack.cpp
+  src/client/ui/navigation/screen_stack.cpp
   src/client/ui/screens/in_game/in_game_screen.cpp
   src/client/ui/screens/loadout/components/confirm_dialog.cpp
   src/client/ui/screens/loadout/components/equipment_slot.cpp

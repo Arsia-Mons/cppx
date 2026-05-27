@@ -6,7 +6,7 @@
 
 #include "../../react.h"
 #include "../../ui/focus/ui_focus.h"
-#include "screen_stack.h"
+#include "navigation/screen_stack.h"
 
 namespace client::ui {
 
