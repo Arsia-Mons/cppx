@@ -153,7 +153,10 @@ and mismatch/unclosed-tag diagnostics.
      focus, confirm callbacks, and CLI targeting.
    - mixed retained modal over Clay screen input gating: foundation done in
      `UiPipeline`.
-   - pause.
+   - retained overlay top-screen gating: foundation done through
+     `ScreenProvider`.
+   - pause: ported to retained modal panel, text, buttons, focus, confirm
+     callbacks, and CLI targeting.
    - in-game HUD.
    - loadout and dialogs.
 

@@ -89,5 +89,6 @@ private:
 };
 
 ScreenNavigator use_screen_navigator();
+bool use_screen_is_top();
 
 } // namespace client::ui

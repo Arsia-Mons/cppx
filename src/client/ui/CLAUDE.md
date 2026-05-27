@@ -18,6 +18,7 @@ screens/<screen>/                Per-screen dir: <screen>_screen.{h,cpp} + optio
 ```
 
 `ScreenNavigator` (`use_screen_navigator`) is the public navigation action hook screens use without touching the Clay tree mid-build. Domain and screen-local setter hooks may use `internal::DeferredUiMutationSink`; ordinary screen components should expose named actions instead of the sink itself.
+`use_screen_is_top()` reads the current `ScreenProvider` top-screen flag; retained overlay screens use it to avoid rendering/trapping input when a higher overlay covers them.
 
 The shell files (`client_ui`, `ui_pipeline`, `navigation/`) are framework-shaped — they don't know about specific games. Game vocabulary (the `ShooterGame`, `WeaponSpec`, etc.) shows up in `providers/`, `hooks/`, `components/`, and `screens/` because this project has exactly one game (the shooter). If a second game ever appears, promote shared pieces back into framework headers and namespace per-game code accordingly.
 

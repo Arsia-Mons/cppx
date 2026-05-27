@@ -7,6 +7,7 @@ namespace client::ui {
 struct ScreenContextValue {
     ClientUi *client_ui = nullptr;
     UiScreenEntryId current_entry_id = 0;
+    bool is_top = false;
 };
 
 static ReactContext ScreenContext = {};
@@ -32,6 +33,7 @@ void ClientUi::build_visible_screens() {
             ScreenContextValue context = {
                 .client_ui = this,
                 .current_entry_id = screen->entry_id(),
+                .is_top = i == visible.count - 1,
             };
             REACT_PROVIDER_ENTER_KEY("ScreenProvider", screen->entry_id());
             PROVIDE(&ScreenContext, &context) {
@@ -210,6 +212,16 @@ ScreenNavigator use_screen_navigator() {
                         entry_id] { client_ui->queue_pop_current(entry_id); },
         .pop_top = [client_ui] { client_ui->queue_pop_top(); },
     };
+}
+
+bool use_screen_is_top() {
+    ScreenContextValue *context =
+        static_cast<ScreenContextValue *>(use_context(&ScreenContext));
+    if (!context) {
+        react_report_error("client/ui: missing ScreenProvider for use_screen_is_top\n");
+        return false;
+    }
+    return context->is_top;
 }
 
 namespace internal {

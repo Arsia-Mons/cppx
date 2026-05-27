@@ -172,6 +172,9 @@ to use the temporary Clay path.
 `OptionsScreen` is also retained. While a retained modal is active, `UiPipeline`
 filters legacy Clay focus input behind it but preserves cancel handling, so
 mixed retained/Clay stacks do not dispatch actions through covered screens.
+Retained overlay screens consult the `ScreenProvider` top-screen flag before
+emitting retained modal nodes, so a retained overlay does not render or trap
+input after a higher Clay overlay covers it.
 
 ## Component API Direction
 
