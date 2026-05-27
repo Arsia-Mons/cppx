@@ -1,6 +1,6 @@
 #include "control_mailbox.h"
 
-#include "input_adapter.h"
+#include "sdl/input.h"
 
 #include <algorithm>
 #include <cstdlib>

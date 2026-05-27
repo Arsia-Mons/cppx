@@ -18,7 +18,8 @@
 
 #include "game/ui/game_ui_pipeline.h"
 #include "platform/control_mailbox.h"
-#include "platform/input_adapter.h"
+#include "platform/sdl/input.h"
+#include "platform/sdl/window.h"
 #include "react.h"
 #include "renderer/font_registry.h"
 #include "renderer/sdl_clay_renderer.h"
@@ -36,9 +37,6 @@
 // ----------------------------------------------------------------------------
 // Local SDL/Clay/font state.
 // ----------------------------------------------------------------------------
-
-static SDL_Window           *g_window   = nullptr;
-static SDL_Renderer         *g_renderer = nullptr;
 
 static void on_clay_error(Clay_ErrorData err) {
     fprintf(stderr, "clay: %.*s\n", (int)err.errorText.length, err.errorText.chars);
@@ -112,11 +110,13 @@ int main(int argc, char **argv) {
     }
     curl_global_init(CURL_GLOBAL_DEFAULT);
 
-    g_window = SDL_CreateWindow("clay + react hello-world", 800, 500, SDL_WINDOW_RESIZABLE);
-    if (!g_window) { fprintf(stderr, "SDL_CreateWindow: %s\n", SDL_GetError()); return 1; }
-    g_renderer = SDL_CreateRenderer(g_window, nullptr);
-    if (!g_renderer) { fprintf(stderr, "SDL_CreateRenderer: %s\n", SDL_GetError()); return 1; }
-    SDL_SetRenderVSync(g_renderer, control_dir ? 0 : 1);
+    platform::sdl::Window window;
+    if (!window.initialize("clay + react hello-world", 800, 500,
+                           /*vsync=*/control_dir == nullptr)) {
+        return 1;
+    }
+    SDL_Window   *g_window   = window.handle();
+    SDL_Renderer *g_renderer = window.renderer();
 
     renderer::FontRegistry fonts;
     if (!fonts.initialize(g_renderer)) {
@@ -219,8 +219,7 @@ int main(int argc, char **argv) {
     control.shutdown();
     react_shutdown();
     SDL_free(clay_buf);
-    SDL_DestroyRenderer(g_renderer);
-    SDL_DestroyWindow(g_window);
+    window.shutdown();
     TTF_Quit();
     SDL_Quit();
     curl_global_cleanup();

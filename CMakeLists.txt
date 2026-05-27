@@ -51,7 +51,8 @@ add_executable(hello
   src/client/ui/screen_stack.cpp
   src/game/ui/game_ui_pipeline.cpp
   src/platform/control_mailbox.cpp
-  src/platform/input_adapter.cpp
+  src/platform/sdl/input.cpp
+  src/platform/sdl/window.cpp
   src/renderer/font_registry.cpp
   src/renderer/sdl_clay_renderer.cpp
   src/shooter/shooter_game.cpp

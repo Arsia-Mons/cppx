@@ -1,4 +1,4 @@
-#include "input_adapter.h"
+#include "input.h"
 
 #include <string.h>
 
