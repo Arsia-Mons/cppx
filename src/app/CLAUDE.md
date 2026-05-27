@@ -1,6 +1,6 @@
 # src/app/
 
-Owns process lifecycle and the per-frame loop. `app::App` constructs SDL, fonts, Clay, the `UiPipeline`, the `ShooterGame`, and the `ControlMailbox`; `app::GameLoop::tick()` is the per-frame body (poll events → build input frame → run UI pipeline → render → present → drain deferred writes).
+Owns process lifecycle and the per-frame loop. `app::App` constructs SDL, fonts, Clay, the `UiPipeline`, the `ShooterGame`, and the `ControlMailbox`; `app::GameLoop::tick()` is the per-frame body (poll events → build input frame → run UI pipeline → render → present → drain deferred mutations).
 
 ## Files
 

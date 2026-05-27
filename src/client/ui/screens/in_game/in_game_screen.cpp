@@ -11,6 +11,7 @@
 #include "../../client_ui.h"
 #include "../../components/hud_band.h"
 #include "../../providers/shooter_provider.h"
+#include "../../internal/deferred_ui_mutation.h"
 #include "../loadout/loadout_screen.h"
 #include "../pause/pause_screen.h"
 
@@ -19,17 +20,19 @@ namespace shooter {
 std::function<void()> use_start_match() {
     ShooterGame *game = use_shooter_game();
     client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
-    client::ui::QueueUiWrite queue_write = client::ui::use_ui_write_queue();
+    client::ui::internal::DeferredUiMutationSink mutations =
+        client::ui::internal::use_deferred_ui_mutations();
     return use_callback(
-        [game, nav, queue_write] {
+        [game, nav, mutations] {
             if (!nav.reset_to)
                 return;
-            if (game && queue_write) {
-                queue_write([game] { game->reset(); });
+            if (game && mutations) {
+                mutations.submit([game] { game->reset(); });
             }
             nav.reset_to(std::make_unique<ShooterGameScreen>());
         },
         client::ui::callback_deps(client::ui::callback_deps_ptr(game),
+                                  client::ui::callback_deps_ptr(mutations.owner()),
                                   nav.current_entry_id));
 }
 

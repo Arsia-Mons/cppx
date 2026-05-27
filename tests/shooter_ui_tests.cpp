@@ -72,7 +72,7 @@ static void run_client_frame(client::ui::ClientUi &client_ui,
                              const TestFrameProviders &providers,
                              const ::ui::UiInputFrame &input = {},
                              Clay_Vector2 pointer = { -1000.0f, -1000.0f },
-                             bool drain_writes = true) {
+                             bool drain_deferred_mutations = true) {
     Clay_SetLayoutDimensions({ 800, 500 });
     Clay_SetPointerState(pointer, input.pointer_down);
     client_ui.begin_frame(input);
@@ -95,8 +95,8 @@ static void run_client_frame(client::ui::ClientUi &client_ui,
     (void)Clay_EndLayout();
     client_ui.end_layout(input);
     react_end_frame();
-    if (drain_writes) {
-        client_ui.drain_writes();
+    if (drain_deferred_mutations) {
+        client_ui.drain_deferred_mutations();
     }
 }
 
@@ -412,7 +412,7 @@ static bool loadout_tabs_and_equipment_slots_are_real_focus_targets(void) {
     return true;
 }
 
-static bool shooter_game_writes_wait_for_client_ui_drain(void) {
+static bool shooter_game_mutations_wait_for_client_ui_drain(void) {
     react_init(g_clay);
     shooter::ShooterGame game;
     TestFrameProviders providers { .game = &game };
@@ -428,8 +428,8 @@ static bool shooter_game_writes_wait_for_client_ui_drain(void) {
     // The gear tab's on_select queues two writes: one for the UI selection
     // (via the LoadoutProvider's setter) and one for the game-side
     // select_weapon. Both wait for drain.
-    CHECK(client_ui.pending_write_count() == 2);
-    client_ui.drain_writes();
+    CHECK(client_ui.pending_mutation_count() == 2);
+    client_ui.drain_deferred_mutations();
     CHECK(game.selected_weapon() == 3);
     return true;
 }
@@ -499,7 +499,7 @@ int main(void) {
     if (!pause_options_returns_to_pause_through_screen_stack()) return 1;
     if (!loadout_buy_uses_confirm_dialog_and_restores_parent_focus()) return 1;
     if (!loadout_tabs_and_equipment_slots_are_real_focus_targets()) return 1;
-    if (!shooter_game_writes_wait_for_client_ui_drain()) return 1;
+    if (!shooter_game_mutations_wait_for_client_ui_drain()) return 1;
     if (!root_level_providers_reach_screens_without_per_screen_wrap()) return 1;
 
     react_shutdown();

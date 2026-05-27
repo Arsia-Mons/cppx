@@ -1,10 +1,70 @@
 #include "loadout_state.h"
 
 #include "../../../../react.h"
+#include "../../callback_deps.h"
+#include "../../internal/deferred_ui_mutation.h"
 
 namespace shooter {
 
 static ReactContext LoadoutContext = {};
+
+LoadoutContextValue use_loadout_context_value(bool *compare_enabled,
+                                              int *selected_weapon_tile,
+                                              LoadoutPendingAction *pending) {
+    client::ui::internal::DeferredUiMutationSink mutations =
+        client::ui::internal::use_deferred_ui_mutations();
+
+    return {
+        .compare_enabled = compare_enabled,
+        .selected_weapon_tile = selected_weapon_tile,
+        .pending = pending,
+        .set_compare_enabled =
+            use_callback<void(bool)>(
+                [compare_enabled, mutations](bool enabled) {
+                    if (compare_enabled && mutations) {
+                        mutations.submit([compare_enabled, enabled] {
+                            *compare_enabled = enabled;
+                        });
+                    }
+                },
+                client::ui::callback_deps(
+                    client::ui::callback_deps_ptr(compare_enabled),
+                    client::ui::callback_deps_ptr(mutations.owner()))),
+        .set_selected_weapon_tile =
+            use_callback<void(int)>(
+                [selected_weapon_tile, mutations](int index) {
+                    if (selected_weapon_tile && mutations) {
+                        mutations.submit([selected_weapon_tile, index] {
+                            *selected_weapon_tile = index;
+                        });
+                    }
+                },
+                client::ui::callback_deps(
+                    client::ui::callback_deps_ptr(selected_weapon_tile),
+                    client::ui::callback_deps_ptr(mutations.owner()))),
+        .set_pending_action =
+            use_callback<void(LoadoutPendingAction)>(
+                [pending, mutations](LoadoutPendingAction next) {
+                    if (pending && mutations) {
+                        mutations.submit([pending, next] { *pending = next; });
+                    }
+                },
+                client::ui::callback_deps(
+                    client::ui::callback_deps_ptr(pending),
+                    client::ui::callback_deps_ptr(mutations.owner()))),
+        .clear_pending_action =
+            use_callback(
+                [pending, mutations] {
+                    if (pending && mutations) {
+                        mutations.submit(
+                            [pending] { pending->action = LOADOUT_ACTION_NONE; });
+                    }
+                },
+                client::ui::callback_deps(
+                    client::ui::callback_deps_ptr(pending),
+                    client::ui::callback_deps_ptr(mutations.owner()))),
+    };
+}
 
 void loadout_provider_push(const LoadoutContextValue *value) {
     react_provider_push(&LoadoutContext,

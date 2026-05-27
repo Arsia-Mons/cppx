@@ -4,6 +4,7 @@
 #include "../../../react.h"
 #include "../callback_deps.h"
 #include "../client_ui.h"
+#include "../internal/deferred_ui_mutation.h"
 #include "../providers/shooter_provider.h"
 
 namespace shooter {
@@ -42,40 +43,46 @@ ShooterWeaponRead use_weapon_read(int index) {
 
 std::function<void()> use_select_weapon(int index) {
     ShooterGame *game = use_shooter_game();
-    client::ui::QueueUiWrite queue_write = client::ui::use_ui_write_queue();
+    client::ui::internal::DeferredUiMutationSink mutations =
+        client::ui::internal::use_deferred_ui_mutations();
     return use_callback(
-        [game, index, queue_write] {
-            if (game && queue_write) {
-                queue_write([game, index] { game->select_weapon(index); });
+        [game, index, mutations] {
+            if (game && mutations) {
+                mutations.submit([game, index] { game->select_weapon(index); });
             }
         },
         client::ui::callback_deps(client::ui::callback_deps_ptr(game),
+                                  client::ui::callback_deps_ptr(mutations.owner()),
                                   static_cast<uint64_t>(index)));
 }
 
 std::function<void()> use_buy_weapon(int index) {
     ShooterGame *game = use_shooter_game();
-    client::ui::QueueUiWrite queue_write = client::ui::use_ui_write_queue();
+    client::ui::internal::DeferredUiMutationSink mutations =
+        client::ui::internal::use_deferred_ui_mutations();
     return use_callback(
-        [game, index, queue_write] {
-            if (game && queue_write) {
-                queue_write([game, index] { game->buy_weapon(index); });
+        [game, index, mutations] {
+            if (game && mutations) {
+                mutations.submit([game, index] { game->buy_weapon(index); });
             }
         },
         client::ui::callback_deps(client::ui::callback_deps_ptr(game),
+                                  client::ui::callback_deps_ptr(mutations.owner()),
                                   static_cast<uint64_t>(index)));
 }
 
 std::function<void()> use_equip_weapon(int index) {
     ShooterGame *game = use_shooter_game();
-    client::ui::QueueUiWrite queue_write = client::ui::use_ui_write_queue();
+    client::ui::internal::DeferredUiMutationSink mutations =
+        client::ui::internal::use_deferred_ui_mutations();
     return use_callback(
-        [game, index, queue_write] {
-            if (game && queue_write) {
-                queue_write([game, index] { game->equip_weapon(index); });
+        [game, index, mutations] {
+            if (game && mutations) {
+                mutations.submit([game, index] { game->equip_weapon(index); });
             }
         },
         client::ui::callback_deps(client::ui::callback_deps_ptr(game),
+                                  client::ui::callback_deps_ptr(mutations.owner()),
                                   static_cast<uint64_t>(index)));
 }
 

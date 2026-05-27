@@ -45,7 +45,7 @@ void UiPipeline::render_client_ui_frame(const UiPipelineFrame    &frame,
         render_commands(commands);
     }
 
-    client_ui_.drain_writes();
+    client_ui_.drain_deferred_mutations();
 }
 
 } // namespace client::ui

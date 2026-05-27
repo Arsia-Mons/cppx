@@ -19,7 +19,7 @@ struct LoadoutPendingAction {
 
 // Struct value provided through LoadoutContext. The owning screen body holds
 // the actual state in `use_state<...>` slots and exposes them via pointers +
-// setters that route through the deferred UI write queue.
+// named setters that schedule deferred UI mutations.
 struct LoadoutContextValue {
     bool *compare_enabled               = nullptr;
     int  *selected_weapon_tile          = nullptr;
@@ -33,6 +33,9 @@ struct LoadoutContextValue {
 // Push/pop the loadout context. The screen's build_ui() wraps the screen body
 // with these so descendants can read the loadout UI state without each
 // component reaching back into the screen class.
+LoadoutContextValue use_loadout_context_value(bool *compare_enabled,
+                                              int *selected_weapon_tile,
+                                              LoadoutPendingAction *pending);
 void loadout_provider_push(const LoadoutContextValue *value);
 void loadout_provider_pop();
 
@@ -41,8 +44,8 @@ bool                 use_compare_enabled();
 int                  use_selected_weapon_tile();
 LoadoutPendingAction use_pending_loadout_action();
 
-// Hooks: write state. Setters route through the deferred UI write queue so
-// they're safe to invoke from inside a Clay layout pass.
+// Hooks: write state. Setters schedule deferred UI mutations so they're safe to
+// invoke from inside a Clay layout pass.
 std::function<void(bool)>                 use_set_compare_enabled();
 std::function<void(int)>                  use_set_selected_weapon_tile();
 std::function<void(LoadoutPendingAction)> use_set_pending_loadout_action();

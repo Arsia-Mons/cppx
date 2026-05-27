@@ -246,43 +246,8 @@ void LoadoutScreen::build_ui() {
         int *selected_index = use_state<int>(0);
         LoadoutPendingAction *pending = use_state<LoadoutPendingAction>({});
         if (compare_enabled && selected_index && pending) {
-            client::ui::QueueUiWrite queue_write = client::ui::use_ui_write_queue();
-
-            LoadoutContextValue ctx;
-            ctx.compare_enabled = compare_enabled;
-            ctx.selected_weapon_tile = selected_index;
-            ctx.pending = pending;
-            ctx.set_compare_enabled = use_callback<void(bool)>(
-                [compare_enabled, queue_write](bool enabled) {
-                    if (queue_write && compare_enabled) {
-                        queue_write(
-                            [compare_enabled, enabled] { *compare_enabled = enabled; });
-                    }
-                },
-                client::ui::callback_deps(
-                    client::ui::callback_deps_ptr(compare_enabled)));
-            ctx.set_selected_weapon_tile = use_callback<void(int)>(
-                [selected_index, queue_write](int index) {
-                    if (queue_write && selected_index) {
-                        queue_write([selected_index, index] { *selected_index = index; });
-                    }
-                },
-                client::ui::callback_deps(
-                    client::ui::callback_deps_ptr(selected_index)));
-            ctx.set_pending_action = use_callback<void(LoadoutPendingAction)>(
-                [pending, queue_write](LoadoutPendingAction next) {
-                    if (queue_write && pending) {
-                        queue_write([pending, next] { *pending = next; });
-                    }
-                },
-                client::ui::callback_deps(client::ui::callback_deps_ptr(pending)));
-            ctx.clear_pending_action = use_callback(
-                [pending, queue_write] {
-                    if (queue_write && pending) {
-                        queue_write([pending] { pending->action = LOADOUT_ACTION_NONE; });
-                    }
-                },
-                client::ui::callback_deps(client::ui::callback_deps_ptr(pending)));
+            LoadoutContextValue ctx =
+                use_loadout_context_value(compare_enabled, selected_index, pending);
 
             loadout_provider_push(&ctx);
             LoadoutScreenView();

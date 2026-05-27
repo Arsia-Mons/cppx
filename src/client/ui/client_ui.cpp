@@ -1,5 +1,7 @@
 #include "client_ui.h"
 
+#include "internal/deferred_ui_mutation.h"
+
 namespace client::ui {
 
 struct ScreenContextValue {
@@ -15,7 +17,7 @@ ClientUi::ClientUi() {
 
 void ClientUi::begin_frame(const ::ui::UiInputFrame &input) {
     ::ui::ui_focus_set_current(&focus_);
-    clear_writes();
+    clear_mutations();
     ::ui::ui_focus_begin_frame(input);
 }
 
@@ -91,8 +93,8 @@ bool ClientUi::replace_top(std::unique_ptr<UiScreen> screen) {
 bool ClientUi::queue_push_screen(std::unique_ptr<UiScreen> screen) {
     if (!screen)
         return false;
-    return queue_write({
-        .kind = WriteKind::Push,
+    return queue_mutation({
+        .kind = MutationKind::Push,
         .screen = std::move(screen),
     });
 }
@@ -100,69 +102,69 @@ bool ClientUi::queue_push_screen(std::unique_ptr<UiScreen> screen) {
 bool ClientUi::queue_reset_to_screen(std::unique_ptr<UiScreen> screen) {
     if (!screen)
         return false;
-    return queue_write({
-        .kind = WriteKind::ResetTo,
+    return queue_mutation({
+        .kind = MutationKind::ResetTo,
         .screen = std::move(screen),
     });
 }
 
 bool ClientUi::queue_pop_current(UiScreenEntryId entry_id) {
-    return queue_write({
-        .kind = WriteKind::PopCurrent,
+    return queue_mutation({
+        .kind = MutationKind::PopCurrent,
         .entry_id = entry_id,
     });
 }
 
 bool ClientUi::queue_pop_top() {
-    return queue_write({ .kind = WriteKind::PopTop });
+    return queue_mutation({ .kind = MutationKind::PopTop });
 }
 
-bool ClientUi::queue_deferred_write(UiDeferredWrite write) {
-    if (!write)
+bool ClientUi::queue_deferred_mutation(DeferredUiMutation mutation) {
+    if (!mutation)
         return false;
-    return queue_write({
-        .kind = WriteKind::Deferred,
-        .deferred = std::move(write),
+    return queue_mutation({
+        .kind = MutationKind::Deferred,
+        .deferred = std::move(mutation),
     });
 }
 
-bool ClientUi::queue_write(QueuedWrite write) {
-    if (write_count_ >= CLIENT_UI_MAX_WRITES)
+bool ClientUi::queue_mutation(QueuedMutation mutation) {
+    if (mutation_count_ >= CLIENT_UI_MAX_QUEUED_MUTATIONS)
         return false;
-    writes_[write_count_++] = std::move(write);
+    mutations_[mutation_count_++] = std::move(mutation);
     return true;
 }
 
-void ClientUi::drain_writes() {
-    for (int i = 0; i < write_count_; ++i) {
-        QueuedWrite &write = writes_[i];
-        switch (write.kind) {
-        case WriteKind::Push:
-            screens_.push(std::move(write.screen));
+void ClientUi::drain_deferred_mutations() {
+    for (int i = 0; i < mutation_count_; ++i) {
+        QueuedMutation &mutation = mutations_[i];
+        switch (mutation.kind) {
+        case MutationKind::Push:
+            screens_.push(std::move(mutation.screen));
             break;
-        case WriteKind::ResetTo:
-            screens_.reset_to(std::move(write.screen));
+        case MutationKind::ResetTo:
+            screens_.reset_to(std::move(mutation.screen));
             break;
-        case WriteKind::PopCurrent:
-            screens_.pop_entry(write.entry_id);
+        case MutationKind::PopCurrent:
+            screens_.pop_entry(mutation.entry_id);
             break;
-        case WriteKind::PopTop:
+        case MutationKind::PopTop:
             screens_.pop_top();
             break;
-        case WriteKind::Deferred:
-            if (write.deferred)
-                write.deferred();
+        case MutationKind::Deferred:
+            if (mutation.deferred)
+                mutation.deferred();
             break;
         }
     }
-    clear_writes();
+    clear_mutations();
 }
 
-void ClientUi::clear_writes() {
-    for (int i = 0; i < write_count_; ++i) {
-        writes_[i] = {};
+void ClientUi::clear_mutations() {
+    for (int i = 0; i < mutation_count_; ++i) {
+        mutations_[i] = {};
     }
-    write_count_ = 0;
+    mutation_count_ = 0;
 }
 
 ScreenNavigator use_screen_navigator() {
@@ -192,19 +194,26 @@ ScreenNavigator use_screen_navigator() {
     };
 }
 
-QueueUiWrite use_ui_write_queue() {
+namespace internal {
+
+bool DeferredUiMutationSink::submit(DeferredUiMutation mutation) const {
+    if (!client_ui || !mutation)
+        return false;
+    return client_ui->queue_deferred_mutation(std::move(mutation));
+}
+
+DeferredUiMutationSink use_deferred_ui_mutations() {
     ScreenContextValue *context =
         static_cast<ScreenContextValue *>(use_context(&ScreenContext));
     if (!context || !context->client_ui) {
         react_report_error(
-            "client/ui: missing ScreenProvider for use_ui_write_queue\n");
+            "client/ui: missing ScreenProvider for use_deferred_ui_mutations\n");
         return {};
     }
 
-    ClientUi *client_ui = context->client_ui;
-    return [client_ui](UiDeferredWrite write) {
-        client_ui->queue_deferred_write(std::move(write));
-    };
+    return { .client_ui = context->client_ui };
 }
+
+} // namespace internal
 
 } // namespace client::ui

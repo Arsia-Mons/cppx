@@ -99,7 +99,7 @@ public:
 
 struct RenderProbe {
     int render_count = 0;
-    int pending_writes_at_render = 0;
+    int pending_mutations_at_render = 0;
     int screen_count_at_render = 0;
 };
 
@@ -118,7 +118,7 @@ static bool ui_pipeline_frame_provider_exposes_current_frame(void) {
     return true;
 }
 
-static bool pipeline_renders_before_draining_client_writes(void) {
+static bool pipeline_renders_before_draining_client_mutations(void) {
     react_init(g_clay);
     UiPipeline pipeline;
     RenderProbe probe = {};
@@ -134,12 +134,12 @@ static bool pipeline_renders_before_draining_client_writes(void) {
 
     pipeline.render_client_ui_frame(test_frame(confirm), [&](Clay_RenderCommandArray &) {
         probe.render_count += 1;
-        probe.pending_writes_at_render = pipeline.client_ui().pending_write_count();
+        probe.pending_mutations_at_render = pipeline.client_ui().pending_mutation_count();
         probe.screen_count_at_render = pipeline.client_ui().screens().count();
     });
 
     CHECK(probe.render_count == 1);
-    CHECK(probe.pending_writes_at_render == 1);
+    CHECK(probe.pending_mutations_at_render == 1);
     CHECK(probe.screen_count_at_render == 1);
     CHECK(pipeline.client_ui().screens().count() == 0);
     return true;
@@ -149,7 +149,7 @@ int main(void) {
     if (!init_clay_once()) return 1;
 
     if (!ui_pipeline_frame_provider_exposes_current_frame()) return 1;
-    if (!pipeline_renders_before_draining_client_writes()) return 1;
+    if (!pipeline_renders_before_draining_client_mutations()) return 1;
 
     react_shutdown();
     free(g_clay_memory);

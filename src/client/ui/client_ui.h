@@ -10,10 +10,9 @@
 
 namespace client::ui {
 
-constexpr int CLIENT_UI_MAX_WRITES = 128;
+constexpr int CLIENT_UI_MAX_QUEUED_MUTATIONS = 128;
 
-using UiDeferredWrite = std::function<void()>;
-using QueueUiWrite = std::function<void(UiDeferredWrite)>;
+using DeferredUiMutation = std::function<void()>;
 
 struct ScreenNavigator {
     UiScreenEntryId current_entry_id = 0;
@@ -42,12 +41,12 @@ public:
     bool queue_reset_to_screen(std::unique_ptr<UiScreen> screen);
     bool queue_pop_current(UiScreenEntryId entry_id);
     bool queue_pop_top();
-    bool queue_deferred_write(UiDeferredWrite write);
-    int pending_write_count() const { return write_count_; }
-    void drain_writes();
+    bool queue_deferred_mutation(DeferredUiMutation mutation);
+    int pending_mutation_count() const { return mutation_count_; }
+    void drain_deferred_mutations();
 
 private:
-    enum class WriteKind {
+    enum class MutationKind {
         Push,
         ResetTo,
         PopCurrent,
@@ -55,23 +54,22 @@ private:
         Deferred,
     };
 
-    struct QueuedWrite {
-        WriteKind kind = WriteKind::PopTop;
+    struct QueuedMutation {
+        MutationKind kind = MutationKind::PopTop;
         UiScreenEntryId entry_id = 0;
         std::unique_ptr<UiScreen> screen = nullptr;
-        UiDeferredWrite deferred = {};
+        DeferredUiMutation deferred = {};
     };
 
-    bool queue_write(QueuedWrite write);
-    void clear_writes();
+    bool queue_mutation(QueuedMutation mutation);
+    void clear_mutations();
 
     ScreenStack screens_;
     ::ui::UiFocusRuntime focus_ = {};
-    std::array<QueuedWrite, CLIENT_UI_MAX_WRITES> writes_ = {};
-    int write_count_ = 0;
+    std::array<QueuedMutation, CLIENT_UI_MAX_QUEUED_MUTATIONS> mutations_ = {};
+    int mutation_count_ = 0;
 };
 
 ScreenNavigator use_screen_navigator();
-QueueUiWrite use_ui_write_queue();
 
 } // namespace client::ui

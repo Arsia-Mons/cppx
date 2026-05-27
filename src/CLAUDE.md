@@ -7,7 +7,7 @@ Source tree. Boundaries here are deliberate — see `../architecture.md` for the
 ```text
 app/      process lifecycle and the per-frame loop
 ui/       generic Clay toolkit (no game vocabulary)
-client/   client UI shell (screen stack, write queue, focus glue) + the game's screens
+client/   client UI shell (screen stack, mutation queue, focus glue) + the game's screens
 game/     game rules and state (player, weapons, economy, inventory)
 platform/ OS/library adapters (SDL window/input, control mailbox)
 renderer/ font + Clay→SDL render glue
@@ -33,7 +33,7 @@ Allowed dependency direction: `client/ui/screens → client/ui → game → ui �
 
 - `ui/` must not know about game concepts.
 - `game/` must not include Clay or SDL headers.
-- UI must queue mutations during a Clay pass via `client::ui::ClientUi::queue_deferred_write` (see `client/ui/client_ui.h`).
+- UI must queue mutations during a Clay pass via `client::ui::ClientUi::queue_deferred_mutation` (see `client/ui/client_ui.h`).
 - Game-specific UI screens live under `client/ui/screens/<screen>/`, not in `game/`.
 
 ## Tests

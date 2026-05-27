@@ -58,7 +58,7 @@ The generated plan must preserve these rules:
    persistence, drag/resize state, docking, and viewport repair.
 4. Hook/provider API sketch for window contents and window chrome.
 5. Frame order, including where input is captured, where layout is declared,
-   where hit testing occurs, where resize repair runs, and where queued writes
+   where hit testing occurs, where resize repair runs, and where queued mutations
    drain.
 6. Data model for window identity, bounds, saved geometry, repaired geometry,
    tab groups, and modal state.

@@ -192,7 +192,7 @@ std::string ControlMailbox::state_json(client::ui::UiPipeline &pipeline) {
          << "\"frame\":" << frame_index_ << ","
          << "\"screen_count\":" << client_ui.screens().count() << ","
          << "\"top_screen\":\"" << json_escape(top ? top->debug_name() : "") << "\","
-         << "\"pending_writes\":" << client_ui.pending_write_count() << ","
+         << "\"pending_mutations\":" << client_ui.pending_mutation_count() << ","
          << "\"focused_id\":" << focused.id << ","
          << "\"focus_source\":\"" << focus_source_name(focus_source) << "\","
          << "\"screens\":[";

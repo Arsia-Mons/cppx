@@ -178,7 +178,7 @@ static void run_client_frame(ClientUi &client_ui, const ::ui::UiInputFrame &inpu
     (void)Clay_EndLayout();
     client_ui.end_layout(input);
     react_end_frame();
-    client_ui.drain_writes();
+    client_ui.drain_deferred_mutations();
 }
 
 static bool screen_stack_push_pop_replace_and_visible_ordering(void) {
@@ -281,13 +281,13 @@ static bool screen_navigator_pop_current_drains_after_layout(void) {
     Clay_BeginLayout();
     client_ui.build_visible_screens();
     CHECK(client_ui.screens().count() == 2);
-    CHECK(client_ui.pending_write_count() == 1);
+    CHECK(client_ui.pending_mutation_count() == 1);
     (void)Clay_EndLayout();
     client_ui.end_layout({});
     react_end_frame();
 
     CHECK(client_ui.screens().count() == 2);
-    client_ui.drain_writes();
+    client_ui.drain_deferred_mutations();
     CHECK(client_ui.screens().count() == 1);
     CHECK(strcmp(client_ui.screens().top()->debug_name(), "Base") == 0);
     CHECK(base_builds == 1);
@@ -309,13 +309,13 @@ static bool screen_navigator_push_drains_after_layout(void) {
     Clay_BeginLayout();
     client_ui.build_visible_screens();
     CHECK(client_ui.screens().count() == 1);
-    CHECK(client_ui.pending_write_count() == 1);
+    CHECK(client_ui.pending_mutation_count() == 1);
     (void)Clay_EndLayout();
     client_ui.end_layout({});
     react_end_frame();
 
     CHECK(client_ui.screens().count() == 1);
-    client_ui.drain_writes();
+    client_ui.drain_deferred_mutations();
     CHECK(client_ui.screens().count() == 2);
     CHECK(strcmp(client_ui.screens().top()->debug_name(), "Pushed") == 0);
     CHECK(build_count == 1);
@@ -341,13 +341,13 @@ static bool screen_navigator_reset_to_drains_after_layout(void) {
     Clay_BeginLayout();
     client_ui.build_visible_screens();
     CHECK(client_ui.screens().count() == 2);
-    CHECK(client_ui.pending_write_count() == 1);
+    CHECK(client_ui.pending_mutation_count() == 1);
     (void)Clay_EndLayout();
     client_ui.end_layout({});
     react_end_frame();
 
     CHECK(client_ui.screens().count() == 2);
-    client_ui.drain_writes();
+    client_ui.drain_deferred_mutations();
     CHECK(client_ui.screens().count() == 1);
     CHECK(strcmp(client_ui.screens().top()->debug_name(), "ResetRoot") == 0);
     CHECK(client_ui.screens().top()->entry_id() > old_top_id);
@@ -387,11 +387,11 @@ static bool queued_push_screen_releases_if_frame_resets_before_drain(void) {
     int destroy_count = 0;
 
     CHECK(client_ui.queue_push_screen(std::make_unique<DestroyCountingScreen>(&destroy_count)));
-    CHECK(client_ui.pending_write_count() == 1);
+    CHECK(client_ui.pending_mutation_count() == 1);
     CHECK(destroy_count == 0);
 
     client_ui.begin_frame({});
-    CHECK(client_ui.pending_write_count() == 0);
+    CHECK(client_ui.pending_mutation_count() == 0);
     CHECK(destroy_count == 1);
     return true;
 }

@@ -18,7 +18,7 @@
 - `compare_enabled` is UI state, not game state. Extracted in task 6 when its only consumer (`LoadoutScreen`) moves.
 - Shooter UI screens go to `client/ui/screens/screens.{h,cpp}` (one file for now). The `src/shooter/` directory disappears at the end of task 6.
 - `client/ui/` empty placeholder folders the user created (`components/`, `hooks/`, `providers/`) are kept as scaffolding hints; `screens/screen-name/` template is deleted in favour of real screens at `screens/`. No `overlays/` folder until something actually overlays.
-- No `client/commands/` for now; deferred writes remain the intent channel.
+- No `client/commands/` for now; deferred mutations remain the intent channel.
 
 **Out of scope (deliberate):**
 
@@ -234,7 +234,7 @@ src/client/ui/screens/screen-name/providers/
 
 - `namespace shooter` and the `ShooterGame` / `ShooterGameScreen` / `*Screen` class names are kept. The shooter IS the game, so renaming churn isn't worth it.
 - No `audio/`, `vfx/`, `server/`, `net/` directories until something actually needs them.
-- No `client/commands/` bus; deferred writes via `ClientUi::queue_deferred_write` stay the intent channel.
+- No `client/commands/` bus; deferred mutations via `ClientUi::queue_deferred_mutation` stay the intent channel.
 - No `client/ui/overlays/` or `hud/` folder; current pause/loadout screens use the `is_overlay()` flag on `UiScreen` — promote out of `screens/` only if real overlay/hud surfaces need distinct co-location.
 - No new CLAUDE.md files in `app/`, `renderer/`, `game/`, `platform/sdl/`, or per-screen dirs. Add them later if a directory's responsibilities aren't obvious from `architecture.md` + the parent `CLAUDE.md`.
 
@@ -1210,7 +1210,7 @@ void UiPipeline::render_client_ui_frame(const UiPipelineFrame    &frame,
         render_commands(commands);
     }
 
-    client_ui_.drain_writes();
+    client_ui_.drain_deferred_mutations();
 }
 
 } // namespace client::ui
@@ -1718,7 +1718,7 @@ Includes: `<functional>` for the `std::function` return types.
 
 - [ ] **Step 6: Create `src/client/ui/hooks/shooter_weapons.cpp`**
 
-Move bodies of the 6 weapon hooks (lines 81-146). Depends on `use_shooter_game` and the ClientUi write queue (`client::ui::use_ui_write_queue`).
+Move bodies of the 6 weapon hooks (lines 81-146). Depends on `use_shooter_game` and the ClientUi deferred-mutation sink (`client::ui::internal::use_deferred_ui_mutations`).
 
 Includes: `"shooter_weapons.h"`, `"../providers/shooter_provider.h"`, `"../client_ui.h"`, `"../../../game/shooter_game.h"`, `"../../../react.h"`.
 
@@ -1962,10 +1962,11 @@ static bool use_compare_enabled() {
 
 static std::function<void(bool)> use_set_compare_enabled() {
     LoadoutScreen *screen = use_current_loadout_screen();
-    client::ui::QueueUiWrite queue_write = client::ui::use_ui_write_queue();
-    return [screen, queue_write](bool enabled) {
-        if (screen && queue_write) {
-            queue_write([screen, enabled] { screen->set_compare_enabled(enabled); });
+    client::ui::internal::DeferredUiMutationSink mutations =
+        client::ui::internal::use_deferred_ui_mutations();
+    return [screen, mutations](bool enabled) {
+        if (screen && mutations) {
+            mutations.submit([screen, enabled] { screen->set_compare_enabled(enabled); });
         }
     };
 }
@@ -2142,7 +2143,7 @@ Replace the `## Layering` block with:
 ```text
 app/      process lifecycle and the per-frame loop
 ui/       generic Clay toolkit (no game vocabulary)
-client/   client UI shell (screen stack, write queue, focus glue) + the game's screens
+client/   client UI shell (screen stack, mutation queue, focus glue) + the game's screens
 game/     game rules and state (player, weapons, economy, inventory)
 platform/ OS/library adapters (SDL window/input, control mailbox)
 renderer/ font + Clay→SDL render glue
@@ -2167,7 +2168,7 @@ Replace "Where new code goes" with:
 Update "Hard rules":
 - `ui/` must not know about game concepts.
 - `game/` must not include Clay or SDL headers.
-- UI must queue mutations during a Clay pass via `client::ui::ClientUi::queue_deferred_write`.
+- UI must queue mutations during a Clay pass via `client::ui::ClientUi::queue_deferred_mutation`.
 - Game-specific UI screens live under `client/ui/screens/<screen>/`, not in `game/`.
 
 Update the "Tests" section: replace `game_ui_pipeline_tests` with `ui_pipeline_tests`.
@@ -2177,7 +2178,7 @@ Update the "Tests" section: replace `game_ui_pipeline_tests` with `ui_pipeline_t
 Rewrite the `## Files` block:
 
 ```text
-client_ui.{h,cpp}                ClientUi shell: ScreenStack + UiFocusRuntime + deferred-write queue.
+client_ui.{h,cpp}                ClientUi shell: ScreenStack + UiFocusRuntime + deferred-mutation queue.
 ui_pipeline.{h,cpp}              UiPipeline: wraps ClientUi in a Clay frame pass.
 navigation/screen_stack.{h,cpp}  Retained screens, overlay flag, build order, entry IDs.
 navigation/ui_screen.h           UiScreen interface.
@@ -2205,7 +2206,7 @@ If any hit, update it to match the new layout. (Likely none — `src/ui/` is pur
 ```markdown
 # src/app/
 
-Owns process lifecycle and the per-frame loop. `app::App` constructs SDL, fonts, Clay, the `UiPipeline`, the `ShooterGame`, and the `ControlMailbox`; `app::GameLoop::tick()` is the per-frame body (poll events → build input frame → run UI pipeline → render → present → drain deferred writes).
+Owns process lifecycle and the per-frame loop. `app::App` constructs SDL, fonts, Clay, the `UiPipeline`, the `ShooterGame`, and the `ControlMailbox`; `app::GameLoop::tick()` is the per-frame body (poll events → build input frame → run UI pipeline → render → present → drain deferred mutations).
 
 ## Files
 
@@ -2300,7 +2301,7 @@ The loadout screen — the only screen complex enough to need its own components
 
 - Screen-local state (e.g., `compare_enabled_`) is a private member on the screen class, with public getter/setter.
 - Expose the screen to descendant components via a `ReactContext` provided in `build_ui()`. Descendant hooks call `use_current_loadout_screen()` to reach the state.
-- Mutations from inside Clay layout MUST go through `client::ui::use_ui_write_queue()` — never write directly.
+- Mutations from inside Clay layout MUST go through named hooks/actions backed by `client::ui::internal::use_deferred_ui_mutations()` — never write directly.
 
 ## When to graduate a component to the parent dir
 
