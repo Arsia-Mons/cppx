@@ -5,6 +5,7 @@
 #include "client/ui/providers/app_shell.h"
 #include "client/ui/providers/shooter_provider.h"
 #include "client/ui/screens/in_game/in_game_screen.h"
+#include "client/ui/screens/loadout/components/weapon_tile.h"
 #include "client/ui/screens/loadout/loadout_screen.h"
 #include "client/ui/screens/main_menu/main_menu_screen.h"
 #include "client/ui/screens/options/options_screen.h"
@@ -39,14 +40,6 @@ static Clay_Dimensions measure_text(Clay_StringSlice text,
                                     Clay_TextElementConfig *,
                                     void *) {
     return Clay_Dimensions{ (float)text.length * 8.0f, 16.0f };
-}
-
-static Clay_ElementId test_id(const char *name) {
-    return Clay_GetElementId(Clay_String{ false, (int32_t)strlen(name), name });
-}
-
-static bool same_id(Clay_ElementId a, Clay_ElementId b) {
-    return a.id != 0 && a.id == b.id;
 }
 
 static bool init_clay_once(void) {
@@ -104,7 +97,8 @@ static void run_client_frame(client::ui::ClientUi &client_ui,
 static void run_pipeline_frame(client::ui::UiPipeline &pipeline,
                                const TestFrameProviders &providers,
                                const ::ui::UiInputFrame &input = {},
-                               Clay_Vector2 pointer = { -1000.0f, -1000.0f }) {
+                               Clay_Vector2 pointer = { -1000.0f, -1000.0f },
+                               const client::ui::RenderClayCommands &render = {}) {
     pipeline.set_frame_provider([&](const std::function<void()> &build) {
         shooter::ShooterContextValue     game_ctx { .game = providers.game };
         client::ui::AppShellContextValue shell_ctx { .request_quit = providers.request_quit };
@@ -120,16 +114,50 @@ static void run_pipeline_frame(client::ui::UiPipeline &pipeline,
             .layout = {800, 500},
             .pointer = pointer,
         },
-        {});
+        render);
     pipeline.set_frame_provider({});
 }
 
-static Clay_Vector2 center_of(Clay_ElementId id) {
-    Clay_ElementData data = Clay_GetElementData(id);
-    if (!data.found) return { -1000.0f, -1000.0f };
+static ::ui::retained::NodeId find_retained_control(
+    const ::ui::retained::UiTree &tree,
+    ::ui::retained::NodeId id,
+    const char *name,
+    int offset = 0) {
+    ::ui::retained::NodeSnapshot node = {};
+    if (!tree.snapshot(id, &node))
+        return 0;
+    if (strcmp(node.control_id ? node.control_id : "", name) == 0 &&
+        node.control_offset == offset) {
+        return id;
+    }
+    for (int i = 0; i < tree.child_count(id); ++i) {
+        ::ui::retained::NodeId found =
+            find_retained_control(tree, tree.child_at(id, i), name, offset);
+        if (found != 0)
+            return found;
+    }
+    return 0;
+}
+
+static ::ui::retained::NodeId retained_control_id(
+    const client::ui::ClientUi &client_ui,
+    const char *name,
+    int offset = 0) {
+    const ::ui::retained::UiTree &tree = client_ui.retained_tree();
+    return find_retained_control(tree, tree.root_id(), name, offset);
+}
+
+static Clay_Vector2 retained_center_of(const client::ui::ClientUi &client_ui,
+                                       const char *name,
+                                       int offset = 0) {
+    const ::ui::retained::UiTree &tree = client_ui.retained_tree();
+    ::ui::retained::NodeId id = retained_control_id(client_ui, name, offset);
+    ::ui::retained::NodeSnapshot node = {};
+    if (id == 0 || !tree.snapshot(id, &node))
+        return { -1000.0f, -1000.0f };
     return {
-        data.boundingBox.x + data.boundingBox.width * 0.5f,
-        data.boundingBox.y + data.boundingBox.height * 0.5f,
+        node.layout.x + node.layout.width * 0.5f,
+        node.layout.y + node.layout.height * 0.5f,
     };
 }
 
@@ -348,62 +376,55 @@ static bool loadout_buy_uses_confirm_dialog_and_restores_parent_focus(void) {
     react_init(g_clay);
     shooter::ShooterGame game;
     TestFrameProviders providers { .game = &game };
-    client::ui::ClientUi client_ui;
+    client::ui::UiPipeline pipeline;
+    client::ui::ClientUi &client_ui = pipeline.client_ui();
     CHECK(client_ui.push_screen(std::make_unique<shooter::LoadoutScreen>()));
 
-    run_client_frame(client_ui, providers);
-    CHECK(same_id(
-        ::ui::ui_focus_focused_id_for_scope(test_id("LoadoutScope")),
-        CLAY_IDI("WeaponTile", 0)));
+    run_pipeline_frame(pipeline, providers);
+    CHECK(::ui::retained::focus_focused_id(client_ui.retained_focus()) ==
+          retained_control_id(client_ui, shooter::WEAPON_TILE_CONTROL_ID, 0));
     CHECK(game.selected_weapon() == 0);
 
-    run_client_frame(client_ui, providers, keyboard_right());
-    CHECK(same_id(
-        ::ui::ui_focus_focused_id_for_scope(test_id("LoadoutScope")),
-        CLAY_IDI("WeaponTile", 1)));
+    run_pipeline_frame(pipeline, providers, keyboard_right());
+    CHECK(::ui::retained::focus_focused_id(client_ui.retained_focus()) ==
+          retained_control_id(client_ui, shooter::WEAPON_TILE_CONTROL_ID, 1));
     // Focus is a pure-UI change: focusing tile 1 must NOT mutate game state.
     CHECK(game.selected_weapon() == 0);
     CHECK(!game.weapon(1).owned);
     CHECK(game.credits() == 450);
 
-    run_client_frame(client_ui, providers, keyboard_right());
-    run_client_frame(client_ui, providers, keyboard_down());
-    CHECK(same_id(
-        ::ui::ui_focus_focused_id_for_scope(test_id("LoadoutScope")),
-        test_id("BuyWeaponButton")));
+    run_pipeline_frame(pipeline, providers, keyboard_right());
+    run_pipeline_frame(pipeline, providers, keyboard_down());
+    ::ui::retained::NodeId buy_id =
+        retained_control_id(client_ui, "BuyWeaponButton");
+    CHECK(::ui::retained::focus_focused_id(client_ui.retained_focus()) == buy_id);
 
-    run_client_frame(client_ui, providers, keyboard_confirm());
+    run_pipeline_frame(pipeline, providers, keyboard_confirm());
     CHECK(!game.weapon(1).owned);
     CHECK(game.credits() == 450);
 
-    run_client_frame(client_ui, providers);
-    CHECK(same_id(
-        ::ui::ui_focus_focused_id_for_scope(CLAY_IDI("LoadoutConfirmScope", 1)),
-        test_id("ConfirmLoadoutActionButton")));
-    CHECK(same_id(
-        ::ui::ui_focus_focused_id_for_scope(test_id("LoadoutScope")),
-        test_id("BuyWeaponButton")));
+    run_pipeline_frame(pipeline, providers);
+    CHECK(::ui::retained::focus_focused_id(client_ui.retained_focus()) ==
+          retained_control_id(client_ui, "ConfirmLoadoutActionButton"));
+    CHECK(client_ui.retained_focus().previous_focus_before_modal == buy_id);
 
-    run_client_frame(client_ui, providers, keyboard_right());
-    CHECK(same_id(
-        ::ui::ui_focus_focused_id_for_scope(CLAY_IDI("LoadoutConfirmScope", 1)),
-        test_id("CancelLoadoutActionButton")));
-    run_client_frame(client_ui, providers, keyboard_confirm());
+    run_pipeline_frame(pipeline, providers, keyboard_right());
+    CHECK(::ui::retained::focus_focused_id(client_ui.retained_focus()) ==
+          retained_control_id(client_ui, "CancelLoadoutActionButton"));
+    run_pipeline_frame(pipeline, providers, keyboard_confirm());
     CHECK(!game.weapon(1).owned);
     CHECK(game.credits() == 450);
 
-    run_client_frame(client_ui, providers);
-    CHECK(same_id(
-        ::ui::ui_focus_focused_id_for_scope(test_id("LoadoutScope")),
-        test_id("BuyWeaponButton")));
+    run_pipeline_frame(pipeline, providers);
+    buy_id = retained_control_id(client_ui, "BuyWeaponButton");
+    CHECK(::ui::retained::focus_focused_id(client_ui.retained_focus()) == buy_id);
 
-    run_client_frame(client_ui, providers, keyboard_confirm());
+    run_pipeline_frame(pipeline, providers, keyboard_confirm());
     CHECK(!game.weapon(1).owned);
-    run_client_frame(client_ui, providers);
-    CHECK(same_id(
-        ::ui::ui_focus_focused_id_for_scope(CLAY_IDI("LoadoutConfirmScope", 2)),
-        test_id("ConfirmLoadoutActionButton")));
-    run_client_frame(client_ui, providers, keyboard_confirm());
+    run_pipeline_frame(pipeline, providers);
+    CHECK(::ui::retained::focus_focused_id(client_ui.retained_focus()) ==
+          retained_control_id(client_ui, "ConfirmLoadoutActionButton"));
+    run_pipeline_frame(pipeline, providers, keyboard_confirm());
     CHECK(game.weapon(1).owned);
     CHECK(game.credits() == 150);
     return true;
@@ -413,31 +434,32 @@ static bool loadout_tabs_and_equipment_slots_are_real_focus_targets(void) {
     react_init(g_clay);
     shooter::ShooterGame game;
     TestFrameProviders providers { .game = &game };
-    client::ui::ClientUi client_ui;
+    client::ui::UiPipeline pipeline;
+    client::ui::ClientUi &client_ui = pipeline.client_ui();
     CHECK(client_ui.push_screen(std::make_unique<shooter::LoadoutScreen>()));
 
-    run_client_frame(client_ui, providers);
-    CHECK(Clay_GetElementData(test_id("WeaponsTab")).found);
-    CHECK(Clay_GetElementData(test_id("GearTab")).found);
-    CHECK(Clay_GetElementData(test_id("PrimarySlot")).found);
-    CHECK(Clay_GetElementData(test_id("GearSlot")).found);
+    run_pipeline_frame(pipeline, providers);
+    CHECK(retained_control_id(client_ui, "WeaponsTab") != 0);
+    CHECK(retained_control_id(client_ui, "GearTab") != 0);
+    CHECK(retained_control_id(client_ui, "PrimarySlot") != 0);
+    CHECK(retained_control_id(client_ui, "GearSlot") != 0);
 
-    Clay_Vector2 gear_tab = center_of(test_id("GearTab"));
-    run_client_frame(client_ui, providers, pointer_press(), gear_tab);
-    run_client_frame(client_ui, providers, pointer_release(), gear_tab);
+    Clay_Vector2 gear_tab = retained_center_of(client_ui, "GearTab");
+    run_pipeline_frame(pipeline, providers, pointer_press(), gear_tab);
+    run_pipeline_frame(pipeline, providers, pointer_release(), gear_tab);
     CHECK(game.selected_weapon() == 3);
 
-    run_client_frame(client_ui, providers);
-    CHECK(Clay_GetElementData(CLAY_IDI("WeaponTile", 3)).found);
+    run_pipeline_frame(pipeline, providers);
+    CHECK(retained_control_id(client_ui, shooter::WEAPON_TILE_CONTROL_ID, 3) != 0);
 
-    Clay_Vector2 primary_slot = center_of(test_id("PrimarySlot"));
-    run_client_frame(client_ui, providers, pointer_press(), primary_slot);
-    run_client_frame(client_ui, providers, pointer_release(), primary_slot);
+    Clay_Vector2 primary_slot = retained_center_of(client_ui, "PrimarySlot");
+    run_pipeline_frame(pipeline, providers, pointer_press(), primary_slot);
+    run_pipeline_frame(pipeline, providers, pointer_release(), primary_slot);
     CHECK(game.selected_weapon() == 0);
 
-    Clay_Vector2 gear_slot = center_of(test_id("GearSlot"));
-    run_client_frame(client_ui, providers, pointer_press(), gear_slot);
-    run_client_frame(client_ui, providers, pointer_release(), gear_slot);
+    Clay_Vector2 gear_slot = retained_center_of(client_ui, "GearSlot");
+    run_pipeline_frame(pipeline, providers, pointer_press(), gear_slot);
+    run_pipeline_frame(pipeline, providers, pointer_release(), gear_slot);
     CHECK(game.selected_weapon() == 3);
     return true;
 }
@@ -446,20 +468,27 @@ static bool shooter_game_mutations_wait_for_client_ui_drain(void) {
     react_init(g_clay);
     shooter::ShooterGame game;
     TestFrameProviders providers { .game = &game };
-    client::ui::ClientUi client_ui;
+    client::ui::UiPipeline pipeline;
+    client::ui::ClientUi &client_ui = pipeline.client_ui();
     CHECK(client_ui.push_screen(std::make_unique<shooter::LoadoutScreen>()));
 
-    run_client_frame(client_ui, providers);
-    Clay_Vector2 gear_tab = center_of(test_id("GearTab"));
-    run_client_frame(client_ui, providers, pointer_press(), gear_tab);
-    run_client_frame(client_ui, providers, pointer_release(), gear_tab, false);
+    run_pipeline_frame(pipeline, providers);
+    Clay_Vector2 gear_tab = retained_center_of(client_ui, "GearTab");
+    run_pipeline_frame(pipeline, providers, pointer_press(), gear_tab);
+    int pending_at_render = -1;
+    int selected_at_render = -1;
+    run_pipeline_frame(
+        pipeline, providers, pointer_release(), gear_tab,
+        [&](Clay_RenderCommandArray &) {
+            pending_at_render = client_ui.pending_mutation_count();
+            selected_at_render = game.selected_weapon();
+        });
 
-    CHECK(game.selected_weapon() == 0);
     // The gear tab's on_select queues two writes: one for the UI selection
     // (via the LoadoutProvider's setter) and one for the game-side
     // select_weapon. Both wait for drain.
-    CHECK(client_ui.pending_mutation_count() == 2);
-    client_ui.drain_deferred_mutations();
+    CHECK(selected_at_render == 0);
+    CHECK(pending_at_render == 2);
     CHECK(game.selected_weapon() == 3);
     return true;
 }

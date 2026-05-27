@@ -15,7 +15,7 @@ The loadout screen — the only screen complex enough to need its own components
 - **Don't** store screen-local UI state as a member on the screen class. Hold it inside `build_ui()` with `use_state<T>` and expose it through a provider.
 - The pattern: `LoadoutScreen::build_ui` declares `use_state<bool>(...)` / `use_state<int>(...)` / `use_state<LoadoutPendingAction>({})` slots, builds a context value with `use_loadout_context_value(...)`, wraps the body with `loadout_provider_push(&ctx)` / `loadout_provider_pop()`, then renders `LoadoutScreenView()`.
 - Descendant components consume state via the typed hooks (`use_compare_enabled()`, `use_selected_weapon_tile()`, `use_pending_loadout_action()`) and mutate it via the setter hooks. Don't add a back-channel that reaches into the screen class.
-- Setters returned from `use_set_*` hooks already schedule deferred UI mutations — so they're safe to call from inside Clay layout (button `on_confirm`, focus `on_focus`, etc.). Keep the low-level mutation sink inside `loadout_state.cpp`.
+- Setters returned from `use_set_*` hooks already schedule deferred UI mutations — so they're safe to call from retained control callbacks (`on_confirm`, `on_focus`, etc.). Keep the low-level mutation sink inside `loadout_state.cpp`.
 - Focus handlers (`on_focus`) must only mutate UI state. Game-state mutations (e.g. `select_weapon`, `buy_weapon`, `equip_weapon`) belong on confirm flows, not on focus traversal.
 
 ## When to graduate a component to the parent dir

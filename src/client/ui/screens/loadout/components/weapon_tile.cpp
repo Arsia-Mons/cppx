@@ -7,15 +7,23 @@
 #include "../../../hooks/shooter_weapons.h"
 #include "../../../providers/shooter_provider.h"
 #include "../../../../../react.h"
-#include "../../../../../ui/primitives/clay_text.h"
-#include "../../../../../ui/primitives/focusable.h"
-#include "../../../../../ui/primitives/visual_state.h"
+#include "../../../../../ui/retained/components.h"
 
 namespace shooter {
 
-Clay_ElementId weapon_tile_id(int index) {
-    return CLAY_IDI("WeaponTile", index);
+namespace {
+
+const char *weapon_tile_key(int index) {
+    switch (index) {
+    case 0: return "weapon-0";
+    case 1: return "weapon-1";
+    case 2: return "weapon-2";
+    case 3: return "weapon-3";
+    default: return "weapon";
+    }
 }
+
+} // namespace
 
 bool weapon_in_tab(int index, int tab) {
     if (tab == LOADOUT_TAB_GEAR) return index == 3;
@@ -27,7 +35,7 @@ int first_weapon_for_tab(int tab) {
 }
 
 void WeaponTile(int index) {
-    REACT_FRAGMENT_COMPONENT_BEGIN_KEY("WeaponTile", (uint32_t)index) {
+    REACT_RETAINED_COMPONENT_BEGIN_KEY("WeaponTile", (uint32_t)index) {
         ShooterWeaponRead weapon = use_weapon_read(index);
         if (weapon.valid) {
             int selected_index = use_selected_weapon_tile();
@@ -35,6 +43,7 @@ void WeaponTile(int index) {
             std::function<void()>    select       = use_select_weapon(index);
             bool selected = selected_index == index;
             bool disabled = weapon.disabled;
+            namespace retained = ::ui::retained;
 
             const char *detail = use_text_storage("%s  DMG %d  %s",
                 weapon.role,
@@ -42,9 +51,24 @@ void WeaponTile(int index) {
                 weapon.owned ? (weapon.equipped ? "equipped" : "owned")
                              : (disabled ? "locked" : "available"));
 
-            ::ui::Focusable({
-                .id = weapon_tile_id(index),
+            retained::Selectable({
+                .key = weapon_tile_key(index),
+                .id = WEAPON_TILE_CONTROL_ID,
+                .offset = index,
+                .selected = selected,
                 .disabled = disabled,
+                .initial_focus = selected,
+                .width = retained::Length::points(190.0f),
+                .height = retained::Length::points(78.0f),
+                .align_items = retained::AlignItems::Start,
+                .justify_content = retained::JustifyContent::Start,
+                .padding = {10.0f, 10.0f, 10.0f, 10.0f},
+                .gap = 5.0f,
+                .background = selected ? retained::Color{35, 72, 62, 255}
+                                       : retained::Color{24, 31, 36, 255},
+                .border = disabled ? retained::Color{58, 62, 66, 255}
+                                   : retained::Color{102, 142, 150, 255},
+                .border_width = selected ? 2.0f : 1.0f,
                 .on_confirm = [set_selected, index, select] {
                     if (set_selected) set_selected(index);
                     if (select) select();
@@ -54,44 +78,25 @@ void WeaponTile(int index) {
                 .on_focus = [set_selected, index] {
                     if (set_selected) set_selected(index);
                 },
-            }, [&](const ::ui::UiFocusableState &focus) {
-                ::ui::VisualState visual = ::ui::derive_visual_state(focus, {
-                    .selected = selected,
-                    .disabled = disabled,
+            }, [&] {
+                retained::Text({
+                    .key = "name",
+                    .value = weapon.name,
+                    .height = retained::Length::points(18.0f),
+                    .text_color = {238, 246, 244, 255},
+                    .font_size = 16,
                 });
-                uint16_t border_width = visual.targeted ? 2 : 1;
-                CLAY({
-                    .id = focus.id,
-                    .layout = {
-                        .sizing = { CLAY_SIZING_FIXED(190), CLAY_SIZING_FIXED(78) },
-                        .padding = CLAY_PADDING_ALL(10),
-                        .childGap = 5,
-                        .layoutDirection = CLAY_TOP_TO_BOTTOM,
-                    },
-                    .backgroundColor = visual.chosen
-                        ? Clay_Color{ 35, 72, 62, 255 }
-                        : Clay_Color{ 24, 31, 36, 255 },
-                    .cornerRadius = CLAY_CORNER_RADIUS(4),
-                    .border = {
-                        .color = disabled
-                            ? Clay_Color{ 58, 62, 66, 255 }
-                            : Clay_Color{ 102, 142, 150, 255 },
-                        .width = CLAY_BORDER_OUTSIDE(border_width),
-                    },
-                }) {
-                    CLAY_TEXT(::ui::clay_text(weapon.name),
-                        CLAY_TEXT_CONFIG({ .textColor = { 238, 246, 244, 255 }, .fontSize = 16 }));
-                    CLAY_TEXT(::ui::clay_text(detail),
-                        CLAY_TEXT_CONFIG({
-                            .textColor = disabled
-                                ? Clay_Color{ 142, 148, 150, 255 }
-                                : Clay_Color{ 184, 204, 204, 255 },
-                            .fontSize = 12,
-                        }));
-                }
+                retained::Text({
+                    .key = "detail",
+                    .value = detail,
+                    .height = retained::Length::points(16.0f),
+                    .text_color = disabled ? retained::Color{142, 148, 150, 255}
+                                           : retained::Color{184, 204, 204, 255},
+                    .font_size = 12,
+                });
             });
         }
-    } REACT_FRAGMENT_COMPONENT_END();
+    } REACT_RETAINED_COMPONENT_END();
 }
 
 } // namespace shooter

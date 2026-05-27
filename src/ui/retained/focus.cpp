@@ -111,6 +111,16 @@ bool find_active_modal(const UiTree &tree, NodeId id, NodeId *out) {
   return true;
 }
 
+bool subtree_contains(const UiTree &tree, NodeId root, NodeId target) {
+  if (same_id(root, target))
+    return true;
+  for (int i = 0; i < tree.child_count(root); ++i) {
+    if (subtree_contains(tree, tree.child_at(root, i), target))
+      return true;
+  }
+  return false;
+}
+
 bool collect_focusables(const UiTree &tree, FocusRuntime &runtime, NodeId id,
                         uint32_t *order) {
   NodeSnapshot node = {};
@@ -126,6 +136,7 @@ bool collect_focusables(const UiTree &tree, FocusRuntime &runtime, NodeId id,
         .id = id,
         .rect = node.layout,
         .disabled = node.interaction.disabled,
+        .initial_focus = node.interaction.initial_focus,
         .order = (*order)++,
     };
   }
@@ -162,6 +173,10 @@ bool set_focus(FocusRuntime &runtime, NodeId id, FocusSource source) {
 }
 
 NodeId first_enabled(const FocusRuntime &runtime) {
+  for (int i = 0; i < runtime.focusable_count; ++i) {
+    if (runtime.focusables[i].initial_focus && !runtime.focusables[i].disabled)
+      return runtime.focusables[i].id;
+  }
   for (int i = 0; i < runtime.focusable_count; ++i) {
     if (!runtime.focusables[i].disabled)
       return runtime.focusables[i].id;
@@ -251,8 +266,9 @@ bool focus_update(FocusRuntime *runtime, const UiTree &tree,
   }
   NodeId previous_scope = runtime->active_scope_id;
   if (!same_id(previous_scope, active_scope) &&
-      same_id(previous_scope, tree.root_id()) &&
-      !same_id(active_scope, tree.root_id())) {
+      runtime->focused_id != 0 &&
+      tree.contains(runtime->focused_id) &&
+      !subtree_contains(tree, active_scope, runtime->focused_id)) {
     runtime->previous_focus_before_modal = runtime->focused_id;
   }
   runtime->active_scope_id = active_scope;
@@ -263,7 +279,6 @@ bool focus_update(FocusRuntime *runtime, const UiTree &tree,
 
   bool restore_parent_focus = previous_scope != 0 &&
                               !same_id(previous_scope, active_scope) &&
-                              same_id(active_scope, tree.root_id()) &&
                               runtime->previous_focus_before_modal != 0 &&
                               contains_enabled(
                                   *runtime,

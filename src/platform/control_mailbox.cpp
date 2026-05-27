@@ -282,7 +282,7 @@ std::string ControlMailbox::state_json(client::ui::UiPipeline &pipeline) {
              << "\"scope_name\":\"" << json_escape(retained_scope_name) << "\","
              << "\"id\":" << layout.id << ","
              << "\"name\":\"" << json_escape(name) << "\","
-             << "\"offset\":0,"
+             << "\"offset\":" << node.control_offset << ","
              << "\"disabled\":" << (layout.disabled ? "true" : "false") << ","
              << "\"focused\":" << (layout.id == retained_focus.focused_id ? "true" : "false") << ","
              << "\"retained\":true,"

@@ -163,7 +163,9 @@ and mismatch/unclosed-tag diagnostics.
      callbacks, and CLI targeting.
    - in-game HUD/action buttons: ported to retained panels, text, buttons,
      focus, confirm callbacks, and top-screen gating.
-   - loadout and dialogs.
+   - loadout and confirm dialog: ported to retained panels, text, selectables,
+     toggles, buttons, focus callbacks, confirm callbacks, indexed CLI
+     targeting, and modal focus restoration.
 
 8. Renderer replacement:
    - retained draw command list: foundation done through

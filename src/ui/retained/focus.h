@@ -46,6 +46,7 @@ struct FocusableLayout {
   NodeId id = 0;
   Rect rect = {};
   bool disabled = false;
+  bool initial_focus = false;
   uint32_t order = 0;
 };
 

@@ -180,6 +180,7 @@ void Button(const NodeProps &props) {
                                      {
                                          .focusable = true,
                                          .disabled = props.disabled,
+                                         .initial_focus = props.initial_focus,
                                      },
                                  .visual = visual_from_props(props),
                              });
@@ -206,6 +207,7 @@ void Button(const ButtonProps &props) {
     set_node_metadata(scope, {
                                  .role = NodeRole::Button,
                                  .control_id = props.id,
+                                 .control_offset = props.offset,
                                  .value = props.label,
                                  .interaction =
                                      {
@@ -229,12 +231,14 @@ void Toggle(const ToggleProps &props) {
     set_node_metadata(scope, {
                                  .role = NodeRole::Toggle,
                                  .control_id = props.id,
+                                 .control_offset = props.offset,
                                  .value = props.label,
                                  .interaction =
                                      {
                                          .focusable = true,
                                          .disabled = props.disabled,
                                          .checked = props.checked,
+                                         .initial_focus = props.initial_focus,
                                      },
                                  .on_focus = props.on_focus,
                                  .on_confirm =
@@ -266,12 +270,14 @@ void Selectable(const SelectableProps &props) {
     set_node_metadata(scope, {
                                  .role = NodeRole::Selectable,
                                  .control_id = props.id,
+                                 .control_offset = props.offset,
                                  .value = props.label,
                                  .interaction =
                                      {
                                          .focusable = true,
                                          .disabled = props.disabled,
                                          .selected = props.selected,
+                                         .initial_focus = props.initial_focus,
                                      },
                                  .visual = visual_from_props(props),
                                  .on_focus = props.on_focus,

@@ -181,6 +181,10 @@ input after a higher Clay overlay covers it.
 the in-game root, HUD text, and pause/loadout action buttons emit through the
 retained tree, and the screen uses the top-screen flag so it does not keep
 interactive retained controls alive behind overlays.
+`LoadoutScreen` and `LoadoutConfirmDialog` have also moved to retained UI.
+Their tabs, weapon tiles, equipment slots, toggles, buy/equip actions, and
+confirmation modal all use retained focus/confirm callbacks. Indexed retained
+control metadata preserves deterministic CLI targeting for weapon tiles.
 
 ## Component API Direction
 

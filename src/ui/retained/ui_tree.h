@@ -124,11 +124,13 @@ struct NodeInteraction {
   bool checked = false;
   bool selected = false;
   bool modal = false;
+  bool initial_focus = false;
 };
 
 struct NodeMetadata {
   NodeRole role = NodeRole::Generic;
   const char *control_id = "";
+  int control_offset = 0;
   const char *value = "";
   NodeInteraction interaction = {};
   VisualStyle visual = {};
@@ -145,6 +147,7 @@ struct NodeSnapshot {
   const char *type = "";
   const char *key = "";
   const char *control_id = "";
+  int control_offset = 0;
   const char *value = "";
   NodeRole role = NodeRole::Generic;
   NodeInteraction interaction = {};
@@ -205,6 +208,7 @@ private:
     char type[UI_RETAINED_LABEL_CAP] = {};
     char key[UI_RETAINED_LABEL_CAP] = {};
     char control_id[UI_RETAINED_LABEL_CAP] = {};
+    int control_offset = 0;
     char value[UI_RETAINED_VALUE_CAP] = {};
     std::array<NodeId, UI_RETAINED_MAX_CHILDREN> children = {};
     NodeRole role = NodeRole::Generic;

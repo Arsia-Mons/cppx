@@ -2,17 +2,10 @@
 
 #include <memory>
 
-#include <clay.h>
-
 #include "../../../../react.h"
-#include "../../../../ui/focus/ui_focus.h"
-#include "../../../../ui/primitives/button.h"
-#include "../../../../ui/primitives/clay_text.h"
-#include "../../../../ui/primitives/selectable.h"
-#include "../../../../ui/primitives/toggle.h"
+#include "../../../../ui/retained/components.h"
 #include "../../callback_deps.h"
 #include "../../client_ui.h"
-#include "../../components/hud_band.h"
 #include "../../hooks/shooter_weapons.h"
 #include "../../providers/shooter_provider.h"
 #include "components/confirm_dialog.h"
@@ -33,7 +26,8 @@ std::function<void()> use_push_loadout_screen() {
 }
 
 static void LoadoutScreenView() {
-    REACT_COMPONENT_BEGIN("LoadoutScreenView") {
+    REACT_RETAINED_COMPONENT_BEGIN("LoadoutScreenView") {
+        bool is_top = client::ui::use_screen_is_top();
         client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
         int weapon_count = use_shooter_weapon_count();
         int selected_index_seed = use_selected_weapon_tile();
@@ -47,7 +41,7 @@ static void LoadoutScreenView() {
             }
 
             ShooterWeaponRead selected = use_weapon_read(selected_index_seed);
-            if (selected.valid) {
+            if (is_top && selected.valid) {
                 bool can_buy = selected.can_buy;
                 bool can_equip = selected.can_equip && !selected.equipped;
                 std::function<void()> select_weapons_tab_weapon =
@@ -63,185 +57,212 @@ static void LoadoutScreenView() {
                 const char *details =
                     use_text_storage("%s: %s, cost %d, ammo %d", selected.name,
                                      selected.role, selected.cost, selected.ammo);
-
-                ::ui::ui_focus_push_scope(
-                    { .id = CLAY_ID("LoadoutScope"), .modal = true });
-                ::ui::ui_focus_request_initial_focus(
-                    weapon_tile_id(selected_index_seed));
-
-                CLAY({
-                    .id = CLAY_ID("LoadoutRoot"),
-                    .layout = {
-                        .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0) },
-                        .padding = CLAY_PADDING_ALL(24),
-                        .childGap = 18,
-                        .layoutDirection = CLAY_TOP_TO_BOTTOM,
-                    },
-                    .backgroundColor = { 12, 20, 24, 245 },
-                }) {
-                    CLAY_TEXT(::ui::clay_text("Loadout"),
-                              CLAY_TEXT_CONFIG(
-                                  { .textColor = { 236, 246, 242, 255 }, .fontSize = 26 }));
-                    CLAY({
-                        .id = CLAY_ID("LoadoutTabs"),
-                        .layout = {
-                            .sizing = { CLAY_SIZING_FIT(0), CLAY_SIZING_FIT(0) },
-                            .childGap = 10,
-                            .layoutDirection = CLAY_LEFT_TO_RIGHT,
-                        },
-                    }) {
-                        ::ui::Selectable({
-                            .id = CLAY_ID("WeaponsTab"),
-                            .label = "Weapons",
-                            .selected = *active_tab == LOADOUT_TAB_WEAPONS,
-                            .on_select =
-                                [active_tab, set_selected_tile, select_weapons_tab_weapon] {
-                                    if (active_tab)
-                                        *active_tab = LOADOUT_TAB_WEAPONS;
-                                    if (set_selected_tile)
-                                        set_selected_tile(
-                                            first_weapon_for_tab(LOADOUT_TAB_WEAPONS));
-                                    if (select_weapons_tab_weapon)
-                                        select_weapons_tab_weapon();
-                                },
-                        });
-                        ::ui::Selectable({
-                            .id = CLAY_ID("GearTab"),
-                            .label = "Gear",
-                            .selected = *active_tab == LOADOUT_TAB_GEAR,
-                            .on_select =
-                                [active_tab, set_selected_tile, select_gear_tab_weapon] {
-                                    if (active_tab)
-                                        *active_tab = LOADOUT_TAB_GEAR;
-                                    if (set_selected_tile)
-                                        set_selected_tile(
-                                            first_weapon_for_tab(LOADOUT_TAB_GEAR));
-                                    if (select_gear_tab_weapon)
-                                        select_gear_tab_weapon();
-                                },
-                        });
-                    }
-                    CLAY({
-                        .id = CLAY_ID("LoadoutBody"),
-                        .layout = {
-                            .sizing = { CLAY_SIZING_FIT(0), CLAY_SIZING_FIT(0) },
-                            .childGap = 18,
-                            .layoutDirection = CLAY_LEFT_TO_RIGHT,
-                        },
-                    }) {
-                        CLAY({
-                            .id = CLAY_ID("WeaponGrid"),
-                            .layout = {
-                                .sizing = { CLAY_SIZING_FIXED(400), CLAY_SIZING_FIT(0) },
-                                .childGap = 10,
-                                .layoutDirection = CLAY_TOP_TO_BOTTOM,
-                            },
-                        }) {
-                            if (*active_tab == LOADOUT_TAB_WEAPONS) {
-                                for (int row = 0; row < 2; ++row) {
-                                    CLAY({
-                                        .id = CLAY_IDI("WeaponGridRow", row),
-                                        .layout = {
-                                            .sizing = { CLAY_SIZING_FIT(0),
-                                                        CLAY_SIZING_FIT(0) },
-                                            .childGap = 10,
-                                            .layoutDirection = CLAY_LEFT_TO_RIGHT,
-                                        },
-                                    }) {
-                                        WeaponTile(row * 2);
-                                        if (row == 0) {
-                                            WeaponTile(row * 2 + 1);
-                                        }
-                                    }
-                                }
-                            } else {
-                                CLAY({
-                                    .id = CLAY_ID("GearGridRow"),
-                                    .layout = {
-                                        .sizing = { CLAY_SIZING_FIT(0), CLAY_SIZING_FIT(0) },
-                                        .childGap = 10,
-                                        .layoutDirection = CLAY_LEFT_TO_RIGHT,
-                                    },
-                                }) {
-                                    WeaponTile(3);
-                                }
-                            }
-                        }
-                        CLAY({
-                            .id = CLAY_ID("LoadoutDetails"),
-                            .layout = {
-                                .sizing = { CLAY_SIZING_FIXED(260), CLAY_SIZING_FIT(0) },
-                                .padding = CLAY_PADDING_ALL(14),
-                                .childGap = 10,
-                                .layoutDirection = CLAY_TOP_TO_BOTTOM,
-                            },
-                            .backgroundColor = { 22, 30, 36, 255 },
-                            .cornerRadius = CLAY_CORNER_RADIUS(4),
-                        }) {
-                            CLAY_TEXT(::ui::clay_text(details),
-                                      CLAY_TEXT_CONFIG({ .textColor = { 226, 238, 236, 255 },
-                                                         .fontSize = 14 }));
-                            ::ui::Toggle({
-                                .id = CLAY_ID("CompareToggle"),
-                                .label = "Compare",
-                                .checked = use_compare_enabled(),
-                                .on_change = use_set_compare_enabled(),
-                            });
-                            ::ui::Button({
-                                .id = CLAY_ID("BuyWeaponButton"),
-                                .label = "Buy",
-                                .disabled = !can_buy,
-                                .on_confirm =
-                                    [set_pending, pending, selected_index_seed] {
-                                        if (set_pending) {
-                                            set_pending({
-                                                .action = LOADOUT_ACTION_BUY,
-                                                .weapon_index = selected_index_seed,
-                                                .generation = pending.generation + 1,
-                                            });
-                                        }
-                                    },
-                            });
-                            ::ui::Button({
-                                .id = CLAY_ID("EquipWeaponButton"),
-                                .label = "Equip",
-                                .disabled = !can_equip,
-                                .on_confirm =
-                                    [set_pending, pending, selected_index_seed] {
-                                        if (set_pending) {
-                                            set_pending({
-                                                .action = LOADOUT_ACTION_EQUIP,
-                                                .weapon_index = selected_index_seed,
-                                                .generation = pending.generation + 1,
-                                            });
-                                        }
-                                    },
-                            });
-                            ::ui::Button({
-                                .id = CLAY_ID("BackFromLoadoutButton"),
-                                .label = "Back",
-                                .on_confirm = nav.pop_current,
-                            });
-                            CLAY_TEXT(::ui::clay_text("Equipment Slots"),
-                                      CLAY_TEXT_CONFIG({ .textColor = { 202, 218, 216, 255 },
-                                                         .fontSize = 14 }));
-                            EquipmentSlot(CLAY_ID("PrimarySlot"), "Primary", 0);
-                            EquipmentSlot(CLAY_ID("GearSlot"), "Gear", 3);
-                        }
-                    }
-                }
+                namespace retained = ::ui::retained;
+                bool confirm_open = pending.action != LOADOUT_ACTION_NONE;
 
                 LoadoutConfirmDialog();
 
-                ::ui::ui_focus_pop_scope();
+                retained::Panel(
+                    {
+                        .key = "root",
+                        .width = retained::Length::percent(100.0f),
+                        .height = retained::Length::percent(100.0f),
+                        .padding = {24.0f, 24.0f, 24.0f, 24.0f},
+                        .gap = 18.0f,
+                        .modal = !confirm_open,
+                        .background = {12, 20, 24, 245},
+                    },
+                    [&] {
+                        retained::Text({
+                            .key = "title",
+                            .value = "Loadout",
+                            .height = retained::Length::points(30.0f),
+                            .text_color = {236, 246, 242, 255},
+                            .font_size = 26,
+                        });
+                        retained::Panel(
+                            {
+                                .key = "tabs",
+                                .direction = retained::FlexDirection::Row,
+                                .align_items = retained::AlignItems::Start,
+                                .gap = 10.0f,
+                            },
+                            [&] {
+                                retained::Selectable({
+                                    .key = "weapons",
+                                    .id = "WeaponsTab",
+                                    .label = "Weapons",
+                                    .selected = *active_tab == LOADOUT_TAB_WEAPONS,
+                                    .on_confirm =
+                                        [active_tab, set_selected_tile,
+                                         select_weapons_tab_weapon] {
+                                            if (active_tab)
+                                                *active_tab = LOADOUT_TAB_WEAPONS;
+                                            if (set_selected_tile)
+                                                set_selected_tile(first_weapon_for_tab(
+                                                    LOADOUT_TAB_WEAPONS));
+                                            if (select_weapons_tab_weapon)
+                                                select_weapons_tab_weapon();
+                                        },
+                                });
+                                retained::Selectable({
+                                    .key = "gear",
+                                    .id = "GearTab",
+                                    .label = "Gear",
+                                    .selected = *active_tab == LOADOUT_TAB_GEAR,
+                                    .on_confirm =
+                                        [active_tab, set_selected_tile,
+                                         select_gear_tab_weapon] {
+                                            if (active_tab)
+                                                *active_tab = LOADOUT_TAB_GEAR;
+                                            if (set_selected_tile)
+                                                set_selected_tile(first_weapon_for_tab(
+                                                    LOADOUT_TAB_GEAR));
+                                            if (select_gear_tab_weapon)
+                                                select_gear_tab_weapon();
+                                        },
+                                });
+                            });
+                        retained::Panel(
+                            {
+                                .key = "body",
+                                .direction = retained::FlexDirection::Row,
+                                .align_items = retained::AlignItems::Start,
+                                .gap = 18.0f,
+                            },
+                            [&] {
+                                retained::Panel(
+                                    {
+                                        .key = "weapon-grid",
+                                        .width = retained::Length::points(400.0f),
+                                        .gap = 10.0f,
+                                    },
+                                    [&] {
+                                        if (*active_tab == LOADOUT_TAB_WEAPONS) {
+                                            for (int row = 0; row < 2; ++row) {
+                                                retained::Panel(
+                                                    {
+                                                        .key = row == 0
+                                                                   ? "weapon-row-0"
+                                                                   : "weapon-row-1",
+                                                        .direction =
+                                                            retained::FlexDirection::Row,
+                                                        .align_items =
+                                                            retained::AlignItems::Start,
+                                                        .gap = 10.0f,
+                                                    },
+                                                    [row] {
+                                                        WeaponTile(row * 2);
+                                                        if (row == 0) {
+                                                            WeaponTile(row * 2 + 1);
+                                                        }
+                                                    });
+                                            }
+                                        } else {
+                                            retained::Panel(
+                                                {
+                                                    .key = "gear-row",
+                                                    .direction =
+                                                        retained::FlexDirection::Row,
+                                                    .align_items =
+                                                        retained::AlignItems::Start,
+                                                    .gap = 10.0f,
+                                                },
+                                                [] {
+                                                    WeaponTile(3);
+                                                });
+                                        }
+                                    });
+                                retained::Panel(
+                                    {
+                                        .key = "details",
+                                        .width = retained::Length::points(260.0f),
+                                        .padding = {14.0f, 14.0f, 14.0f, 14.0f},
+                                        .gap = 10.0f,
+                                        .background = {22, 30, 36, 255},
+                                    },
+                                    [&] {
+                                        retained::Text({
+                                            .key = "summary",
+                                            .value = details,
+                                            .height =
+                                                retained::Length::points(18.0f),
+                                            .text_color = {226, 238, 236, 255},
+                                            .font_size = 14,
+                                        });
+                                        retained::Toggle({
+                                            .key = "compare",
+                                            .id = "CompareToggle",
+                                            .label = "Compare",
+                                            .checked = use_compare_enabled(),
+                                            .on_change = use_set_compare_enabled(),
+                                        });
+                                        retained::Button({
+                                            .key = "buy",
+                                            .id = "BuyWeaponButton",
+                                            .label = "Buy",
+                                            .disabled = !can_buy,
+                                            .on_confirm =
+                                                [set_pending, pending,
+                                                 selected_index_seed] {
+                                                    if (set_pending) {
+                                                        set_pending({
+                                                            .action =
+                                                                LOADOUT_ACTION_BUY,
+                                                            .weapon_index =
+                                                                selected_index_seed,
+                                                            .generation =
+                                                                pending.generation + 1,
+                                                        });
+                                                    }
+                                                },
+                                        });
+                                        retained::Button({
+                                            .key = "equip",
+                                            .id = "EquipWeaponButton",
+                                            .label = "Equip",
+                                            .disabled = !can_equip,
+                                            .on_confirm =
+                                                [set_pending, pending,
+                                                 selected_index_seed] {
+                                                    if (set_pending) {
+                                                        set_pending({
+                                                            .action =
+                                                                LOADOUT_ACTION_EQUIP,
+                                                            .weapon_index =
+                                                                selected_index_seed,
+                                                            .generation =
+                                                                pending.generation + 1,
+                                                        });
+                                                    }
+                                                },
+                                        });
+                                        retained::Button({
+                                            .key = "back",
+                                            .id = "BackFromLoadoutButton",
+                                            .label = "Back",
+                                            .on_confirm = nav.pop_current,
+                                        });
+                                        retained::Text({
+                                            .key = "slots-title",
+                                            .value = "Equipment Slots",
+                                            .height =
+                                                retained::Length::points(16.0f),
+                                            .text_color = {202, 218, 216, 255},
+                                            .font_size = 14,
+                                        });
+                                        EquipmentSlot("PrimarySlot", "Primary", 0);
+                                        EquipmentSlot("GearSlot", "Gear", 3);
+                                    });
+                            });
+                    });
             }
         }
-    }
-    REACT_COMPONENT_END();
+    } REACT_RETAINED_COMPONENT_END();
 }
 
 void LoadoutScreen::build_ui() {
-    REACT_COMPONENT_BEGIN_KEY("LoadoutScreen", entry_id()) {
+    REACT_RETAINED_COMPONENT_BEGIN_KEY("LoadoutScreen", entry_id()) {
         bool *compare_enabled = use_state<bool>(false);
         int *selected_index = use_state<int>(0);
         LoadoutPendingAction *pending = use_state<LoadoutPendingAction>({});
@@ -253,8 +274,7 @@ void LoadoutScreen::build_ui() {
             LoadoutScreenView();
             loadout_provider_pop();
         }
-    }
-    REACT_COMPONENT_END();
+    } REACT_RETAINED_COMPONENT_END();
 }
 
 } // namespace shooter

@@ -20,6 +20,7 @@ struct NodeProps {
     EdgeSizes padding = {};
     float gap = 0.0f;
     bool disabled = false;
+    bool initial_focus = false;
     bool modal = false;
     Color background = {};
     Color border = {};
@@ -31,8 +32,10 @@ struct NodeProps {
 struct ButtonProps {
     const char *key = nullptr;
     const char *id = nullptr;
+    int offset = 0;
     const char *label = nullptr;
     bool disabled = false;
+    bool initial_focus = false;
     Length width = Length::points(132.0f);
     Length height = Length::points(38.0f);
     std::function<void()> on_focus = {};
@@ -42,9 +45,11 @@ struct ButtonProps {
 struct ToggleProps {
     const char *key = nullptr;
     const char *id = nullptr;
+    int offset = 0;
     const char *label = nullptr;
     bool checked = false;
     bool disabled = false;
+    bool initial_focus = false;
     Length width = Length::points(178.0f);
     Length height = Length::points(38.0f);
     std::function<void()> on_focus = {};
@@ -54,9 +59,11 @@ struct ToggleProps {
 struct SelectableProps {
     const char *key = nullptr;
     const char *id = nullptr;
+    int offset = 0;
     const char *label = nullptr;
     bool selected = false;
     bool disabled = false;
+    bool initial_focus = false;
     Length width = Length::points(132.0f);
     Length height = Length::points(34.0f);
     FlexDirection direction = FlexDirection::Column;
@@ -118,12 +125,15 @@ void Selectable(const SelectableProps &props, Children children) {
                                    {
                                        .role = NodeRole::Selectable,
                                        .control_id = props.id,
+                                       .control_offset = props.offset,
                                        .value = props.label,
                                        .interaction =
                                            {
                                                .focusable = true,
                                                .disabled = props.disabled,
                                                .selected = props.selected,
+                                               .initial_focus =
+                                                   props.initial_focus,
                                            },
                                        .visual = visual_from_props(props),
                                        .on_focus = props.on_focus,
