@@ -148,6 +148,22 @@ target_compile_options(ui_focus_tests PRIVATE
 
 add_test(NAME ui_focus_tests COMMAND ui_focus_tests)
 
+add_executable(retained_ui_runtime_tests
+  tests/retained_ui_runtime_tests.cpp
+  src/ui/retained/ui_tree.cpp
+  src/ui/retained/flex_layout.cpp
+)
+
+target_include_directories(retained_ui_runtime_tests PRIVATE
+  src
+)
+
+target_compile_options(retained_ui_runtime_tests PRIVATE
+  $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall -Wextra -Wno-missing-field-initializers -Wno-c99-designator -Wno-unused-parameter>
+)
+
+add_test(NAME retained_ui_runtime_tests COMMAND retained_ui_runtime_tests)
+
 add_executable(ui_primitives_tests
   tests/ui_primitives_tests.cpp
   src/react.cpp
