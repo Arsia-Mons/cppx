@@ -1,5 +1,7 @@
 #include "client/ui/client_ui.h"
 #include "react.h"
+#include "ui/retained/components.h"
+#include "ui/retained/yoga_flex_layout.h"
 
 #include <clay.h>
 
@@ -415,6 +417,35 @@ static bool screen_local_hook_state_survives_rerender_and_resets_on_unmount(void
     return true;
 }
 
+static bool client_ui_owns_retained_runtime_outputs(void) {
+    react_init_runtime();
+    ClientUi client_ui;
+
+    CHECK(::ui::retained::begin_retained_frame(client_ui.retained_tree(), 240.0f, 120.0f));
+    ::ui::retained::Button(::ui::retained::ButtonProps{
+        .key = "confirm",
+        .id = "ConfirmRetainedButton",
+        .label = "Confirm",
+    });
+    CHECK(::ui::retained::end_retained_frame());
+
+    ::ui::retained::NodeId button_id = client_ui.retained_tree().child_at(client_ui.retained_tree().root_id(), 0);
+    CHECK(button_id != 0);
+
+    ::ui::retained::FlexLayoutAdapter adapter = ::ui::retained::make_yoga_flex_layout_adapter();
+    CHECK(client_ui.update_retained_runtime(adapter, { 240.0f, 120.0f }, {}));
+    CHECK(::ui::retained::focus_focused_id(client_ui.retained_focus()) == button_id);
+
+    const ::ui::retained::DrawList &draw = client_ui.retained_draw_list();
+    CHECK(draw.error_count == 0);
+    CHECK(draw.count == 2);
+    CHECK(draw.commands[0].kind == ::ui::retained::DrawCommandKind::Rect);
+    CHECK(draw.commands[0].node_id == button_id);
+    CHECK(draw.commands[1].kind == ::ui::retained::DrawCommandKind::Text);
+    CHECK(strcmp(draw.commands[1].text, "Confirm") == 0);
+    return true;
+}
+
 int main(void) {
     if (!init_clay_once()) return 1;
 
@@ -427,6 +458,7 @@ int main(void) {
     if (!cancel_pops_top_overlay_after_layout()) return 1;
     if (!queued_push_screen_releases_if_frame_resets_before_drain()) return 1;
     if (!screen_local_hook_state_survives_rerender_and_resets_on_unmount()) return 1;
+    if (!client_ui_owns_retained_runtime_outputs()) return 1;
 
     react_shutdown();
     free(g_clay_memory);

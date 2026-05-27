@@ -49,6 +49,10 @@ layout path.
 and the deferred mutation queue. That ownership remains correct. The migration
 changes the generic UI runtime under the screens, not the fact that `ClientUi`
 is the shell that sequences frames and drains mutations.
+`ClientUi` now also owns the retained `UiTree`, retained focus runtime, and
+retained draw list. The current Clay pipeline still renders existing screens,
+but retained screen ports have a shell-owned place to compute flex layout,
+focus/event state, and draw commands before SDL renderer integration.
 
 ## Target Runtime
 

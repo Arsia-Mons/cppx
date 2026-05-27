@@ -15,7 +15,8 @@ branch and PR.
   refs, callbacks, text storage, and unmount cleanup.
 - `ClientUi` and `ScreenStack` already own the correct client-shell concerns:
   retained screens, focus runtime lifetime, per-frame sequencing, and deferred
-  mutation draining.
+  mutation draining. `ClientUi` now also owns retained tree/focus/draw runtime
+  state for upcoming screen ports.
 - `src/ui/focus` and `src/ui/primitives` still use Clay IDs and Clay layout
   queries. Those modules will need retained node IDs and retained layout boxes
   before Clay can be removed.
@@ -134,6 +135,7 @@ and mismatch/unclosed-tag diagnostics.
    - deferred mutation ordering kept at the same frame boundary.
 
 7. Screen ports:
+   - shell-owned retained runtime state in `ClientUi`: foundation done.
    - main menu.
    - options.
    - pause.

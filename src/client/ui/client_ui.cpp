@@ -13,6 +13,7 @@ static ReactContext ScreenContext = {};
 
 ClientUi::ClientUi() {
     ::ui::ui_focus_init(&focus_);
+    ::ui::retained::focus_init(&retained_focus_);
 }
 
 void ClientUi::begin_frame(const ::ui::UiInputFrame &input) {
@@ -80,6 +81,18 @@ void ClientUi::end_layout(const ::ui::UiInputFrame &input) {
     if (input.cancel_pressed && top && top->kind() == ScreenKind::Overlay) {
         queue_pop_current(top->entry_id());
     }
+}
+
+bool ClientUi::update_retained_runtime(
+    const ::ui::retained::FlexLayoutAdapter &layout,
+    ::ui::retained::LayoutViewport viewport,
+    const ::ui::retained::InputFrame &input) {
+    if (!::ui::retained::compute_flex_layout(layout, retained_tree_, viewport))
+        return false;
+    if (!::ui::retained::focus_update(&retained_focus_, retained_tree_, input))
+        return false;
+    return ::ui::retained::build_draw_list(retained_tree_,
+                                           &retained_draw_list_);
 }
 
 bool ClientUi::push_screen(std::unique_ptr<UiScreen> screen) {

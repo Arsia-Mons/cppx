@@ -6,6 +6,10 @@
 
 #include "../../react.h"
 #include "../../ui/focus/ui_focus.h"
+#include "../../ui/retained/draw_list.h"
+#include "../../ui/retained/flex_layout.h"
+#include "../../ui/retained/focus.h"
+#include "../../ui/retained/ui_tree.h"
 #include "navigation/screen_stack.h"
 
 namespace client::ui {
@@ -30,10 +34,21 @@ public:
     const ScreenStack &screens() const { return screens_; }
 
     ::ui::UiFocusRuntime &focus_runtime() { return focus_; }
+    ::ui::retained::UiTree &retained_tree() { return retained_tree_; }
+    const ::ui::retained::UiTree &retained_tree() const {
+        return retained_tree_;
+    }
+    ::ui::retained::FocusRuntime &retained_focus() { return retained_focus_; }
+    const ::ui::retained::DrawList &retained_draw_list() const {
+        return retained_draw_list_;
+    }
 
     void begin_frame(const ::ui::UiInputFrame &input);
     void build_visible_screens();
     void end_layout(const ::ui::UiInputFrame &input);
+    bool update_retained_runtime(const ::ui::retained::FlexLayoutAdapter &layout,
+                                 ::ui::retained::LayoutViewport viewport,
+                                 const ::ui::retained::InputFrame &input);
 
     bool push_screen(std::unique_ptr<UiScreen> screen);
     bool replace_top(std::unique_ptr<UiScreen> screen);
@@ -66,6 +81,9 @@ private:
 
     ScreenStack screens_;
     ::ui::UiFocusRuntime focus_ = {};
+    ::ui::retained::UiTree retained_tree_ = {};
+    ::ui::retained::FocusRuntime retained_focus_ = {};
+    ::ui::retained::DrawList retained_draw_list_ = {};
     std::array<QueuedMutation, CLIENT_UI_MAX_QUEUED_MUTATIONS> mutations_ = {};
     int mutation_count_ = 0;
 };

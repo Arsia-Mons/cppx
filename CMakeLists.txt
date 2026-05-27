@@ -111,6 +111,10 @@ add_executable(hello
   src/ui/primitives/focusable.cpp
   src/ui/primitives/selectable.cpp
   src/ui/primitives/toggle.cpp
+  src/ui/retained/draw_list.cpp
+  src/ui/retained/flex_layout.cpp
+  src/ui/retained/focus.cpp
+  src/ui/retained/ui_tree.cpp
   third_party/clay_impl.cpp
   third_party/clay/clay_renderer_SDL3.c
   third_party/stb_image_impl.cpp
@@ -354,6 +358,12 @@ add_executable(client_ui_tests
   src/client/ui/client_ui.cpp
   src/client/ui/navigation/screen_stack.cpp
   src/ui/focus/ui_focus.cpp
+  src/ui/retained/components.cpp
+  src/ui/retained/draw_list.cpp
+  src/ui/retained/flex_layout.cpp
+  src/ui/retained/focus.cpp
+  src/ui/retained/ui_tree.cpp
+  src/ui/retained/yoga_flex_layout.cpp
   third_party/clay_impl.cpp
 )
 
@@ -367,6 +377,10 @@ target_compile_options(client_ui_tests PRIVATE
   $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall -Wextra -Wno-missing-field-initializers -Wno-c99-designator -Wno-unused-parameter>
 )
 
+target_link_libraries(client_ui_tests PRIVATE
+  yogacore
+)
+
 add_test(NAME client_ui_tests COMMAND client_ui_tests)
 
 add_executable(ui_pipeline_tests
@@ -378,6 +392,10 @@ add_executable(ui_pipeline_tests
   src/ui/focus/ui_focus.cpp
   src/ui/primitives/button.cpp
   src/ui/primitives/focusable.cpp
+  src/ui/retained/draw_list.cpp
+  src/ui/retained/flex_layout.cpp
+  src/ui/retained/focus.cpp
+  src/ui/retained/ui_tree.cpp
   third_party/clay_impl.cpp
 )
 
@@ -420,6 +438,10 @@ add_executable(shooter_ui_tests
   src/ui/primitives/focusable.cpp
   src/ui/primitives/selectable.cpp
   src/ui/primitives/toggle.cpp
+  src/ui/retained/draw_list.cpp
+  src/ui/retained/flex_layout.cpp
+  src/ui/retained/focus.cpp
+  src/ui/retained/ui_tree.cpp
   third_party/clay_impl.cpp
 )
 
