@@ -119,8 +119,11 @@ and mismatch/unclosed-tag diagnostics.
      where real primitives need it.
 
 5. Primitive port:
-   - text, button, toggle, selectable, focusable containers, panels, scroll
-     containers, and common visual state.
+   - text, panel, button, toggle, and selectable retained nodes: foundation
+     done through copied `UiTree` metadata, explicit retained primitive props,
+     semantic control roles, labels, and interaction state.
+   - remaining: focusable containers, scroll containers, visual draw styles,
+     and callback/event wiring.
 
 6. Event and focus port:
    - hit testing from retained layout boxes.

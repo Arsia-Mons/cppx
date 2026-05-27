@@ -1,0 +1,168 @@
+#include "ui/retained/components.h"
+#include "ui/retained/flex_layout.h"
+#include "ui/retained/yoga_flex_layout.h"
+
+#include <stdio.h>
+#include <string.h>
+
+#define CHECK(expr)                                                            \
+    do {                                                                       \
+        if (!(expr)) {                                                         \
+            fprintf(stderr, "CHECK failed at %s:%d: %s\n", __FILE__, __LINE__, \
+                    #expr);                                                    \
+            return false;                                                      \
+        }                                                                      \
+    } while (0)
+
+using namespace ui::retained;
+
+static bool same_text(const char *actual, const char *expected) {
+    return strcmp(actual ? actual : "", expected ? expected : "") == 0;
+}
+
+static bool snapshot_node(UiTree &tree, NodeId id, NodeSnapshot *snapshot) {
+    CHECK(id != 0);
+    CHECK(tree.snapshot(id, snapshot));
+    return true;
+}
+
+static bool retained_primitives_write_semantic_metadata_and_layout(void) {
+    react_init_runtime();
+    UiTree tree;
+
+    CHECK(begin_retained_frame(tree, 320.0f, 220.0f));
+    Panel(
+        {
+            .key = "root",
+            .width = Length::points(320.0f),
+            .height = Length::points(220.0f),
+            .gap = 6.0f,
+            .padding = {4.0f, 4.0f, 4.0f, 4.0f},
+            .align_items = AlignItems::Start,
+        },
+        [] {
+            Button(ButtonProps{
+                .key = "confirm",
+                .id = "ConfirmButton",
+                .label = "Confirm",
+            });
+            Toggle(ToggleProps{
+                .key = "music",
+                .id = "MusicToggle",
+                .label = "Music",
+                .checked = true,
+            });
+            Selectable(SelectableProps{
+                .key = "primary",
+                .id = "PrimarySlot",
+                .label = "Rifle",
+                .selected = true,
+                .disabled = true,
+            });
+        });
+    CHECK(end_retained_frame());
+
+    FlexLayoutAdapter adapter = make_yoga_flex_layout_adapter();
+    CHECK(compute_flex_layout(adapter, tree, {320.0f, 220.0f}));
+
+    NodeSnapshot root = {};
+    CHECK(snapshot_node(tree, tree.child_at(tree.root_id(), 0), &root));
+    CHECK(same_text(root.type, "Panel"));
+    CHECK(root.child_count == 3);
+    CHECK(root.layout.width == 320.0f);
+    CHECK(root.layout.height == 220.0f);
+
+    NodeSnapshot button = {};
+    CHECK(snapshot_node(tree, tree.child_at(root.id, 0), &button));
+    CHECK(button.role == NodeRole::Button);
+    CHECK(same_text(button.control_id, "ConfirmButton"));
+    CHECK(same_text(button.value, "Confirm"));
+    CHECK(button.interaction.focusable);
+    CHECK(!button.interaction.disabled);
+    CHECK(button.layout.width == 132.0f);
+    CHECK(button.layout.height == 38.0f);
+    CHECK(button.child_count == 1);
+
+    NodeSnapshot button_label = {};
+    CHECK(snapshot_node(tree, tree.child_at(button.id, 0), &button_label));
+    CHECK(button_label.role == NodeRole::Text);
+    CHECK(same_text(button_label.value, "Confirm"));
+    CHECK(button_label.layout.width == 56.0f);
+    CHECK(button_label.layout.height == 16.0f);
+
+    NodeSnapshot toggle = {};
+    CHECK(snapshot_node(tree, tree.child_at(root.id, 1), &toggle));
+    CHECK(toggle.role == NodeRole::Toggle);
+    CHECK(same_text(toggle.control_id, "MusicToggle"));
+    CHECK(toggle.interaction.focusable);
+    CHECK(toggle.interaction.checked);
+    CHECK(!toggle.interaction.disabled);
+    CHECK(toggle.child_count == 2);
+    CHECK(toggle.layout.width == 178.0f);
+    CHECK(toggle.layout.height == 38.0f);
+
+    NodeSnapshot toggle_mark = {};
+    CHECK(snapshot_node(tree, tree.child_at(toggle.id, 0), &toggle_mark));
+    CHECK(same_text(toggle_mark.type, "Panel"));
+    CHECK(toggle_mark.layout.width == 18.0f);
+    CHECK(toggle_mark.layout.height == 18.0f);
+
+    NodeSnapshot toggle_label = {};
+    CHECK(snapshot_node(tree, tree.child_at(toggle.id, 1), &toggle_label));
+    CHECK(toggle_label.role == NodeRole::Text);
+    CHECK(same_text(toggle_label.value, "Music"));
+
+    NodeSnapshot selectable = {};
+    CHECK(snapshot_node(tree, tree.child_at(root.id, 2), &selectable));
+    CHECK(selectable.role == NodeRole::Selectable);
+    CHECK(same_text(selectable.control_id, "PrimarySlot"));
+    CHECK(same_text(selectable.value, "Rifle"));
+    CHECK(selectable.interaction.focusable);
+    CHECK(selectable.interaction.selected);
+    CHECK(selectable.interaction.disabled);
+    CHECK(selectable.layout.width == 132.0f);
+    CHECK(selectable.layout.height == 34.0f);
+    return true;
+}
+
+static bool reused_nodes_clear_previous_primitive_metadata(void) {
+    react_init_runtime();
+    UiTree tree;
+
+    CHECK(begin_retained_frame(tree, 200.0f, 80.0f));
+    Button(ButtonProps{
+        .key = "confirm",
+        .id = "ConfirmButton",
+        .label = "Confirm",
+        .disabled = true,
+    });
+    CHECK(end_retained_frame());
+
+    NodeId button_id = tree.child_at(tree.root_id(), 0);
+    NodeSnapshot first = {};
+    CHECK(snapshot_node(tree, button_id, &first));
+    CHECK(first.interaction.disabled);
+    CHECK(same_text(first.value, "Confirm"));
+
+    CHECK(begin_retained_frame(tree, 200.0f, 80.0f));
+    Button(ButtonProps{
+        .key = "confirm",
+        .id = "ConfirmButton",
+    });
+    CHECK(end_retained_frame());
+
+    NodeSnapshot second = {};
+    CHECK(snapshot_node(tree, button_id, &second));
+    CHECK(!second.interaction.disabled);
+    CHECK(same_text(second.value, ""));
+    CHECK(second.child_count == 0);
+    return true;
+}
+
+int main(void) {
+    if (!retained_primitives_write_semantic_metadata_and_layout())
+        return 1;
+    if (!reused_nodes_clear_previous_primitive_metadata())
+        return 1;
+    return 0;
+}

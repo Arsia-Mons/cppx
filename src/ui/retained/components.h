@@ -21,6 +21,35 @@ struct NodeProps {
     bool modal = false;
 };
 
+struct ButtonProps {
+    const char *key = nullptr;
+    const char *id = nullptr;
+    const char *label = nullptr;
+    bool disabled = false;
+    Length width = Length::points(132.0f);
+    Length height = Length::points(38.0f);
+};
+
+struct ToggleProps {
+    const char *key = nullptr;
+    const char *id = nullptr;
+    const char *label = nullptr;
+    bool checked = false;
+    bool disabled = false;
+    Length width = Length::points(178.0f);
+    Length height = Length::points(38.0f);
+};
+
+struct SelectableProps {
+    const char *key = nullptr;
+    const char *id = nullptr;
+    const char *label = nullptr;
+    bool selected = false;
+    bool disabled = false;
+    Length width = Length::points(132.0f);
+    Length height = Length::points(34.0f);
+};
+
 bool begin_retained_frame(UiTree &tree, float width, float height);
 bool end_retained_frame();
 UiTree *current_retained_tree();
@@ -48,10 +77,21 @@ class RetainedNodeScope {
 void Panel(const NodeProps &props);
 void Text(const NodeProps &props);
 void cppx_text(const char *value);
+void Button(const ButtonProps &props);
+void Toggle(const ToggleProps &props);
+void Selectable(const SelectableProps &props);
 
 template <typename Children>
 void Panel(const NodeProps &props, Children children) {
     RetainedNodeScope scope("Panel", props.key, style_from_props(props));
+    if (scope.active()) {
+        scope.tree()->set_metadata(scope.id(), {
+                                                   .interaction =
+                                                       {
+                                                           .modal = props.modal,
+                                                       },
+                                               });
+    }
     if (scope.active()) {
         children();
     }
@@ -64,6 +104,16 @@ void Button(const NodeProps &props, Children children) {
     RetainedNodeScope scope("Button", props.key ? props.key : props.id,
                             style_from_props(props));
     if (scope.active()) {
+        scope.tree()->set_metadata(scope.id(),
+                                   {
+                                       .role = NodeRole::Button,
+                                       .control_id = props.id,
+                                       .interaction =
+                                           {
+                                               .focusable = true,
+                                               .disabled = props.disabled,
+                                           },
+                                   });
         children();
     }
 }

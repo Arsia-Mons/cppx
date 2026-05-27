@@ -11,6 +11,7 @@ constexpr int UI_RETAINED_MAX_NODES = 256;
 constexpr int UI_RETAINED_MAX_DEPTH = 64;
 constexpr int UI_RETAINED_MAX_CHILDREN = 64;
 constexpr int UI_RETAINED_LABEL_CAP = 48;
+constexpr int UI_RETAINED_VALUE_CAP = 96;
 
 constexpr NodeId UI_RETAINED_ROOT_ID = 0xCBF29CE484222325ull;
 
@@ -48,6 +49,14 @@ enum class JustifyContent : uint8_t {
   Center,
   End,
   SpaceBetween,
+};
+
+enum class NodeRole : uint8_t {
+  Generic,
+  Text,
+  Button,
+  Toggle,
+  Selectable,
 };
 
 struct EdgeSizes {
@@ -93,6 +102,21 @@ struct Size {
   float height = 0.0f;
 };
 
+struct NodeInteraction {
+  bool focusable = false;
+  bool disabled = false;
+  bool checked = false;
+  bool selected = false;
+  bool modal = false;
+};
+
+struct NodeMetadata {
+  NodeRole role = NodeRole::Generic;
+  const char *control_id = "";
+  const char *value = "";
+  NodeInteraction interaction = {};
+};
+
 using CleanupFn = void (*)(void *user);
 using MeasureFn = Size (*)(MeasureInput input, void *user);
 
@@ -101,6 +125,10 @@ struct NodeSnapshot {
   NodeId parent_id = 0;
   const char *type = "";
   const char *key = "";
+  const char *control_id = "";
+  const char *value = "";
+  NodeRole role = NodeRole::Generic;
+  NodeInteraction interaction = {};
   Style style = {};
   Rect layout = {};
   int child_count = 0;
@@ -128,6 +156,7 @@ public:
 
   bool set_cleanup(NodeId id, CleanupFn cleanup, void *user);
   bool set_measure(NodeId id, MeasureFn measure, void *user);
+  bool set_metadata(NodeId id, const NodeMetadata &metadata);
   bool measure(NodeId id, MeasureInput input, Size *out) const;
   bool set_layout(NodeId id, Rect rect);
 
@@ -153,7 +182,11 @@ private:
     bool mounted_this_frame = false;
     char type[UI_RETAINED_LABEL_CAP] = {};
     char key[UI_RETAINED_LABEL_CAP] = {};
+    char control_id[UI_RETAINED_LABEL_CAP] = {};
+    char value[UI_RETAINED_VALUE_CAP] = {};
     std::array<NodeId, UI_RETAINED_MAX_CHILDREN> children = {};
+    NodeRole role = NodeRole::Generic;
+    NodeInteraction interaction = {};
     Style style = {};
     Rect layout = {};
     CleanupFn cleanup = nullptr;
@@ -170,6 +203,7 @@ private:
   NodeId make_child_id(NodeId parent_id, const char *type, const char *key,
                        uint32_t sibling_index, bool keyed) const;
   void copy_label(char (&dest)[UI_RETAINED_LABEL_CAP], const char *source);
+  void copy_value(char (&dest)[UI_RETAINED_VALUE_CAP], const char *source);
   void report_error();
 
   std::array<Node, UI_RETAINED_MAX_NODES> nodes_ = {};

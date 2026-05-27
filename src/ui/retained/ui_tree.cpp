@@ -142,6 +142,17 @@ bool UiTree::set_measure(NodeId id, MeasureFn measure, void *user) {
   return true;
 }
 
+bool UiTree::set_metadata(NodeId id, const NodeMetadata &metadata) {
+  Node *node = find_mutable(id);
+  if (!node)
+    return false;
+  node->role = metadata.role;
+  node->interaction = metadata.interaction;
+  copy_label(node->control_id, metadata.control_id);
+  copy_value(node->value, metadata.value);
+  return true;
+}
+
 bool UiTree::measure(NodeId id, MeasureInput input, Size *out) const {
   if (!out)
     return false;
@@ -171,6 +182,10 @@ bool UiTree::snapshot(NodeId id, NodeSnapshot *out) const {
       .parent_id = node->parent_id,
       .type = node->type,
       .key = node->key,
+      .control_id = node->control_id,
+      .value = node->value,
+      .role = node->role,
+      .interaction = node->interaction,
       .style = node->style,
       .layout = node->layout,
       .child_count = node->child_count,
@@ -246,6 +261,10 @@ UiTree::Node *UiTree::ensure_node(NodeId id, NodeId parent_id, const char *type,
     existing->child_count = 0;
     existing->mounted_this_frame = false;
     existing->style = style;
+    existing->role = NodeRole::Generic;
+    existing->interaction = {};
+    existing->control_id[0] = '\0';
+    existing->value[0] = '\0';
     copy_label(existing->type, type);
     copy_label(existing->key, key);
     return existing;
@@ -306,6 +325,13 @@ void UiTree::copy_label(char (&dest)[UI_RETAINED_LABEL_CAP],
   const char *safe_source = source ? source : "";
   strncpy(dest, safe_source, UI_RETAINED_LABEL_CAP - 1);
   dest[UI_RETAINED_LABEL_CAP - 1] = '\0';
+}
+
+void UiTree::copy_value(char (&dest)[UI_RETAINED_VALUE_CAP],
+                        const char *source) {
+  const char *safe_source = source ? source : "";
+  strncpy(dest, safe_source, UI_RETAINED_VALUE_CAP - 1);
+  dest[UI_RETAINED_VALUE_CAP - 1] = '\0';
 }
 
 void UiTree::report_error() { ++error_count_; }

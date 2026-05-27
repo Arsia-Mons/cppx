@@ -17,6 +17,46 @@ Size measure_text_node(MeasureInput input, void *user) {
     return {width, 16.0f};
 }
 
+Style button_style(Length width, Length height) {
+    return {
+        .width = width,
+        .height = height,
+        .direction = FlexDirection::Column,
+        .align_items = AlignItems::Center,
+        .justify_content = JustifyContent::Center,
+        .padding = {14.0f, 14.0f, 8.0f, 8.0f},
+    };
+}
+
+Style toggle_style(Length width, Length height) {
+    return {
+        .width = width,
+        .height = height,
+        .direction = FlexDirection::Row,
+        .align_items = AlignItems::Center,
+        .justify_content = JustifyContent::Start,
+        .padding = {10.0f, 10.0f, 8.0f, 8.0f},
+        .gap = 10.0f,
+    };
+}
+
+Style selectable_style(Length width, Length height) {
+    return {
+        .width = width,
+        .height = height,
+        .direction = FlexDirection::Column,
+        .align_items = AlignItems::Center,
+        .justify_content = JustifyContent::Center,
+        .padding = {12.0f, 12.0f, 7.0f, 7.0f},
+    };
+}
+
+void set_node_metadata(RetainedNodeScope &scope, const NodeMetadata &metadata) {
+    if (scope.active() && scope.tree()) {
+        scope.tree()->set_metadata(scope.id(), metadata);
+    }
+}
+
 } // namespace
 
 bool begin_retained_frame(UiTree &tree, float width, float height) {
@@ -87,20 +127,111 @@ RetainedNodeScope::~RetainedNodeScope() {
 
 void Panel(const NodeProps &props) {
     RetainedNodeScope scope("Panel", props.key, style_from_props(props));
+    set_node_metadata(scope, {
+                                 .interaction =
+                                     {
+                                         .modal = props.modal,
+                                     },
+                             });
 }
 
 void Button(const NodeProps &props) {
     RetainedNodeScope scope("Button", props.key ? props.key : props.id,
                             style_from_props(props));
+    set_node_metadata(scope, {
+                                 .role = NodeRole::Button,
+                                 .control_id = props.id,
+                                 .interaction =
+                                     {
+                                         .focusable = true,
+                                         .disabled = props.disabled,
+                                     },
+                             });
 }
 
 void Text(const NodeProps &props) {
     RetainedNodeScope scope("Text", props.key, style_from_props(props));
     if (!scope.active() || !scope.tree())
         return;
+    scope.tree()->set_metadata(scope.id(), {
+                                               .role = NodeRole::Text,
+                                               .value = props.value,
+                                           });
     scope.tree()->set_measure(
         scope.id(), measure_text_node,
         const_cast<char *>(props.value ? props.value : ""));
+}
+
+void Button(const ButtonProps &props) {
+    RetainedNodeScope scope("Button", props.key ? props.key : props.id,
+                            button_style(props.width, props.height));
+    set_node_metadata(scope, {
+                                 .role = NodeRole::Button,
+                                 .control_id = props.id,
+                                 .value = props.label,
+                                 .interaction =
+                                     {
+                                         .focusable = true,
+                                         .disabled = props.disabled,
+                                     },
+                             });
+    if (scope.active() && props.label) {
+        Text({
+            .key = "label",
+            .value = props.label,
+        });
+    }
+}
+
+void Toggle(const ToggleProps &props) {
+    RetainedNodeScope scope("Toggle", props.key ? props.key : props.id,
+                            toggle_style(props.width, props.height));
+    set_node_metadata(scope, {
+                                 .role = NodeRole::Toggle,
+                                 .control_id = props.id,
+                                 .value = props.label,
+                                 .interaction =
+                                     {
+                                         .focusable = true,
+                                         .disabled = props.disabled,
+                                         .checked = props.checked,
+                                     },
+                             });
+    if (!scope.active())
+        return;
+    Panel({
+        .key = "mark",
+        .width = Length::points(18.0f),
+        .height = Length::points(18.0f),
+    });
+    if (props.label) {
+        Text({
+            .key = "label",
+            .value = props.label,
+        });
+    }
+}
+
+void Selectable(const SelectableProps &props) {
+    RetainedNodeScope scope("Selectable", props.key ? props.key : props.id,
+                            selectable_style(props.width, props.height));
+    set_node_metadata(scope, {
+                                 .role = NodeRole::Selectable,
+                                 .control_id = props.id,
+                                 .value = props.label,
+                                 .interaction =
+                                     {
+                                         .focusable = true,
+                                         .disabled = props.disabled,
+                                         .selected = props.selected,
+                                     },
+                             });
+    if (scope.active() && props.label) {
+        Text({
+            .key = "label",
+            .value = props.label,
+        });
+    }
 }
 
 void cppx_text(const char *value) {

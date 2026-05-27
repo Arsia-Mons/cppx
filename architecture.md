@@ -133,6 +133,10 @@ lambdas. The CMake helper in `cmake/cppx_transpile.cmake` generates build-tree
 Generated `.cppx` output is now also compiled against generic retained
 components in `src/ui/retained/components.*`, proving the authored syntax path
 can create `UiTree` nodes and use retained hook identity without Clay layout.
+The retained component surface now also writes copied node metadata for role,
+control id, label/value, and interaction state, so retained `Button`, `Toggle`,
+and `Selectable` primitives have semantic data that focus and renderer code can
+consume without querying Clay element data.
 
 ## Component API Direction
 
