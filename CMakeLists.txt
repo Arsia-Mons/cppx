@@ -47,6 +47,8 @@ enable_testing()
 add_executable(hello
   src/main.cpp
   src/react.cpp
+  src/app/app.cpp
+  src/app/game_loop.cpp
   src/client/ui/client_ui.cpp
   src/client/ui/screen_stack.cpp
   src/game/ui/game_ui_pipeline.cpp

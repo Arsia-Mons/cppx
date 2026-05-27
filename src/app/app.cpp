@@ -1,0 +1,149 @@
+#include "app.h"
+
+#include "game_loop.h"
+#include "../react.h"
+#include "../shooter/shooter_ui.h"
+
+#include <SDL3/SDL.h>
+#include <SDL3_ttf/SDL_ttf.h>
+#include <curl/curl.h>
+
+#include <memory>
+#include <sstream>
+#include <stdio.h>
+#include <string>
+
+namespace app {
+
+static std::string json_escape(const char *value) {
+    std::string out;
+    if (!value) return out;
+    for (const char *p = value; *p; ++p) {
+        switch (*p) {
+            case '\\': out += "\\\\"; break;
+            case '"':  out += "\\\""; break;
+            case '\n': out += "\\n";  break;
+            case '\r': out += "\\r";  break;
+            case '\t': out += "\\t";  break;
+            default:   out += *p;     break;
+        }
+    }
+    return out;
+}
+
+static std::string shooter_state_json(const shooter::ShooterGame &game) {
+    std::ostringstream out;
+    out << "{"
+        << "\"health\":" << game.health() << ","
+        << "\"armor\":" << game.armor() << ","
+        << "\"ammo\":" << game.ammo() << ","
+        << "\"credits\":" << game.credits() << ","
+        << "\"selected_weapon\":" << game.selected_weapon() << ","
+        << "\"compare_enabled\":" << (game.compare_enabled() ? "true" : "false")
+        << ",\"weapons\":[";
+    for (int i = 0; i < game.weapon_count(); ++i) {
+        const shooter::WeaponState &weapon = game.weapon(i);
+        if (i) out << ",";
+        out << "{"
+            << "\"index\":" << i << ","
+            << "\"name\":\"" << json_escape(weapon.spec.name) << "\","
+            << "\"role\":\"" << json_escape(weapon.spec.role) << "\","
+            << "\"cost\":" << weapon.spec.cost << ","
+            << "\"damage\":" << weapon.spec.damage << ","
+            << "\"ammo\":" << weapon.spec.ammo << ","
+            << "\"owned\":" << (weapon.owned ? "true" : "false") << ","
+            << "\"equipped\":" << (weapon.equipped ? "true" : "false") << ","
+            << "\"can_buy\":" << (game.can_buy_weapon(i) ? "true" : "false") << ","
+            << "\"can_equip\":" << (game.can_equip_weapon(i) ? "true" : "false")
+            << "}";
+    }
+    out << "]}";
+    return out.str();
+}
+
+void App::on_clay_error(Clay_ErrorData err) {
+    fprintf(stderr, "clay: %.*s\n", (int)err.errorText.length, err.errorText.chars);
+}
+
+App::App()  = default;
+App::~App() { shutdown(); }
+
+bool App::initialize(const AppOptions &options) {
+    options_ = options;
+
+    if (!SDL_Init(SDL_INIT_VIDEO)) {
+        fprintf(stderr, "SDL_Init: %s\n", SDL_GetError());
+        return false;
+    }
+    if (!TTF_Init()) {
+        fprintf(stderr, "TTF_Init: %s\n", SDL_GetError());
+        return false;
+    }
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+
+    if (!window_.initialize(options.title, options.width, options.height,
+                            /*vsync=*/options.control_dir == nullptr)) {
+        return false;
+    }
+    if (!fonts_.initialize(window_.renderer())) {
+        return false;
+    }
+    if (!clay_render_.initialize(window_.renderer(), fonts_)) {
+        return false;
+    }
+
+    uint32_t clay_mem_size = Clay_MinMemorySize();
+    clay_arena_mem_ = SDL_malloc(clay_mem_size);
+    Clay_Arena arena = Clay_CreateArenaWithCapacityAndMemory(clay_mem_size, clay_arena_mem_);
+    int win_w = options.width, win_h = options.height;
+    window_.size(&win_w, &win_h);
+    clay_ctx_ = Clay_Initialize(
+        arena,
+        Clay_Dimensions{ (float)win_w, (float)win_h },
+        Clay_ErrorHandler{ on_clay_error, 0 });
+    Clay_SetMeasureTextFunction(renderer::FontRegistry::measure_thunk, &fonts_);
+
+    react_init(clay_ctx_);
+
+    ui_pipeline_.client_ui().push_screen(
+        std::make_unique<shooter::MainMenuScreen>(&shooter_game_, [this] {
+            running_ = false;
+        }));
+
+    control_.set_game_state_json_provider([this] {
+        return shooter_state_json(shooter_game_);
+    });
+    if (options.control_dir && !control_.init(options.control_dir)) {
+        return false;
+    }
+
+    initialized_ = true;
+    return true;
+}
+
+int App::run() {
+    if (!initialized_) return 1;
+    GameLoop loop(window_, clay_render_, ui_pipeline_, control_, running_);
+    while (running_) {
+        loop.tick();
+    }
+    return 0;
+}
+
+void App::shutdown() {
+    if (!initialized_) return;
+    control_.shutdown();
+    react_shutdown();
+    if (clay_arena_mem_) {
+        SDL_free(clay_arena_mem_);
+        clay_arena_mem_ = nullptr;
+    }
+    fonts_.shutdown();
+    window_.shutdown();
+    TTF_Quit();
+    SDL_Quit();
+    curl_global_cleanup();
+    initialized_ = false;
+}
+
+} // namespace app
