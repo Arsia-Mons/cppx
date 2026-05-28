@@ -31,6 +31,6 @@ struct InputProps {
   };
 };
 
-extern const ::ui::Component<InputProps> Input;
+::ui::UiElement Input(const InputProps &props);
 
 } // namespace ui::components

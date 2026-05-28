@@ -13,6 +13,8 @@ namespace shooter {
 
 namespace {
 
+} // namespace
+
 const char *weapon_tile_key(int index) {
   switch (index) {
   case 0:
@@ -28,11 +30,7 @@ const char *weapon_tile_key(int index) {
   }
 }
 
-struct WeaponTileProps {
-  int index = 0;
-};
-
-::ui::UiElement render_weapon_tile(const WeaponTileProps &props) {
+::ui::UiElement WeaponTile(const WeaponTileProps &props) {
   int index = props.index;
   ShooterWeaponRead weapon = use_weapon_read(index);
   if (!weapon.valid)
@@ -50,9 +48,10 @@ struct WeaponTileProps {
                        weapon.owned ? (weapon.equipped ? "equipped" : "owned")
                                     : (disabled ? "locked" : "available"));
 
-  return components::Button(
-      {
-          .key = weapon_tile_key(index),
+  return ::ui::component(
+      "Button",
+      components::ButtonProps{
+          .key = props.key ? props.key : weapon_tile_key(index),
           .id = WEAPON_TILE_CONTROL_ID,
           .id_offset = index,
           .disabled = disabled,
@@ -67,9 +66,10 @@ struct WeaponTileProps {
                   set_selected(index);
               },
           .children =
-              ::ui::children(
-                  {
-                      components::Text({
+              ::ui::children({
+                  ::ui::component(
+                      "Text",
+                      components::TextProps{
                           .key = "name",
                           .value = weapon.name,
                           .style =
@@ -78,22 +78,25 @@ struct WeaponTileProps {
                                   .text = {238, 246, 244, 255},
                                   .font_size = 16,
                               },
-                      }),
-                      components::Text(
-                          {
-                              .key = "detail",
-                              .value = detail,
-                              .style =
-                                  {
-                                      .height = ::ui::Length::points(16.0f),
-                                      .text = disabled ? ::ui::Color{142, 148,
-                                                                     150, 255}
-                                                       : ::ui::Color{184, 204,
-                                                                     204, 255},
-                                      .font_size = 12,
-                                  },
-                          }),
-                  }),
+                      },
+                      components::Text),
+                  ::ui::component(
+                      "Text",
+                      components::TextProps{
+                          .key = "detail",
+                          .value = detail,
+                          .style =
+                              {
+                                  .height = ::ui::Length::points(16.0f),
+                                  .text = disabled ? ::ui::Color{142, 148,
+                                                                 150, 255}
+                                                   : ::ui::Color{184, 204,
+                                                                 204, 255},
+                                  .font_size = 12,
+                              },
+                      },
+                      components::Text),
+              }),
           .on_activate =
               [set_selected, index, select](const ::ui::ActivationEvent &) {
                 if (set_selected)
@@ -115,10 +118,9 @@ struct WeaponTileProps {
                                      : ::ui::Color{102, 142, 150, 255},
                   .border_width = selected ? 2.0f : 1.0f,
               },
-      });
+      },
+      components::Button);
 }
-
-} // namespace
 
 bool weapon_in_tab(int index, int tab) {
   if (tab == LOADOUT_TAB_GEAR)
@@ -127,10 +129,5 @@ bool weapon_in_tab(int index, int tab) {
 }
 
 int first_weapon_for_tab(int tab) { return tab == LOADOUT_TAB_GEAR ? 3 : 0; }
-
-::ui::UiElement WeaponTile(int index) {
-  return ::ui::component("WeaponTile", WeaponTileProps{.index = index},
-                         render_weapon_tile, weapon_tile_key(index));
-}
 
 } // namespace shooter

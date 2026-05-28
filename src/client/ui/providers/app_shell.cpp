@@ -6,13 +6,14 @@ namespace client::ui {
 
 static ReactContext AppShellContext = {};
 
-void app_shell_provider_push(const AppShellContextValue *value) {
-    react_provider_push(&AppShellContext,
-                        const_cast<AppShellContextValue *>(value));
-}
-
-void app_shell_provider_pop() {
-    react_provider_pop(&AppShellContext);
+::ui::UiElement AppShellProvider(const AppShellContextValue &value,
+                                 ::ui::UiChildren children) {
+    const AppShellContextValue *stored = ::ui::copy_value(value);
+    if (!stored)
+        return ::ui::empty();
+    return ::ui::provider("AppShellProvider", &AppShellContext,
+                          const_cast<AppShellContextValue *>(stored),
+                          children);
 }
 
 std::function<void()> use_request_quit() {

@@ -1,9 +1,7 @@
 #include "text.h"
 
 namespace ui::components {
-namespace {
-
-::ui::UiElement render_text(const TextProps &props) {
+::ui::UiElement Text(const TextProps &props) {
   return ::ui::host(::ui::HostKind::Text,
                     {
                         .key = props.key,
@@ -17,9 +15,5 @@ namespace {
                         .callbacks = detail::callbacks_from_props(props),
                     });
 }
-
-} // namespace
-
-const ::ui::Component<TextProps> Text{"Text", render_text};
 
 } // namespace ui::components

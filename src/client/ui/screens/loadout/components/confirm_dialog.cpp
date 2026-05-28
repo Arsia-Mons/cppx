@@ -20,8 +20,7 @@ const char *confirm_body_key(uint32_t generation) {
   return ::ui::copy_string(key);
 }
 
-::ui::UiElement
-render_loadout_confirm_dialog_body(const LoadoutPendingAction &pending) {
+::ui::UiElement LoadoutConfirmDialogBody(const LoadoutPendingAction &pending) {
   ShooterWeaponRead weapon = use_weapon_read(pending.weapon_index);
   std::function<void()> buy = use_buy_weapon(pending.weapon_index);
   std::function<void()> equip = use_equip_weapon(pending.weapon_index);
@@ -39,8 +38,9 @@ render_loadout_confirm_dialog_body(const LoadoutPendingAction &pending) {
           : use_text_storage("Equip %s as active weapon?", weapon.name);
   int action = pending.action;
 
-  return components::Dialog(
-      {
+  return ::ui::component(
+      "Dialog",
+      components::DialogProps{
           .key = "scrim",
           .style =
               {
@@ -53,8 +53,9 @@ render_loadout_confirm_dialog_body(const LoadoutPendingAction &pending) {
           .children =
               ::ui::children(
                   {
-                      components::Box(
-                          {
+                      ::ui::component(
+                          "Box",
+                          components::BoxProps{
                               .key = "panel",
                               .style =
                                   {
@@ -67,8 +68,9 @@ render_loadout_confirm_dialog_body(const LoadoutPendingAction &pending) {
                                   },
                               .children = ::ui::children(
                                   {
-                                      components::Text(
-                                          {
+                                      ::ui::component(
+                                          "Text",
+                                          components::TextProps{
                                               .key = "title",
                                               .value = title,
                                               .style =
@@ -80,9 +82,11 @@ render_loadout_confirm_dialog_body(const LoadoutPendingAction &pending) {
                                                                255},
                                                       .font_size = 22,
                                                   },
-                                          }),
-                                      components::Text(
-                                          {
+                                          },
+                                          components::Text),
+                                      ::ui::component(
+                                          "Text",
+                                          components::TextProps{
                                               .key = "message",
                                               .value = message,
                                               .style =
@@ -94,9 +98,11 @@ render_loadout_confirm_dialog_body(const LoadoutPendingAction &pending) {
                                                                255},
                                                       .font_size = 15,
                                                   },
-                                          }),
-                                      components::Box(
-                                          {
+                                          },
+                                          components::Text),
+                                      ::ui::component(
+                                          "Box",
+                                          components::BoxProps{
                                               .key = "actions",
                                               .style =
                                                   {
@@ -106,75 +112,74 @@ render_loadout_confirm_dialog_body(const LoadoutPendingAction &pending) {
                                                       .gap = 10.0f,
                                                   },
                                               .children = ::ui::children({
-                                                  components::Button({
-                                                      .key = "confirm",
-                                                      .id = "ConfirmLoadoutActi"
-                                                            "onButton",
-                                                      .autofocus = true,
-                                                      .label = "Confirm",
-                                                      .on_activate =
-                                                          [action, buy, equip,
-                                                           close](
-                                                              const ::ui::
-                                                                  ActivationEvent
-                                                                      &) {
-                                                            if (action ==
-                                                                LOADOUT_ACTION_BUY) {
-                                                              if (buy)
-                                                                buy();
-                                                            } else if (
-                                                                action ==
-                                                                LOADOUT_ACTION_EQUIP) {
-                                                              if (equip)
-                                                                equip();
-                                                            }
-                                                            if (close)
-                                                              close();
-                                                          },
-                                                  }),
-                                                  components::Button({
-                                                      .key = "cancel",
-                                                      .id = "CancelLoadoutActio"
-                                                            "nButton",
-                                                      .label = "Cancel",
-                                                      .on_activate =
-                                                          [close](
-                                                              const ::ui::
-                                                                  ActivationEvent
-                                                                      &) {
-                                                            if (close)
-                                                              close();
-                                                          },
-                                                  }),
+                                                  ::ui::component(
+                                                      "Button",
+                                                      components::ButtonProps{
+                                                          .key = "confirm",
+                                                          .id = "ConfirmLoadoutActi"
+                                                                "onButton",
+                                                          .autofocus = true,
+                                                          .label = "Confirm",
+                                                          .on_activate =
+                                                              [action, buy,
+                                                               equip, close](
+                                                                  const ::ui::
+                                                                      ActivationEvent
+                                                                          &) {
+                                                                if (action ==
+                                                                    LOADOUT_ACTION_BUY) {
+                                                                  if (buy)
+                                                                    buy();
+                                                                } else if (
+                                                                    action ==
+                                                                    LOADOUT_ACTION_EQUIP) {
+                                                                  if (equip)
+                                                                    equip();
+                                                                }
+                                                                if (close)
+                                                                  close();
+                                                              },
+                                                      },
+                                                      components::Button),
+                                                  ::ui::component(
+                                                      "Button",
+                                                      components::ButtonProps{
+                                                          .key = "cancel",
+                                                          .id = "CancelLoadoutActio"
+                                                                "nButton",
+                                                          .label = "Cancel",
+                                                          .on_activate =
+                                                              [close](
+                                                                  const ::ui::
+                                                                      ActivationEvent
+                                                                          &) {
+                                                                if (close)
+                                                                  close();
+                                                              },
+                                                      },
+                                                      components::Button),
                                               }),
-                                          }),
+                                          },
+                                          components::Box),
                                   }),
-                          }),
+                          },
+                          components::Box),
                   }),
-      });
+      },
+      components::Dialog);
 }
 
-struct LoadoutConfirmDialogProps {
-  uint32_t unused = 0;
-};
+} // namespace
 
-::ui::UiElement
-render_loadout_confirm_dialog(const LoadoutConfirmDialogProps &props) {
+::ui::UiElement LoadoutConfirmDialog(const LoadoutConfirmDialogProps &props) {
   (void)props;
   LoadoutPendingAction pending = use_pending_loadout_action();
   if (pending.action == LOADOUT_ACTION_NONE)
     return ::ui::empty();
 
   return ::ui::component("LoadoutConfirmDialogBody", pending,
-                         render_loadout_confirm_dialog_body,
+                         LoadoutConfirmDialogBody,
                          confirm_body_key(pending.generation));
-}
-
-} // namespace
-
-::ui::UiElement LoadoutConfirmDialog() {
-  return ::ui::component("LoadoutConfirmDialog", LoadoutConfirmDialogProps{},
-                         render_loadout_confirm_dialog);
 }
 
 } // namespace shooter

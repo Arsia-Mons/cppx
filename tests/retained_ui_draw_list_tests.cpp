@@ -16,7 +16,7 @@
   } while (0)
 
 using namespace ui;
-using namespace ui::components;
+using namespace ui::components::elements;
 
 static bool same_text(const char *actual, const char *expected) {
   return strcmp(actual ? actual : "", expected ? expected : "") == 0;

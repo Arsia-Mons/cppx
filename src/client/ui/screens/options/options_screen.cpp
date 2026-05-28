@@ -32,7 +32,7 @@ static const char *screen_entry_key(const char *prefix,
   return ::ui::copy_string(key);
 }
 
-static ::ui::UiElement render_options_screen(const OptionsScreenProps &props) {
+static ::ui::UiElement OptionsScreenView(const OptionsScreenProps &props) {
   (void)props;
   client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
   bool is_top = client::ui::use_screen_is_top();
@@ -44,7 +44,7 @@ static ::ui::UiElement render_options_screen(const OptionsScreenProps &props) {
   if (!is_top || !player_name)
     return ::ui::empty();
 
-  return components::Dialog(
+  return ::ui::components::elements::Dialog(
       {
           .key = "root",
           .style =
@@ -60,7 +60,7 @@ static ::ui::UiElement render_options_screen(const OptionsScreenProps &props) {
           .children =
               ::ui::children(
                   {
-                      components::Text({
+                      ::ui::components::elements::Text({
                           .key = "title",
                           .value = "Options",
                           .style =
@@ -70,7 +70,7 @@ static ::ui::UiElement render_options_screen(const OptionsScreenProps &props) {
                                   .font_size = 26,
                               },
                       }),
-                      components::Checkbox(
+                      ::ui::components::elements::Checkbox(
                           {
                               .key = "large-hud",
                               .id = "LargeHudToggle",
@@ -82,7 +82,7 @@ static ::ui::UiElement render_options_screen(const OptionsScreenProps &props) {
                                       *large_hud = enabled ? 1 : 0;
                                   },
                           }),
-                      components::Checkbox(
+                      ::ui::components::elements::Checkbox(
                           {
                               .key = "reduced-motion",
                               .id = "ReducedMotionToggle",
@@ -94,7 +94,7 @@ static ::ui::UiElement render_options_screen(const OptionsScreenProps &props) {
                                       *reduced_motion = enabled ? 1 : 0;
                                   },
                           }),
-                      components::Button({
+                      ::ui::components::elements::Button({
                           .key = "back",
                           .id = "BackFromOptionsButton",
                           .label = "Back",
@@ -105,7 +105,7 @@ static ::ui::UiElement render_options_screen(const OptionsScreenProps &props) {
                                   pop();
                               },
                       }),
-                      components::Input(
+                      ::ui::components::elements::Input(
                           {
                               .key = "name",
                               .id = "NameInput",
@@ -129,7 +129,7 @@ bool OptionsScreen::build_element(::ui::UiElementFrame &frame,
   if (!out)
     return false;
   *out = ::ui::component("OptionsScreen", OptionsScreenProps{},
-                         render_options_screen,
+                         OptionsScreenView,
                          screen_entry_key("options", entry_id()));
   return true;
 }

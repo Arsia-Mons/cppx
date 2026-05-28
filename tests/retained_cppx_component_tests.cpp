@@ -21,18 +21,13 @@ using namespace ui;
 
 static int g_probe_values[1] = {};
 
-static UiElement render_stateful_probe(const StatefulProbeProps &props) {
+UiElement StatefulProbe(const StatefulProbeProps &props) {
   int *value = use_state_int(10);
   if (props.write >= 0)
     *value = props.write;
   if (props.slot >= 0 && props.slot < 1)
     g_probe_values[props.slot] = *value;
   return {};
-}
-
-UiElement StatefulProbe(const StatefulProbeProps &props) {
-  return ::ui::component("StatefulProbe", props, render_stateful_probe,
-                         props.key);
 }
 
 static bool snapshot(UiTree &tree, NodeId id, NodeSnapshot *out) {

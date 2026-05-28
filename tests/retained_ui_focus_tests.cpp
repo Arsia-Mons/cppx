@@ -15,7 +15,7 @@
   } while (0)
 
 using namespace ui;
-using namespace ui::components;
+using namespace ui::components::elements;
 
 struct FocusTree {
   UiTree tree;

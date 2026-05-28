@@ -18,6 +18,7 @@ namespace client::ui {
 constexpr int CLIENT_UI_MAX_QUEUED_MUTATIONS = 128;
 
 using DeferredUiMutation = std::function<void()>;
+using UiElementWrapper = std::function<::ui::UiElement(::ui::UiElement child)>;
 
 struct ScreenNavigator {
   UiScreenEntryId current_entry_id = 0;
@@ -43,7 +44,7 @@ public:
   bool wants_text_input() const { return wants_text_input_; }
 
   void begin_frame(const ::ui::UiInputFrame &input);
-  void build_visible_screens();
+  void build_visible_screens(const UiElementWrapper &wrap_root = {});
   void end_layout(const ::ui::UiInputFrame &input);
   bool update_retained_runtime(const ::ui::FlexLayoutAdapter &layout,
                                ::ui::LayoutViewport viewport,

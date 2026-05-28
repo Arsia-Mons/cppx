@@ -61,13 +61,6 @@ LoadoutContextValue use_loadout_context_value(bool *compare_enabled,
   };
 }
 
-void loadout_provider_push(const LoadoutContextValue *value) {
-  react_provider_push(&LoadoutContext,
-                      const_cast<LoadoutContextValue *>(value));
-}
-
-void loadout_provider_pop() { react_provider_pop(&LoadoutContext); }
-
 ::ui::UiElement LoadoutProvider(const LoadoutContextValue &value,
                                 ::ui::UiChildren children) {
   const LoadoutContextValue *stored = ::ui::copy_value(value);

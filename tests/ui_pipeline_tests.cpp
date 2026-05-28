@@ -32,20 +32,17 @@ static UiPipelineFrame test_frame(::ui::UiInputFrame input = {}) {
   };
 }
 
-class FrameProviderProbeScreen final : public UiScreen {
-public:
-  explicit FrameProviderProbeScreen(bool *observed) : observed_(observed) {}
-
-  const char *debug_name() const override { return "FrameProviderProbe"; }
-
-  void build_ui() override {
-    const UiPipelineFrame *frame = client::ui::use_ui_pipeline_frame();
-    *observed_ = frame && frame->input.nav_right;
-  }
-
-private:
+struct FrameProviderProbeScreenProps {
   bool *observed_;
 };
+
+static ::ui::UiElement
+FrameProviderProbeScreenView(const FrameProviderProbeScreenProps &props) {
+  const UiPipelineFrame *frame = client::ui::use_ui_pipeline_frame();
+  if (props.observed_)
+    *props.observed_ = frame && frame->input.nav_right;
+  return ::ui::empty();
+}
 
 struct RetainedProbeScreenProps {
   uint32_t unused = 0;
@@ -62,21 +59,45 @@ static const char *screen_entry_key(const char *prefix,
   return ::ui::copy_string(key);
 }
 
+class FrameProviderProbeScreen final : public UiScreen {
+public:
+  explicit FrameProviderProbeScreen(bool *observed) : observed_(observed) {}
+
+  const char *debug_name() const override { return "FrameProviderProbe"; }
+
+  bool build_element(::ui::UiElementFrame &frame,
+                     ::ui::UiElement *out) override {
+    if (!out)
+      return false;
+    *out = ::ui::component("FrameProviderProbeScreen",
+                           FrameProviderProbeScreenProps{.observed_ =
+                                                             observed_},
+                           FrameProviderProbeScreenView,
+                           screen_entry_key("frame-provider", entry_id()));
+    return true;
+  }
+
+  void build_ui() override {}
+
+private:
+  bool *observed_ = nullptr;
+};
+
 static ::ui::UiElement
-render_retained_probe_screen(const RetainedProbeScreenProps &props) {
+RetainedProbeScreenView(const RetainedProbeScreenProps &props) {
   (void)props;
-  return ::ui::components::Button({
+  return ::ui::components::elements::Button({
       .key = "confirm",
       .id = "PipelineRetainedButton",
       .label = "Retained",
   });
 }
 
-static ::ui::UiElement render_pop_on_retained_confirm_screen(
+static ::ui::UiElement PopOnRetainedConfirmScreenView(
     const PopOnRetainedConfirmScreenProps &props) {
   (void)props;
   ScreenNavigator nav = client::ui::use_screen_navigator();
-  return ::ui::components::Button({
+  return ::ui::components::elements::Button({
       .key = "pop",
       .id = "PipelineRetainedPopButton",
       .label = "Pop",
@@ -98,7 +119,7 @@ public:
       return false;
     *out =
         ::ui::component("RetainedProbeScreenView", RetainedProbeScreenProps{},
-                        render_retained_probe_screen,
+                        RetainedProbeScreenView,
                         screen_entry_key("retained-probe", entry_id()));
     return true;
   }
@@ -116,7 +137,7 @@ public:
       return false;
     *out = ::ui::component("PopOnRetainedConfirmScreenView",
                            PopOnRetainedConfirmScreenProps{},
-                           render_pop_on_retained_confirm_screen,
+                           PopOnRetainedConfirmScreenView,
                            screen_entry_key("pop-retained", entry_id()));
     return true;
   }

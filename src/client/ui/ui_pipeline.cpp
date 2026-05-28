@@ -73,16 +73,16 @@ void UiPipeline::render_client_ui_frame(const UiPipelineFrame &frame,
   react_begin_frame();
   client_ui_.retained_tree().begin_frame(frame.layout.width,
                                          frame.layout.height);
-  REACT_PROVIDER_ENTER("UiPipelineFrameProvider");
-  PROVIDE(&UiPipelineFrameContext, const_cast<UiPipelineFrame *>(&frame)) {
-    auto build = [this] { client_ui_.build_visible_screens(); };
-    if (frame_provider_) {
-      frame_provider_(build);
-    } else {
-      build();
-    }
-  }
-  REACT_PROVIDER_EXIT();
+  auto wrap_with_frame = [&](::ui::UiElement child) {
+    const UiPipelineFrame *stored_frame = ::ui::copy_value(frame);
+    if (!stored_frame)
+      return ::ui::empty();
+    ::ui::UiElement wrapped = ::ui::provider(
+        "UiPipelineFrameProvider", &UiPipelineFrameContext,
+        const_cast<UiPipelineFrame *>(stored_frame), ::ui::children({child}));
+    return frame_provider_ ? frame_provider_(wrapped) : wrapped;
+  };
+  client_ui_.build_visible_screens(wrap_with_frame);
 
   bool retained_frame_ended = client_ui_.retained_tree().end_frame();
   if (!retained_frame_ended) {

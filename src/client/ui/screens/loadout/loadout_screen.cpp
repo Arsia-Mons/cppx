@@ -47,52 +47,72 @@ const char *screen_entry_key(const char *prefix,
   namespace components = ::ui::components;
   if (active_tab == LOADOUT_TAB_GEAR) {
     return ::ui::children({
-        components::Box({
+        ::ui::components::elements::Box({
             .key = "gear-row",
             .style =
                 {
                     .direction = ::ui::FlexDirection::Row,
                     .align_items = ::ui::AlignItems::Start,
                     .gap = 10.0f,
-                },
+            },
             .children = ::ui::children({
-                WeaponTile(3),
+                ::ui::component("WeaponTile",
+                                WeaponTileProps{
+                                    .key = weapon_tile_key(3),
+                                    .index = 3,
+                                },
+                                WeaponTile),
             }),
         }),
     });
   }
 
   return ::ui::children({
-      components::Box({
+      ::ui::components::elements::Box({
           .key = "weapon-row-0",
           .style =
               {
                   .direction = ::ui::FlexDirection::Row,
                   .align_items = ::ui::AlignItems::Start,
                   .gap = 10.0f,
-              },
+          },
           .children = ::ui::children({
-              WeaponTile(0),
-              WeaponTile(1),
+              ::ui::component("WeaponTile",
+                              WeaponTileProps{
+                                  .key = weapon_tile_key(0),
+                                  .index = 0,
+                              },
+                              WeaponTile),
+              ::ui::component("WeaponTile",
+                              WeaponTileProps{
+                                  .key = weapon_tile_key(1),
+                                  .index = 1,
+                              },
+                              WeaponTile),
           }),
       }),
-      components::Box({
+      ::ui::components::elements::Box({
           .key = "weapon-row-1",
           .style =
               {
                   .direction = ::ui::FlexDirection::Row,
                   .align_items = ::ui::AlignItems::Start,
                   .gap = 10.0f,
-              },
+          },
           .children = ::ui::children({
-              WeaponTile(2),
+              ::ui::component("WeaponTile",
+                              WeaponTileProps{
+                                  .key = weapon_tile_key(2),
+                                  .index = 2,
+                              },
+                              WeaponTile),
           }),
       }),
   });
 }
 
 ::ui::UiElement
-render_loadout_screen_body(const LoadoutScreenBodyProps &props) {
+LoadoutScreenBody(const LoadoutScreenBodyProps &props) {
   (void)props;
   bool is_top = client::ui::use_screen_is_top();
   client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
@@ -134,8 +154,10 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props) {
   return ::ui::fragment(
       ::ui::children(
           {
-              LoadoutConfirmDialog(),
-              components::Dialog(
+              ::ui::component("LoadoutConfirmDialog",
+                              LoadoutConfirmDialogProps{},
+                              LoadoutConfirmDialog),
+              ::ui::components::elements::Dialog(
                   {
                       .key = "root",
                       .modal = !confirm_open,
@@ -150,7 +172,7 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props) {
                       .children =
                           ::ui::children(
                               {
-                                  components::Text(
+                                  ::ui::components::elements::Text(
                                       {
                                           .key = "title",
                                           .value = "Loadout",
@@ -163,7 +185,7 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props) {
                                                   .font_size = 26,
                                               },
                                       }),
-                                  components::Box(
+                                  ::ui::components::elements::Box(
                                       {
                                           .key = "tabs",
                                           .style =
@@ -177,7 +199,7 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props) {
                                           .children =
                                               ::ui::children(
                                                   {
-                                                      components::Button({
+                                                      ::ui::components::elements::Button({
                                                           .key = "weapons",
                                                           .id = "WeaponsTab",
                                                           .accessibility =
@@ -230,7 +252,7 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props) {
                                                                           : ::ui::Color{24, 28, 36, 255},
                                                               },
                                                       }),
-                                                      components::Button(
+                                                      ::ui::components::elements::Button(
                                                           {
                                                               .key = "gear",
                                                               .id = "GearTab",
@@ -286,7 +308,7 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props) {
                                                           }),
                                                   }),
                                       }),
-                                  components::Box(
+                                  ::ui::components::elements::Box(
                                       {
                                           .key = "body",
                                           .style =
@@ -300,7 +322,7 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props) {
                                           .children =
                                               ::ui::children(
                                                   {
-                                                      components::Box({
+                                                      ::ui::components::elements::Box({
                                                           .key = "weapon-grid",
                                                           .style =
                                                               {
@@ -314,7 +336,7 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props) {
                                                               weapon_grid_children(
                                                                   *active_tab),
                                                       }),
-                                                      components::Box(
+                                                      ::ui::components::elements::Box(
                                                           {
                                                               .key = "details",
                                                               .style =
@@ -336,7 +358,7 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props) {
                                                                   },
                                                               .children = ::ui::
                                                                   children({
-                                                                      components::Text({
+                                                                      ::ui::components::elements::Text({
                                                                           .key =
                                                                               "summary",
                                                                           .value =
@@ -350,7 +372,7 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props) {
                                                                                       14,
                                                                               },
                                                                       }),
-                                                                      components::Checkbox({
+                                                                      ::ui::components::elements::Checkbox({
                                                                           .key =
                                                                               "compare",
                                                                           .id =
@@ -362,7 +384,7 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props) {
                                                                           .on_change =
                                                                               set_compare_enabled,
                                                                       }),
-                                                                      components::Button({
+                                                                      ::ui::components::elements::Button({
                                                                           .key =
                                                                               "buy",
                                                                           .id =
@@ -391,7 +413,7 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props) {
                                                                                 }
                                                                               },
                                                                       }),
-                                                                      components::Button({
+                                                                      ::ui::components::elements::Button({
                                                                           .key =
                                                                               "equip",
                                                                           .id =
@@ -420,7 +442,7 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props) {
                                                                                 }
                                                                               },
                                                                       }),
-                                                                      components::Button({
+                                                                      ::ui::components::elements::Button({
                                                                           .key =
                                                                               "back",
                                                                           .id =
@@ -436,7 +458,7 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props) {
                                                                                   pop();
                                                                               },
                                                                       }),
-                                                                      components::Text({
+                                                                      ::ui::components::elements::Text({
                                                                           .key =
                                                                               "slots-title",
                                                                           .value =
@@ -450,20 +472,32 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props) {
                                                                                       14,
                                                                               },
                                                                       }),
-                                                                      EquipmentSlot(
-                                                                          "Prim"
-                                                                          "aryS"
-                                                                          "lot",
-                                                                          "Prim"
-                                                                          "ary",
-                                                                          0),
-                                                                      EquipmentSlot(
-                                                                          "Gear"
-                                                                          "Slo"
-                                                                          "t",
-                                                                          "Gea"
-                                                                          "r",
-                                                                          3),
+                                                                      ::ui::component(
+                                                                          "EquipmentSlot",
+                                                                          EquipmentSlotProps{
+                                                                              .key =
+                                                                                  "PrimarySlot",
+                                                                              .id =
+                                                                                  "PrimarySlot",
+                                                                              .label =
+                                                                                  "Primary",
+                                                                              .weapon_index =
+                                                                                  0,
+                                                                          },
+                                                                          EquipmentSlot),
+                                                                      ::ui::component(
+                                                                          "EquipmentSlot",
+                                                                          EquipmentSlotProps{
+                                                                              .key =
+                                                                                  "GearSlot",
+                                                                              .id =
+                                                                                  "GearSlot",
+                                                                              .label =
+                                                                                  "Gear",
+                                                                              .weapon_index =
+                                                                                  3,
+                                                                          },
+                                                                          EquipmentSlot),
                                                                   }),
                                                           }),
                                                   }),
@@ -473,7 +507,7 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props) {
           }));
 }
 
-::ui::UiElement render_loadout_screen(const LoadoutScreenProps &props) {
+::ui::UiElement LoadoutScreenView(const LoadoutScreenProps &props) {
   (void)props;
   bool *compare_enabled = use_state<bool>(false);
   int *selected_index = use_state<int>(0);
@@ -486,7 +520,7 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props) {
   return LoadoutProvider(
       ctx, ::ui::children({
                ::ui::component("LoadoutScreenBody", LoadoutScreenBodyProps{},
-                               render_loadout_screen_body),
+                               LoadoutScreenBody),
            }));
 }
 
@@ -497,7 +531,7 @@ bool LoadoutScreen::build_element(::ui::UiElementFrame &frame,
   if (!out)
     return false;
   *out = ::ui::component("LoadoutScreen", LoadoutScreenProps{},
-                         render_loadout_screen,
+                         LoadoutScreenView,
                          screen_entry_key("loadout", entry_id()));
   return true;
 }

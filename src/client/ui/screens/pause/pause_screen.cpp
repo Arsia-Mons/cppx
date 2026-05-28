@@ -34,7 +34,7 @@ static const char *screen_entry_key(const char *prefix,
   return ::ui::copy_string(key);
 }
 
-static ::ui::UiElement render_pause_screen(const PauseScreenProps &props) {
+static ::ui::UiElement PauseScreenView(const PauseScreenProps &props) {
   (void)props;
   client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
   bool is_top = client::ui::use_screen_is_top();
@@ -46,7 +46,7 @@ static ::ui::UiElement render_pause_screen(const PauseScreenProps &props) {
   if (!is_top)
     return ::ui::empty();
 
-  return components::Dialog(
+  return ::ui::components::elements::Dialog(
       {
           .key = "root",
           .style =
@@ -60,7 +60,7 @@ static ::ui::UiElement render_pause_screen(const PauseScreenProps &props) {
           .children =
               ::ui::children(
                   {
-                      components::Box(
+                      ::ui::components::elements::Box(
                           {
                               .key = "panel",
                               .style =
@@ -77,7 +77,7 @@ static ::ui::UiElement render_pause_screen(const PauseScreenProps &props) {
                               .children =
                                   ::ui::children(
                                       {
-                                          components::Text(
+                                          ::ui::components::elements::Text(
                                               {
                                                   .key = "title",
                                                   .value = "Paused",
@@ -91,7 +91,7 @@ static ::ui::UiElement render_pause_screen(const PauseScreenProps &props) {
                                                           .font_size = 28,
                                                       },
                                               }),
-                                          components::Button({
+                                          ::ui::components::elements::Button({
                                               .key = "resume",
                                               .id = "ResumeButton",
                                               .label = "Resume",
@@ -103,7 +103,7 @@ static ::ui::UiElement render_pause_screen(const PauseScreenProps &props) {
                                                       pop();
                                                   },
                                           }),
-                                          components::Button({
+                                          ::ui::components::elements::Button({
                                               .key = "options",
                                               .id =
                                                   "OpenOptionsFromPauseButton",
@@ -116,7 +116,7 @@ static ::ui::UiElement render_pause_screen(const PauseScreenProps &props) {
                                                       open_options();
                                                   },
                                           }),
-                                          components::Button({
+                                          ::ui::components::elements::Button({
                                               .key = "loadout",
                                               .id =
                                                   "OpenLoadoutFromPauseButton",
@@ -129,7 +129,7 @@ static ::ui::UiElement render_pause_screen(const PauseScreenProps &props) {
                                                       open_loadout();
                                                   },
                                           }),
-                                          components::Button({
+                                          ::ui::components::elements::Button({
                                               .key = "exit-to-menu",
                                               .id = "ExitToMainMenuButton",
                                               .label = "Exit To Menu",
@@ -151,7 +151,7 @@ bool PauseScreen::build_element(::ui::UiElementFrame &frame,
                                 ::ui::UiElement *out) {
   if (!out)
     return false;
-  *out = ::ui::component("PauseScreen", PauseScreenProps{}, render_pause_screen,
+  *out = ::ui::component("PauseScreen", PauseScreenProps{}, PauseScreenView,
                          screen_entry_key("pause", entry_id()));
   return true;
 }

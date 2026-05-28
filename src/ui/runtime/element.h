@@ -45,7 +45,7 @@ enum class HostKind : uint8_t {
   Dialog,
 };
 
-struct TextProps {
+struct HostTextProps {
   const char *value = "";
 };
 
@@ -69,7 +69,7 @@ struct HostProps {
   const char *id = nullptr;
   int id_offset = 0;
   Style style = {};
-  TextProps text = {};
+  HostTextProps text = {};
   NodeInteraction interaction = {};
   TextEditMetadata text_edit = {};
   AccessibilityProps accessibility = {};
@@ -159,6 +159,7 @@ public:
 
   template <typename Props>
   UiElement component(const char *name, const Props &props,
+                      UiElement (*render)(const Props &),
                       const char *key = nullptr) {
     ComponentRecord<Props> record = {
         .render = render,

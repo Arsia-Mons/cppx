@@ -6,13 +6,13 @@ namespace shooter {
 
 static ReactContext ShooterContext = {};
 
-void shooter_provider_push(const ShooterContextValue *value) {
-    react_provider_push(&ShooterContext,
-                        const_cast<ShooterContextValue *>(value));
-}
-
-void shooter_provider_pop() {
-    react_provider_pop(&ShooterContext);
+::ui::UiElement ShooterProvider(const ShooterContextValue &value,
+                                ::ui::UiChildren children) {
+    const ShooterContextValue *stored = ::ui::copy_value(value);
+    if (!stored)
+        return ::ui::empty();
+    return ::ui::provider("ShooterProvider", &ShooterContext,
+                          const_cast<ShooterContextValue *>(stored), children);
 }
 
 ShooterGame *use_shooter_game() {

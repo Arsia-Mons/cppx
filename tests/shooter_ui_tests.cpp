@@ -36,15 +36,15 @@ static void run_pipeline_frame(client::ui::UiPipeline &pipeline,
                                const ::ui::UiInputFrame &input = {},
                                ::ui::Point pointer = {-1000.0f, -1000.0f},
                                const client::ui::RenderFrame &render = {}) {
-  pipeline.set_frame_provider([&](const std::function<void()> &build) {
+  pipeline.set_frame_provider([&](::ui::UiElement child) {
     shooter::ShooterContextValue game_ctx{.game = providers.game};
     client::ui::AppShellContextValue shell_ctx{.request_quit =
                                                    providers.request_quit};
-    shooter::shooter_provider_push(&game_ctx);
-    client::ui::app_shell_provider_push(&shell_ctx);
-    build();
-    client::ui::app_shell_provider_pop();
-    shooter::shooter_provider_pop();
+    return shooter::ShooterProvider(
+        game_ctx,
+        ::ui::children({
+            client::ui::AppShellProvider(shell_ctx, ::ui::children({child})),
+        }));
   });
   pipeline.render_client_ui_frame(
       {
@@ -439,7 +439,7 @@ static const char *screen_entry_key(const char *prefix,
 }
 
 static ::ui::UiElement
-render_game_and_quit_consumer(const GameAndQuitConsumerProps &props) {
+GameAndQuitConsumerView(const GameAndQuitConsumerProps &props) {
   if (props.observed_game) {
     *props.observed_game = shooter::use_shooter_game();
   }
@@ -468,7 +468,7 @@ public:
                                .observed_game = observed_game_,
                                .observed_quit_present = observed_quit_present_,
                            },
-                           render_game_and_quit_consumer,
+                           GameAndQuitConsumerView,
                            screen_entry_key("game-quit-consumer", entry_id()));
     return true;
   }

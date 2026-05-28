@@ -35,14 +35,14 @@ static const char *screen_entry_key(const char *prefix,
 }
 
 static ::ui::UiElement
-render_main_menu_screen(const MainMenuScreenProps &props) {
+MainMenuScreenView(const MainMenuScreenProps &props) {
   (void)props;
   std::function<void()> start_match = use_start_match();
   std::function<void()> open_options = use_push_options_screen();
   std::function<void()> request_quit = client::ui::use_request_quit();
   namespace components = ::ui::components;
 
-  return components::Box(
+  return ::ui::components::elements::Box(
       {
           .key = "root",
           .style =
@@ -58,7 +58,7 @@ render_main_menu_screen(const MainMenuScreenProps &props) {
           .children =
               ::ui::children(
                   {
-                      components::Box(
+                      ::ui::components::elements::Box(
                           {
                               .key = "panel",
                               .style =
@@ -75,7 +75,7 @@ render_main_menu_screen(const MainMenuScreenProps &props) {
                               .children =
                                   ::ui::children(
                                       {
-                                          components::Text(
+                                          ::ui::components::elements::Text(
                                               {
                                                   .key = "title",
                                                   .value = "Reference Shooter",
@@ -89,7 +89,7 @@ render_main_menu_screen(const MainMenuScreenProps &props) {
                                                           .font_size = 30,
                                                       },
                                               }),
-                                          components::Text(
+                                          ::ui::components::elements::Text(
                                               {
                                                   .key = "subtitle",
                                                   .value =
@@ -104,7 +104,7 @@ render_main_menu_screen(const MainMenuScreenProps &props) {
                                                           .font_size = 16,
                                                       },
                                               }),
-                                          components::Button({
+                                          ::ui::components::elements::Button({
                                               .key = "start",
                                               .id = "StartMatchButton",
                                               .label = "Start Match",
@@ -116,7 +116,7 @@ render_main_menu_screen(const MainMenuScreenProps &props) {
                                                       start_match();
                                                   },
                                           }),
-                                          components::Button({
+                                          ::ui::components::elements::Button({
                                               .key = "options",
                                               .id = "OpenOptionsFromMainMenuBut"
                                                     "ton",
@@ -129,7 +129,7 @@ render_main_menu_screen(const MainMenuScreenProps &props) {
                                                       open_options();
                                                   },
                                           }),
-                                          components::Button({
+                                          ::ui::components::elements::Button({
                                               .key = "quit",
                                               .id = "QuitButton",
                                               .disabled = !request_quit,
@@ -153,7 +153,7 @@ bool MainMenuScreen::build_element(::ui::UiElementFrame &frame,
   if (!out)
     return false;
   *out = ::ui::component("MainMenuScreen", MainMenuScreenProps{},
-                         render_main_menu_screen,
+                         MainMenuScreenView,
                          screen_entry_key("main-menu", entry_id()));
   return true;
 }

@@ -47,7 +47,7 @@ static const char *screen_entry_key(const char *prefix,
 }
 
 static ::ui::UiElement
-render_shooter_game_screen(const ShooterGameScreenProps &props) {
+ShooterGameScreenView(const ShooterGameScreenProps &props) {
   (void)props;
   bool is_top = client::ui::use_screen_is_top();
   std::function<void()> open_pause = use_push_pause_screen();
@@ -57,7 +57,7 @@ render_shooter_game_screen(const ShooterGameScreenProps &props) {
   if (!is_top)
     return ::ui::empty();
 
-  return components::Box({
+  return ::ui::components::elements::Box({
       .key = "root",
       .style =
           {
@@ -67,10 +67,10 @@ render_shooter_game_screen(const ShooterGameScreenProps &props) {
               .padding = {24.0f, 24.0f, 24.0f, 24.0f},
               .gap = 18.0f,
               .background = {10, 16, 18, 255},
-          },
+      },
       .children = ::ui::children({
-          HudBand(),
-          components::Box({
+          ::ui::component("HudBand", HudBandProps{}, HudBand),
+          ::ui::components::elements::Box({
               .key = "actions",
               .style =
                   {
@@ -79,7 +79,7 @@ render_shooter_game_screen(const ShooterGameScreenProps &props) {
                       .gap = 12.0f,
                   },
               .children = ::ui::children({
-                  components::Button({
+                  ::ui::components::elements::Button({
                       .key = "pause",
                       .id = "OpenPauseButton",
                       .label = "Pause",
@@ -89,7 +89,7 @@ render_shooter_game_screen(const ShooterGameScreenProps &props) {
                               open_pause();
                           },
                   }),
-                  components::Button({
+                  ::ui::components::elements::Button({
                       .key = "loadout",
                       .id = "OpenLoadoutButton",
                       .label = "Loadout",
@@ -110,7 +110,7 @@ bool ShooterGameScreen::build_element(::ui::UiElementFrame &frame,
   if (!out)
     return false;
   *out = ::ui::component("ShooterGameScreen", ShooterGameScreenProps{},
-                         render_shooter_game_screen,
+                         ShooterGameScreenView,
                          screen_entry_key("shooter-game", entry_id()));
   return true;
 }

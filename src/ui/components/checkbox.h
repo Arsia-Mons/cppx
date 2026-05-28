@@ -32,6 +32,6 @@ struct CheckboxProps {
   };
 };
 
-extern const ::ui::Component<CheckboxProps> Checkbox;
+::ui::UiElement Checkbox(const CheckboxProps &props);
 
 } // namespace ui::components

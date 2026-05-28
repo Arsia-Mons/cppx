@@ -25,7 +25,9 @@ namespace {
   });
 }
 
-::ui::UiElement render_checkbox(const CheckboxProps &props) {
+} // namespace
+
+::ui::UiElement Checkbox(const CheckboxProps &props) {
   ::ui::HostCallbacks callbacks = detail::callbacks_from_props(props);
   callbacks.on_activate =
       [checked = props.checked, on_change = props.on_change,
@@ -55,9 +57,5 @@ namespace {
           .children = checkbox_children(props),
       });
 }
-
-} // namespace
-
-const ::ui::Component<CheckboxProps> Checkbox{"Checkbox", render_checkbox};
 
 } // namespace ui::components

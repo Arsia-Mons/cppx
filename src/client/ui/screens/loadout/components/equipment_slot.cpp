@@ -11,13 +11,7 @@
 
 namespace shooter {
 
-struct EquipmentSlotProps {
-  const char *id = nullptr;
-  const char *label = nullptr;
-  int weapon_index = 0;
-};
-
-static ::ui::UiElement render_equipment_slot(const EquipmentSlotProps &props) {
+::ui::UiElement EquipmentSlot(const EquipmentSlotProps &props) {
   ShooterWeaponRead weapon = use_weapon_read(props.weapon_index);
   if (!weapon.valid)
     return ::ui::empty();
@@ -31,66 +25,61 @@ static ::ui::UiElement render_equipment_slot(const EquipmentSlotProps &props) {
   const char *slot_text = use_text_storage(
       "%s: %s", props.label, weapon.owned ? weapon.name : "empty");
 
-  return components::Button({
-      .key = props.id,
-      .id = props.id,
-      .autofocus = selected,
-      .accessibility =
-          {
-              .label = slot_text,
-          },
-      .on_focus =
-          [set_selected,
-           weapon_index = props.weapon_index](const ::ui::FocusEvent &) {
-            if (set_selected)
-              set_selected(weapon_index);
-          },
-      .label = slot_text,
-      .children = ::ui::children({
-          components::Text({
-              .key = "label",
-              .value = slot_text,
-              .style =
-                  {
-                      .height = ::ui::Length::points(16.0f),
-                      .text = {226, 238, 236, 255},
-                      .font_size = 14,
+  return ::ui::component(
+      "Button",
+      components::ButtonProps{
+          .key = props.id,
+          .id = props.id,
+          .autofocus = selected,
+          .accessibility =
+              {
+                  .label = slot_text,
+              },
+          .on_focus =
+              [set_selected,
+               weapon_index = props.weapon_index](const ::ui::FocusEvent &) {
+                if (set_selected)
+                  set_selected(weapon_index);
+              },
+          .label = slot_text,
+          .children = ::ui::children({
+              ::ui::component(
+                  "Text",
+                  components::TextProps{
+                      .key = "label",
+                      .value = slot_text,
+                      .style =
+                          {
+                              .height = ::ui::Length::points(16.0f),
+                              .text = {226, 238, 236, 255},
+                              .font_size = 14,
+                          },
                   },
+                  components::Text),
           }),
-      }),
-      .on_activate =
-          [set_selected, weapon_index = props.weapon_index,
-           select](const ::ui::ActivationEvent &) {
-            if (set_selected)
-              set_selected(weapon_index);
-            if (select)
-              select();
-          },
-      .style =
-          {
-              .width = ::ui::Length::points(232.0f),
-              .height = ::ui::Length::points(38.0f),
-              .align_items = ::ui::AlignItems::Start,
-              .justify_content = ::ui::JustifyContent::Center,
-              .padding = {10.0f, 10.0f, 8.0f, 8.0f},
-              .background = selected ? ::ui::Color{35, 72, 62, 255}
-                                     : ::ui::Color{24, 28, 36, 255},
-              .border = selected ? ::ui::Color{122, 176, 238, 255}
-                                 : ::ui::Color{78, 88, 104, 255},
-              .border_width = selected ? 2.0f : 1.0f,
-          },
-  });
-}
-
-::ui::UiElement EquipmentSlot(const char *id, const char *label,
-                              int weapon_index) {
-  return ::ui::component("EquipmentSlot",
-                         EquipmentSlotProps{
-                             .id = id,
-                             .label = label,
-                             .weapon_index = weapon_index,
-                         },
-                         render_equipment_slot, id);
+          .on_activate =
+              [set_selected, weapon_index = props.weapon_index,
+               select](const ::ui::ActivationEvent &) {
+                if (set_selected)
+                  set_selected(weapon_index);
+                if (select)
+                  select();
+              },
+          .style =
+              {
+                  .width = ::ui::Length::points(232.0f),
+                  .height = ::ui::Length::points(38.0f),
+                  .align_items = ::ui::AlignItems::Start,
+                  .justify_content = ::ui::JustifyContent::Center,
+                  .padding = {10.0f, 10.0f, 8.0f, 8.0f},
+                  .background = selected ? ::ui::Color{35, 72, 62, 255}
+                                         : ::ui::Color{24, 28, 36, 255},
+                  .border = selected ? ::ui::Color{122, 176, 238, 255}
+                                     : ::ui::Color{78, 88, 104, 255},
+                  .border_width = selected ? 2.0f : 1.0f,
+              },
+      },
+      components::Button);
 }
 
 } // namespace shooter

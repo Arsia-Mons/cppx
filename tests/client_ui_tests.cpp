@@ -129,7 +129,7 @@ static const char *screen_entry_key(const char *prefix,
 }
 
 static ::ui::UiElement
-render_hook_state_screen(const HookStateScreenProps &props) {
+HookStateScreenView(const HookStateScreenProps &props) {
   int *value = use_state_int(0);
   if (props.observed) {
     *props.observed = *value;
@@ -150,7 +150,7 @@ public:
       return false;
     *out = ::ui::component(
         "HookStateScreenView", HookStateScreenProps{.observed = observed_},
-        render_hook_state_screen, screen_entry_key("hook-state", entry_id()));
+        HookStateScreenView, screen_entry_key("hook-state", entry_id()));
     return true;
   }
 
@@ -397,7 +397,7 @@ static bool client_ui_owns_retained_runtime_outputs(void) {
   ::ui::UiElementFrameScope frame_scope(frame);
   int focus_count = 0;
 
-  ::ui::UiElement root = ::ui::components::Button({
+  ::ui::UiElement root = ::ui::components::elements::Button({
       .key = "confirm",
       .id = "ConfirmRetainedButton",
       .on_focus =

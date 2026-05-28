@@ -22,6 +22,6 @@ struct TextProps {
   ::ui::Style style = {};
 };
 
-extern const ::ui::Component<TextProps> Text;
+::ui::UiElement Text(const TextProps &props);
 
 } // namespace ui::components

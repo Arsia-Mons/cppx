@@ -2,6 +2,8 @@
 
 #include "internal/deferred_ui_mutation.h"
 
+#include <stdio.h>
+
 namespace client::ui {
 
 struct ScreenContextValue {
@@ -10,7 +12,23 @@ struct ScreenContextValue {
   bool is_top = false;
 };
 
+struct LegacyScreenBuildProps {
+  UiScreen *screen = nullptr;
+};
+
 static ReactContext ScreenContext = {};
+
+static const char *screen_provider_key(UiScreenEntryId entry_id) {
+  char key[64] = {};
+  snprintf(key, sizeof(key), "screen-provider-%u", entry_id);
+  return ::ui::copy_string(key);
+}
+
+static ::ui::UiElement LegacyScreenBuild(const LegacyScreenBuildProps &props) {
+  if (props.screen)
+    props.screen->build_ui();
+  return ::ui::empty();
+}
 
 ClientUi::ClientUi() { ::ui::focus_init(&retained_focus_); }
 
@@ -20,7 +38,7 @@ void ClientUi::begin_frame(const ::ui::UiInputFrame &input) {
   retained_element_frame_.reset();
 }
 
-void ClientUi::build_visible_screens() {
+void ClientUi::build_visible_screens(const UiElementWrapper &wrap_root) {
   ::ui::UiElementFrameScope frame_scope(retained_element_frame_);
   ::ui::Span<UiScreen *> visible = screens_.visible_screens();
   for (int i = 0; i < visible.count; ++i) {
@@ -33,22 +51,33 @@ void ClientUi::build_visible_screens() {
           .current_entry_id = screen->entry_id(),
           .is_top = i == visible.count - 1,
       };
-      REACT_PROVIDER_ENTER_KEY("ScreenProvider", screen->entry_id());
-      PROVIDE(&ScreenContext, &context) {
-        ::ui::UiElement root = {};
-        if (screen->build_element(retained_element_frame_, &root)) {
-          ::ui::ReconcileResult result = ::ui::commit_retained_elements(
-              retained_tree_, retained_element_frame_, root);
-          if (!result.ok) {
-            react_report_error(
-                "client/ui: failed to commit returned screen %s\n",
-                screen->debug_name());
-          }
-        } else {
-          screen->build_ui();
+      ::ui::UiElement root = {};
+      if (!screen->build_element(retained_element_frame_, &root)) {
+        root = ::ui::component(
+            "LegacyScreenBuild", LegacyScreenBuildProps{.screen = screen},
+            LegacyScreenBuild, screen_provider_key(screen->entry_id()));
+      }
+      {
+        const ScreenContextValue *stored_context = ::ui::copy_value(context);
+        if (!stored_context) {
+          react_report_error("client/ui: failed to store screen context %s\n",
+                             screen->debug_name());
+          return;
+        }
+        ::ui::UiElement provider = ::ui::provider(
+            "ScreenProvider", &ScreenContext,
+            const_cast<ScreenContextValue *>(stored_context),
+            ::ui::children({root}), screen_provider_key(screen->entry_id()));
+        if (wrap_root) {
+          provider = wrap_root(provider);
+        }
+        ::ui::ReconcileResult result = ::ui::commit_retained_elements(
+            retained_tree_, retained_element_frame_, provider);
+        if (!result.ok) {
+          react_report_error("client/ui: failed to commit returned screen %s\n",
+                             screen->debug_name());
         }
       }
-      REACT_PROVIDER_EXIT();
     };
 
     switch (screen->kind()) {

@@ -91,14 +91,14 @@ bool App::initialize(const AppOptions &options) {
 
     react_init_runtime();
 
-    ui_pipeline_.set_frame_provider([this](const std::function<void()> &build) {
+    ui_pipeline_.set_frame_provider([this](::ui::UiElement child) {
         shooter::ShooterContextValue        game_ctx { .game = &shooter_game_ };
         client::ui::AppShellContextValue    shell_ctx { .request_quit = [this] { running_ = false; } };
-        shooter::shooter_provider_push(&game_ctx);
-        client::ui::app_shell_provider_push(&shell_ctx);
-        build();
-        client::ui::app_shell_provider_pop();
-        shooter::shooter_provider_pop();
+        return shooter::ShooterProvider(
+            game_ctx,
+            ::ui::children({
+                client::ui::AppShellProvider(shell_ctx, ::ui::children({child})),
+            }));
     });
 
     ui_pipeline_.client_ui().push_screen(std::make_unique<shooter::MainMenuScreen>());

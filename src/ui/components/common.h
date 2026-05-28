@@ -20,7 +20,7 @@ struct HostProps {
   const char *id = nullptr;
   int id_offset = 0;
   ::ui::Style style = {};
-  ::ui::TextProps text = {};
+  ::ui::HostTextProps text = {};
   ::ui::NodeInteraction interaction = {};
   ::ui::TextEditMetadata text_edit = {};
   ::ui::AccessibilityProps accessibility = {};

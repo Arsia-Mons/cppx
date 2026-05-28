@@ -127,7 +127,9 @@ void publish_change(const std::function<void(const std::string &)> &on_change,
   };
 }
 
-::ui::UiElement render_input(const InputProps &props) {
+} // namespace
+
+::ui::UiElement Input(const InputProps &props) {
   InputEditState *state = use_state<InputEditState>({});
   if (!state)
     return ::ui::empty();
@@ -226,9 +228,5 @@ void publish_change(const std::function<void(const std::string &)> &on_change,
           .callbacks = callbacks,
       });
 }
-
-} // namespace
-
-const ::ui::Component<InputProps> Input{"Input", render_input};
 
 } // namespace ui::components

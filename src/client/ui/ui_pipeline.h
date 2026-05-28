@@ -17,12 +17,9 @@ struct UiPipelineFrame {
 
 using RenderFrame = std::function<void()>;
 
-// Per-frame wrapper installed by the App. Receives the `build` callback that
-// invokes the visible screens; the wrapper pushes any cross-cutting providers
-// (game/app-shell contexts, etc.) and then calls `build()`. Keeps the pipeline
-// game-agnostic — the framework just calls a callback without knowing what
-// contexts it installs.
-using FrameProvider = std::function<void(const std::function<void()> &build)>;
+// Per-frame wrapper installed by the App. Receives each retained screen root and
+// returns a provider-wrapped descriptor for cross-cutting contexts.
+using FrameProvider = std::function<::ui::UiElement(::ui::UiElement child)>;
 
 class UiPipeline {
 public:

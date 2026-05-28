@@ -121,6 +121,17 @@ set_tests_properties(runtime_dependency_guard PROPERTIES
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
+add_test(
+  NAME component_descriptor_guard
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/component_descriptor_guard.py
+    --root ${CMAKE_CURRENT_SOURCE_DIR}
+    --tool ${CMAKE_CURRENT_SOURCE_DIR}/tools/cppx_transpile.py
+)
+set_tests_properties(component_descriptor_guard PROPERTIES
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
 add_executable(hello
   src/main.cpp
   src/react.cpp

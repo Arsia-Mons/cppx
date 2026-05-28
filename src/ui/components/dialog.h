@@ -23,6 +23,6 @@ struct DialogProps {
   ::ui::UiChildren children = {};
 };
 
-extern const ::ui::Component<DialogProps> Dialog;
+::ui::UiElement Dialog(const DialogProps &props);
 
 } // namespace ui::components

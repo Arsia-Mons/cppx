@@ -11,11 +11,11 @@ The grammar is intentionally small and native-C++ shaped:
 
 lowers to returned element construction:
 
-  Panel({ .key = "pause", .style = Style{.width = Length::points(320)}, .children = children({
-    Panel::Header({ .children = children({
-      Text({ .value = "Paused" }),
-    }) }),
-  }) });
+  ::ui::component("Panel", PanelProps{ .key = "pause", .style = Style{.width = Length::points(320)}, .children = children({
+    ::ui::component("Panel.Header", Panel::HeaderProps{ .children = children({
+      ::ui::component("Text", TextProps{ .value = "Paused" }, Text),
+    }) }, Panel::Header),
+  }) }, Panel);
 
 Children are emitted as owned frame data. Text children lower to `text`.
 """
@@ -49,6 +49,7 @@ class StackEntry:
     tag: str
     line: int
     column: int
+    close_suffix: str
 
 
 def cpp_string(value: str) -> str:
@@ -74,6 +75,18 @@ def component_name(tag: str) -> str:
     return "::".join(part for part in tag.split(".") if part)
 
 
+def component_props_type(tag: str) -> str:
+    return f"{component_name(tag)}Props"
+
+
+def component_display_name(tag: str) -> str:
+    return tag
+
+
+def is_host_tag(tag: str) -> bool:
+    return tag == "detail.Host"
+
+
 def prop_name(name: str) -> str:
     source = name.replace("-", "_")
     out: list[str] = []
@@ -93,17 +106,39 @@ def props_fields(attrs: list[Attr]) -> list[str]:
     return [f".{prop_name(attr.name)} = {attr.value}" for attr in attrs]
 
 
-def props_init(attrs: list[Attr]) -> str:
+def aggregate_init(type_name: str, attrs: list[Attr]) -> str:
     parts = props_fields(attrs)
     if not parts:
-        return "{}"
-    return "{ " + ", ".join(parts) + " }"
+        return f"{type_name}{{}}"
+    return f"{type_name}{{ " + ", ".join(parts) + " }"
 
 
-def props_open_with_children(attrs: list[Attr]) -> str:
+def aggregate_open_with_children(type_name: str, attrs: list[Attr]) -> str:
     parts = props_fields(attrs)
     parts.append(".children = children({")
-    return "{ " + ", ".join(parts)
+    return f"{type_name}{{ " + ", ".join(parts)
+
+
+def open_element_expression(tag: str, attrs: list[Attr]) -> tuple[str, str]:
+    name = component_name(tag)
+    if is_host_tag(tag):
+        return (
+            f"{name}({aggregate_init(name + 'Props', attrs)})",
+            f"{name}({aggregate_open_with_children(name + 'Props', attrs)}",
+        )
+    props_type = component_props_type(tag)
+    display_name = component_display_name(tag)
+    return (
+        f"::ui::component({cpp_string(display_name)}, {aggregate_init(props_type, attrs)}, {name})",
+        f"::ui::component({cpp_string(display_name)}, {aggregate_open_with_children(props_type, attrs)}",
+    )
+
+
+def close_element_suffix(tag: str) -> str:
+    name = component_name(tag)
+    if is_host_tag(tag):
+        return "}) })"
+    return f"}}) }}, {name})"
 
 
 def find_tag_end(text: str, start: int, path: pathlib.Path, line: int) -> int:
@@ -266,8 +301,8 @@ def transpile_jsx_line(
     def expression_end() -> str:
         return "," if stack else ";"
 
-    def close_children_expression() -> str:
-        return "}) })," if stack else "}) });"
+    def close_children_expression(entry: StackEntry) -> str:
+        return f"{entry.close_suffix}{expression_end()}"
 
     def take_prefix() -> str:
         nonlocal pending_prefix
@@ -316,20 +351,23 @@ def transpile_jsx_line(
                     f"mismatched closing tag {tag}; expected {entry.tag}",
                 )
             out.append(line_directive(path, line_no))
-            out.append(f"{base_indent}{close_children_expression()}")
+            out.append(f"{base_indent}{close_children_expression(entry)}")
         else:
             tag, attrs, self_closing = parse_open_tag(body, path, line_no, column)
             out.append(line_directive(path, line_no))
-            name = component_name(tag)
+            closed, open_with_children = open_element_expression(tag, attrs)
             if self_closing:
-                props = props_init(attrs)
-                out.append(
-                    f"{base_indent}{take_prefix()}{name}({props}){expression_end()}"
-                )
+                out.append(f"{base_indent}{take_prefix()}{closed}{expression_end()}")
             else:
-                stack.append(StackEntry(tag=tag, line=line_no, column=column))
-                props = props_open_with_children(attrs)
-                out.append(f"{base_indent}{take_prefix()}{name}({props}")
+                stack.append(
+                    StackEntry(
+                        tag=tag,
+                        line=line_no,
+                        column=column,
+                        close_suffix=close_element_suffix(tag),
+                    )
+                )
+                out.append(f"{base_indent}{take_prefix()}{open_with_children}")
         i = end + 1
     return out
 

@@ -1,9 +1,7 @@
 #include "dialog.h"
 
 namespace ui::components {
-namespace {
-
-::ui::UiElement render_dialog(const DialogProps &props) {
+::ui::UiElement Dialog(const DialogProps &props) {
   ::ui::NodeInteraction interaction = detail::interaction_from_props(props);
   interaction.modal = props.modal;
   return ::ui::host(::ui::HostKind::Dialog,
@@ -19,9 +17,5 @@ namespace {
                         .children = props.children,
                     });
 }
-
-} // namespace
-
-const ::ui::Component<DialogProps> Dialog{"Dialog", render_dialog};
 
 } // namespace ui::components
