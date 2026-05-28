@@ -194,10 +194,16 @@ and mismatch/unclosed-tag diagnostics.
      commits `HostKind::Box` / `HostKind::Text` nodes into `UiTree`.
    - `retained_ui_reconciler_tests` verifies host commit metadata, component
      hook identity across frames, and provider context scoping.
-   - remaining: convert retained primitives to element factories, rewrite the
-     transpiler to emit returned elements with `children` props, migrate every
-     app/client screen to returned `UiElement` roots, and delete/guard the old
-     immediate authoring API.
+   - retained control factory foundation started through
+     `src/ui/retained/element_components.*`: button, toggle, selectable,
+     focusable, and scroll-container components now return `UiElement`
+     descriptors over `HostKind::Box` / `HostKind::Text` instead of mutating
+     `UiTree` directly.
+   - `retained_ui_element_components_tests` verifies element button metadata
+     and callbacks, toggle change dispatch, and selectable owned children.
+   - remaining: rewrite the transpiler to emit returned elements with
+     `children` props, migrate every app/client screen to returned `UiElement`
+     roots, and delete/guard the old immediate authoring API.
 
 ## Verification Gates
 

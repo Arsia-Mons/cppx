@@ -141,7 +141,9 @@ reconciler owns component invocation plus hook entry/exit. The first generic
 layer for that target lives in `src/ui/retained/element.*`, where
 `UiElementFrame` owns descriptor/props/string storage and
 `reconcile_retained_tree()` commits `HostKind::Box` / `HostKind::Text` output
-into `UiTree`.
+into `UiTree`. `src/ui/retained/element_components.*` starts the higher-level
+component layer by returning button, toggle, selectable, focusable, and
+scroll-container elements over those host kinds.
 The retained component surface now also writes copied node metadata for role,
 control id, label/value, and interaction state, so retained `Button`, `Toggle`,
 and `Selectable` primitives have semantic data that focus and renderer code can

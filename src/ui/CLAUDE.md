@@ -30,10 +30,12 @@ have multiple files, not preemptively.
 ## Composition
 
 The target authoring model is returned `UiElement` descriptions committed by
-the reconciler in `retained/element.*`. The older retained component helpers
-still exist while app/client code migrates, but new generic runtime work should
-move toward `UiElement` factories, provider elements, and reconciler-owned hook
-entry/exit. Reorderable lists must use stable keys.
+the reconciler in `retained/element.*`. Higher-level controls that return
+element descriptions live in `retained/element_components.*`. The older
+retained component helpers still exist while app/client code migrates, but new
+generic runtime work should move toward `UiElement` factories, provider
+elements, and reconciler-owned hook entry/exit. Reorderable lists must use
+stable keys.
 
 ## Testing
 

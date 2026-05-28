@@ -118,6 +118,7 @@ add_executable(hello
   src/ui/retained/components.cpp
   src/ui/retained/draw_list.cpp
   src/ui/retained/element.cpp
+  src/ui/retained/element_components.cpp
   src/ui/retained/flex_layout.cpp
   src/ui/retained/focus.cpp
   src/ui/retained/ui_tree.cpp
@@ -219,6 +220,24 @@ target_compile_options(retained_ui_reconciler_tests PRIVATE
 )
 
 add_test(NAME retained_ui_reconciler_tests COMMAND retained_ui_reconciler_tests)
+
+add_executable(retained_ui_element_components_tests
+  tests/retained_ui_element_components_tests.cpp
+  src/react.cpp
+  src/ui/retained/element.cpp
+  src/ui/retained/element_components.cpp
+  src/ui/retained/ui_tree.cpp
+)
+
+target_include_directories(retained_ui_element_components_tests PRIVATE
+  src
+)
+
+target_compile_options(retained_ui_element_components_tests PRIVATE
+  $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall -Wextra -Wno-missing-field-initializers -Wno-c99-designator -Wno-unused-parameter>
+)
+
+add_test(NAME retained_ui_element_components_tests COMMAND retained_ui_element_components_tests)
 
 add_executable(retained_cppx_component_tests
   tests/retained_cppx_component_tests.cpp
@@ -328,6 +347,7 @@ add_executable(client_ui_tests
   src/ui/retained/components.cpp
   src/ui/retained/draw_list.cpp
   src/ui/retained/element.cpp
+  src/ui/retained/element_components.cpp
   src/ui/retained/flex_layout.cpp
   src/ui/retained/focus.cpp
   src/ui/retained/ui_tree.cpp
