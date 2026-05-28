@@ -1,10 +1,10 @@
 #pragma once
 
-#include "common.h"
+#include "ui/components/common.h"
 
 namespace ui::components {
 
-struct DialogProps {
+struct CheckboxProps {
   const char *key = nullptr;
   const char *id = nullptr;
   int id_offset = 0;
@@ -18,11 +18,20 @@ struct DialogProps {
   std::function<void(const ::ui::KeyEvent &)> on_key = {};
   std::function<void(const ::ui::TextInputEvent &)> on_text_input = {};
   std::function<void(const ::ui::TextEditingEvent &)> on_text_editing = {};
-  bool modal = true;
-  ::ui::Style style = {};
-  ::ui::UiChildren children = {};
+  bool checked = false;
+  const char *label = nullptr;
+  std::function<void(bool)> on_change = {};
+  ::ui::Style style = {
+      .width = ::ui::Length::points(178.0f),
+      .height = ::ui::Length::points(38.0f),
+      .direction = ::ui::FlexDirection::Row,
+      .align_items = ::ui::AlignItems::Center,
+      .justify_content = ::ui::JustifyContent::Start,
+      .padding = {10.0f, 10.0f, 8.0f, 8.0f},
+      .gap = 10.0f,
+  };
 };
 
-::ui::UiElement Dialog(const DialogProps &props);
+::ui::UiElement Checkbox(const CheckboxProps &props);
 
 } // namespace ui::components

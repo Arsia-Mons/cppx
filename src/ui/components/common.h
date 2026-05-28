@@ -98,14 +98,6 @@ inline ::ui::Style control_style(bool disabled, ::ui::Style style = {}) {
   return style;
 }
 
-inline ::ui::UiChildren label_child(const char *label, ::ui::Style style = {}) {
-  if (!label)
-    return {};
-  return ::ui::children({
-      ::ui::text(label, "label", style),
-  });
-}
-
 } // namespace detail
 
 } // namespace ui::components

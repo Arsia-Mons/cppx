@@ -58,6 +58,16 @@ enable_testing()
 cppx_transpile(UI_COMPONENT_GENERATED
   src/ui/components/box.cppx
   src/ui/components/box.hx
+  src/ui/components/button.cppx
+  src/ui/components/button.hx
+  src/ui/components/checkbox.cppx
+  src/ui/components/checkbox.hx
+  src/ui/components/dialog.cppx
+  src/ui/components/dialog.hx
+  src/ui/components/input.cppx
+  src/ui/components/input.hx
+  src/ui/components/text.cppx
+  src/ui/components/text.hx
 )
 add_custom_target(cppx_generated_components DEPENDS ${UI_COMPONENT_GENERATED})
 set(UI_COMPONENT_GENERATED_INCLUDE_DIRS
@@ -67,11 +77,6 @@ set(UI_COMPONENT_GENERATED_INCLUDE_DIRS
 
 set(UI_COMPONENT_SOURCES
   ${UI_COMPONENT_GENERATED}
-  src/ui/components/button.cpp
-  src/ui/components/checkbox.cpp
-  src/ui/components/dialog.cpp
-  src/ui/components/input.cpp
-  src/ui/components/text.cpp
 )
 
 function(target_use_ui_components target_name)

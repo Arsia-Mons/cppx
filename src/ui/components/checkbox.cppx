@@ -1,0 +1,50 @@
+#include "checkbox.h"
+#include "box.h"
+
+namespace ui::components {
+namespace {
+
+::ui::Style checkbox_mark_style(bool checked) {
+  return {
+      .width = ::ui::Length::points(18.0f),
+      .height = ::ui::Length::points(18.0f),
+      .background = checked ? detail::kCheckboxCheckedFill : ::ui::Color{},
+      .border = detail::kControlBorder,
+      .border_width = 1.0f,
+  };
+}
+
+} // namespace
+
+::ui::UiElement Checkbox(const CheckboxProps &props) {
+  ::ui::HostCallbacks callbacks = detail::callbacks_from_props(props);
+  callbacks.on_activate =
+      [checked = props.checked, on_change = props.on_change,
+       original = callbacks.on_activate](const ::ui::ActivationEvent &event) {
+        if (original)
+          original(event);
+        if (on_change)
+          on_change(!checked);
+      };
+
+  ::ui::NodeInteraction interaction =
+      detail::interaction_from_props(props, true);
+  interaction.checked = props.checked;
+
+  return <detail.Host
+    kind={::ui::HostKind::Checkbox}
+    key={props.key}
+    id={props.id}
+    idOffset={props.id_offset}
+    style={detail::control_style(props.disabled, props.style)}
+    text={::ui::HostTextProps{.value = props.label}}
+    interaction={interaction}
+    accessibility={detail::accessibility_from_props(props, ::ui::SemanticRole::Checkbox)}
+    callbacks={callbacks}
+  >
+    <Box key="mark" style={checkbox_mark_style(props.checked)} />
+    {props.label}
+  </detail.Host>
+}
+
+} // namespace ui::components

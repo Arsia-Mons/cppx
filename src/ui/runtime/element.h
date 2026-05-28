@@ -114,6 +114,7 @@ struct UiChild {
   bool flatten_children = false;
 
   UiChild(UiElement value) : element(value) {}
+  UiChild(const char *value);
   UiChild(UiChildren value) : children(value), flatten_children(true) {}
 };
 
@@ -269,6 +270,9 @@ UiElement text(const char *value, const char *key = nullptr,
 UiElement provider(const char *name, ReactContext *context, void *value,
                    UiChildren children, const char *key = nullptr);
 const char *copy_string(const char *value);
+
+inline UiChild::UiChild(const char *value)
+    : element(value ? text(value) : empty()) {}
 
 template <typename T> const T *copy_value(const T &value) {
   UiElementFrame *frame = current_element_frame();

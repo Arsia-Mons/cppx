@@ -1,10 +1,10 @@
 #pragma once
 
-#include "common.h"
+#include "ui/components/common.h"
 
 namespace ui::components {
 
-struct TextProps {
+struct DialogProps {
   const char *key = nullptr;
   const char *id = nullptr;
   int id_offset = 0;
@@ -18,10 +18,11 @@ struct TextProps {
   std::function<void(const ::ui::KeyEvent &)> on_key = {};
   std::function<void(const ::ui::TextInputEvent &)> on_text_input = {};
   std::function<void(const ::ui::TextEditingEvent &)> on_text_editing = {};
-  const char *value = nullptr;
+  bool modal = true;
   ::ui::Style style = {};
+  ::ui::UiChildren children = {};
 };
 
-::ui::UiElement Text(const TextProps &props);
+::ui::UiElement Dialog(const DialogProps &props);
 
 } // namespace ui::components

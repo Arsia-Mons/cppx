@@ -70,6 +70,39 @@ static bool button_element_returns_button_host(void) {
   return true;
 }
 
+static bool button_prefers_authored_children_over_label(void) {
+  react_init_runtime();
+  UiTree tree;
+  UiElementFrame frame;
+  UiElementFrameScope frame_scope(frame);
+
+  UiElement root = Button({
+      .key = "start",
+      .label = "Fallback",
+      .children = ::ui::children({
+          "Custom",
+      }),
+  });
+
+  ReconcileResult result =
+      reconcile_retained_tree(tree, frame, root, 640.0f, 480.0f);
+  CHECK(result.ok);
+
+  NodeId button = tree.child_at(tree.root_id(), 0);
+  NodeSnapshot button_snapshot = {};
+  CHECK(snapshot(tree, button, &button_snapshot));
+  CHECK(strcmp(button_snapshot.type, "Button") == 0);
+  CHECK(button_snapshot.child_count == 1);
+
+  NodeSnapshot label = {};
+  CHECK(snapshot(tree, tree.child_at(button, 0), &label));
+  CHECK(strcmp(label.type, "Text") == 0);
+  CHECK(strcmp(label.value, "Custom") == 0);
+
+  react_shutdown();
+  return true;
+}
+
 static bool box_text_and_dialog_elements_return_host_nodes(void) {
   react_init_runtime();
   UiTree tree;
@@ -163,8 +196,43 @@ static bool checkbox_element_dispatches_changed_value(void) {
   CHECK(!checkbox_snapshot.interaction.checked);
   CHECK(checkbox_snapshot.child_count == 2);
 
+  NodeSnapshot label = {};
+  CHECK(snapshot(tree, tree.child_at(checkbox, 1), &label));
+  CHECK(strcmp(label.type, "Text") == 0);
+  CHECK(strcmp(label.value, "Music") == 0);
+
   CHECK(tree.invoke_activate(checkbox));
   CHECK(observed);
+
+  react_shutdown();
+  return true;
+}
+
+static bool checkbox_omits_null_label_child(void) {
+  react_init_runtime();
+  UiTree tree;
+  UiElementFrame frame;
+  UiElementFrameScope frame_scope(frame);
+
+  UiElement root = Checkbox({
+      .key = "music",
+      .id = "MusicCheckbox",
+      .checked = false,
+  });
+
+  ReconcileResult result =
+      reconcile_retained_tree(tree, frame, root, 640.0f, 480.0f);
+  CHECK(result.ok);
+
+  NodeId checkbox = tree.child_at(tree.root_id(), 0);
+  NodeSnapshot checkbox_snapshot = {};
+  CHECK(snapshot(tree, checkbox, &checkbox_snapshot));
+  CHECK(strcmp(checkbox_snapshot.type, "Checkbox") == 0);
+  CHECK(checkbox_snapshot.child_count == 1);
+
+  NodeSnapshot mark = {};
+  CHECK(snapshot(tree, tree.child_at(checkbox, 0), &mark));
+  CHECK(strcmp(mark.type, "Box") == 0);
 
   react_shutdown();
   return true;
@@ -226,9 +294,13 @@ static bool input_element_edits_controlled_text(void) {
 int main(void) {
   if (!button_element_returns_button_host())
     return 1;
+  if (!button_prefers_authored_children_over_label())
+    return 1;
   if (!box_text_and_dialog_elements_return_host_nodes())
     return 1;
   if (!checkbox_element_dispatches_changed_value())
+    return 1;
+  if (!checkbox_omits_null_label_child())
     return 1;
   if (!input_element_edits_controlled_text())
     return 1;
