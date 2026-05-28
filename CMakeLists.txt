@@ -104,6 +104,15 @@ set_tests_properties(cppx_transpiler_tests PROPERTIES
 )
 
 add_test(
+  NAME cppx_editor_package_tests
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/cppx_editor_package_tests.py
+)
+set_tests_properties(cppx_editor_package_tests PROPERTIES
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+add_test(
   NAME runtime_dependency_guard
   COMMAND ${Python3_EXECUTABLE}
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_dependency_guard.py

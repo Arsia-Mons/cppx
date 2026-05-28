@@ -1,0 +1,39 @@
+{
+  "name": "cppx-syntax",
+  "displayName": "CPPX Syntax",
+  "description": "TextMate syntax highlighting for C++ JSX authored UI files.",
+  "version": "0.0.1",
+  "publisher": "arsia-mons",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "cppx",
+        "aliases": [
+          "CPPX",
+          "C++ JSX"
+        ],
+        "extensions": [
+          ".cppx",
+          ".hx"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "cppx",
+        "scopeName": "source.cppx",
+        "path": "./syntaxes/cppx.tmLanguage.json",
+        "embeddedLanguages": {
+          "meta.embedded.block.cppx": "cpp"
+        }
+      }
+    ]
+  }
+}

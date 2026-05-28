@@ -1,0 +1,110 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "CPPX",
+  "scopeName": "source.cppx",
+  "fileTypes": ["cppx", "hx"],
+  "patterns": [
+    { "include": "#jsx" },
+    { "include": "source.cpp" }
+  ],
+  "repository": {
+    "jsx": {
+      "patterns": [
+        { "include": "#jsx-closing-tag" },
+        { "include": "#jsx-opening-tag" }
+      ]
+    },
+    "jsx-closing-tag": {
+      "name": "meta.tag.jsx.cppx",
+      "begin": "(</)\\s*([A-Za-z_][A-Za-z0-9_]*(?:[.:][A-Za-z_][A-Za-z0-9_]*)*)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.cppx" },
+        "2": { "name": "entity.name.tag.cppx" }
+      },
+      "end": "(>)",
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.tag.end.cppx" }
+      }
+    },
+    "jsx-opening-tag": {
+      "name": "meta.tag.jsx.cppx",
+      "begin": "(<)\\s*([A-Za-z_][A-Za-z0-9_]*(?:[.:][A-Za-z_][A-Za-z0-9_]*)*)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.cppx" },
+        "2": { "name": "entity.name.tag.cppx" }
+      },
+      "end": "(/?>)",
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.tag.end.cppx" }
+      },
+      "patterns": [
+        { "include": "#jsx-expression" },
+        { "include": "#jsx-string" },
+        { "include": "#jsx-attribute" },
+        { "include": "#jsx" }
+      ]
+    },
+    "jsx-attribute": {
+      "match": "\\b([A-Za-z_][A-Za-z0-9_-]*)(?=\\s*(=|/?>))",
+      "captures": {
+        "1": { "name": "entity.other.attribute-name.cppx" }
+      }
+    },
+    "jsx-string": {
+      "patterns": [
+        { "include": "#jsx-double-string" },
+        { "include": "#jsx-single-string" }
+      ]
+    },
+    "jsx-double-string": {
+      "name": "string.quoted.double.cppx",
+      "begin": "\"",
+      "beginCaptures": {
+        "0": { "name": "punctuation.definition.string.begin.cppx" }
+      },
+      "end": "\"",
+      "endCaptures": {
+        "0": { "name": "punctuation.definition.string.end.cppx" }
+      },
+      "patterns": [
+        {
+          "match": "\\\\.",
+          "name": "constant.character.escape.cppx"
+        }
+      ]
+    },
+    "jsx-single-string": {
+      "name": "string.quoted.single.cppx",
+      "begin": "'",
+      "beginCaptures": {
+        "0": { "name": "punctuation.definition.string.begin.cppx" }
+      },
+      "end": "'",
+      "endCaptures": {
+        "0": { "name": "punctuation.definition.string.end.cppx" }
+      },
+      "patterns": [
+        {
+          "match": "\\\\.",
+          "name": "constant.character.escape.cppx"
+        }
+      ]
+    },
+    "jsx-expression": {
+      "name": "meta.embedded.block.cppx",
+      "begin": "\\{",
+      "beginCaptures": {
+        "0": { "name": "punctuation.section.embedded.begin.cppx" }
+      },
+      "end": "\\}",
+      "endCaptures": {
+        "0": { "name": "punctuation.section.embedded.end.cppx" }
+      },
+      "patterns": [
+        { "include": "#jsx-expression" },
+        { "include": "#jsx" },
+        { "include": "source.cpp" }
+      ]
+    }
+  }
+}
