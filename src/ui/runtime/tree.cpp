@@ -142,6 +142,15 @@ bool UiTree::set_measure(NodeId id, MeasureFn measure, void *user) {
   return true;
 }
 
+bool UiTree::set_baseline(NodeId id, BaselineFn baseline, void *user) {
+  Node *node = find_mutable(id);
+  if (!node)
+    return false;
+  node->baseline = baseline;
+  node->baseline_user = user;
+  return true;
+}
+
 bool UiTree::set_metadata(NodeId id, const NodeMetadata &metadata) {
   Node *node = find_mutable(id);
   if (!node)
@@ -174,6 +183,16 @@ bool UiTree::measure(NodeId id, MeasureInput input, Size *out) const {
   if (!node || !node->measure)
     return false;
   *out = node->measure(input, node->measure_user);
+  return true;
+}
+
+bool UiTree::baseline(NodeId id, BaselineInput input, float *out) const {
+  if (!out)
+    return false;
+  const Node *node = find(id);
+  if (!node || !node->baseline)
+    return false;
+  *out = node->baseline(input, node->baseline_user);
   return true;
 }
 
@@ -278,6 +297,7 @@ bool UiTree::snapshot(NodeId id, NodeSnapshot *out) const {
       .layout = node->layout,
       .child_count = node->child_count,
       .has_measure = node->measure != nullptr,
+      .has_baseline = node->baseline != nullptr,
       .mounted_this_frame = node->mounted_this_frame,
   };
   return true;
@@ -359,6 +379,8 @@ UiTree::Node *UiTree::ensure_node(NodeId id, NodeId parent_id, const char *type,
     existing->on_key = {};
     existing->on_text_input = {};
     existing->on_text_editing = {};
+    existing->baseline = nullptr;
+    existing->baseline_user = nullptr;
     existing->control_offset = 0;
     existing->control_id[0] = '\0';
     existing->accessibility_label[0] = '\0';

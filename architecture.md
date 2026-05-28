@@ -154,8 +154,14 @@ focus/event update and before render-command handoff, preserving the same
 deferred-mutation frame boundary used by other controls.
 The public component props are flat: `key` is retained reconciliation identity,
 `id` is the inspectable/control identifier, and `style` is the single style prop.
-`Style` contains the Yoga-backed layout fields plus renderer-owned visual fields
-such as background, border, text color, and font size.
+`Style` mirrors the Yoga v3.2.1 styling surface through repo-owned layout
+types, including percent/auto edge values, logical edge aliases, box sizing,
+layout direction, flex shorthand, aspect ratio, gap percentages, per-edge
+layout borders, and retained baseline/node flags. `UiTree` snapshots retain
+Yoga layout readback for x/y/width/height plus direction, overflow, and
+computed margin/border/padding. Renderer-owned visual fields such as
+background, border color, text color, and font size remain alongside those
+layout fields.
 `src/ui/runtime/draw_list.*` is the renderer boundary: it walks
 retained snapshots after flex layout and emits app-owned rect/text draw
 commands from retained metadata.

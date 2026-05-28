@@ -19,6 +19,7 @@ constexpr int UI_RETAINED_VALUE_CAP = 96;
 constexpr NodeId UI_RETAINED_ROOT_ID = 0xCBF29CE484222325ull;
 
 enum class LengthKind : uint8_t {
+  Undefined,
   Auto,
   Points,
   Percent,
@@ -26,13 +27,69 @@ enum class LengthKind : uint8_t {
 };
 
 struct Length {
-  LengthKind kind = LengthKind::Auto;
+  LengthKind kind = LengthKind::Undefined;
   float value = 0.0f;
 
-  static Length auto_size() { return {}; }
+  constexpr Length() = default;
+  constexpr Length(float points) : kind(LengthKind::Points), value(points) {}
+  constexpr Length(LengthKind kind, float value = 0.0f)
+      : kind(kind), value(value) {}
+
+  static Length undefined() { return {}; }
+  static Length auto_size() { return {LengthKind::Auto}; }
   static Length points(float value) { return {LengthKind::Points, value}; }
   static Length percent(float value) { return {LengthKind::Percent, value}; }
   static Length grow(float value = 1.0f) { return {LengthKind::Grow, value}; }
+};
+
+enum class StyleValueKind : uint8_t {
+  Undefined,
+  Points,
+  Percent,
+  Auto,
+};
+
+struct StyleValue {
+  StyleValueKind kind = StyleValueKind::Undefined;
+  float value = 0.0f;
+
+  constexpr StyleValue() = default;
+  constexpr StyleValue(float points)
+      : kind(StyleValueKind::Points), value(points) {}
+  constexpr StyleValue(StyleValueKind kind, float value = 0.0f)
+      : kind(kind), value(value) {}
+
+  static StyleValue undefined() { return {}; }
+  static StyleValue points(float value) {
+    return {StyleValueKind::Points, value};
+  }
+  static StyleValue percent(float value) {
+    return {StyleValueKind::Percent, value};
+  }
+  static StyleValue auto_value() { return {StyleValueKind::Auto}; }
+
+  bool is_defined() const { return kind != StyleValueKind::Undefined; }
+  operator float() const { return value; }
+};
+
+struct StyleFloat {
+  bool defined = false;
+  float value = 0.0f;
+
+  constexpr StyleFloat() = default;
+  constexpr StyleFloat(float value) : defined(true), value(value) {}
+
+  static StyleFloat undefined() { return {}; }
+  static StyleFloat points(float value) { return {value}; }
+
+  bool is_defined() const { return defined; }
+  operator float() const { return value; }
+};
+
+enum class LayoutDirection : uint8_t {
+  Inherit,
+  Ltr,
+  Rtl,
 };
 
 enum class FlexDirection : uint8_t {
@@ -87,6 +144,16 @@ enum class Display : uint8_t {
   Contents,
 };
 
+enum class BoxSizing : uint8_t {
+  BorderBox,
+  ContentBox,
+};
+
+enum class LayoutNodeType : uint8_t {
+  Default,
+  Text,
+};
+
 enum class NodeRole : uint8_t {
   Generic,
   Box,
@@ -107,10 +174,42 @@ enum class SemanticRole : uint8_t {
 };
 
 struct EdgeSizes {
+  StyleValue left = {};
+  StyleValue right = {};
+  StyleValue top = {};
+  StyleValue bottom = {};
+  StyleValue start = {};
+  StyleValue end = {};
+  StyleValue horizontal = {};
+  StyleValue vertical = {};
+  StyleValue all = {};
+
+  constexpr EdgeSizes() = default;
+  constexpr EdgeSizes(StyleValue left, StyleValue right, StyleValue top,
+                      StyleValue bottom)
+      : left(left), right(right), top(top), bottom(bottom) {}
+
+  static EdgeSizes all_edges(StyleValue value) {
+    EdgeSizes edges = {};
+    edges.all = value;
+    return edges;
+  }
+
+  static EdgeSizes axes(StyleValue horizontal, StyleValue vertical) {
+    EdgeSizes edges = {};
+    edges.horizontal = horizontal;
+    edges.vertical = vertical;
+    return edges;
+  }
+};
+
+struct ComputedEdgeSizes {
   float left = 0.0f;
   float right = 0.0f;
   float top = 0.0f;
   float bottom = 0.0f;
+  float start = 0.0f;
+  float end = 0.0f;
 };
 
 struct Rect {
@@ -118,6 +217,13 @@ struct Rect {
   float y = 0.0f;
   float width = 0.0f;
   float height = 0.0f;
+  float right = 0.0f;
+  float bottom = 0.0f;
+  LayoutDirection direction = LayoutDirection::Inherit;
+  bool had_overflow = false;
+  ComputedEdgeSizes margin = {};
+  ComputedEdgeSizes border = {};
+  ComputedEdgeSizes padding = {};
 };
 
 struct Color {
@@ -128,6 +234,10 @@ struct Color {
 };
 
 struct Style {
+  // Yoga v3.2.1 style fields, mirrored through repo-owned types so app code
+  // stays independent from Yoga headers.
+  LayoutDirection layout_direction = LayoutDirection::Inherit;
+  BoxSizing box_sizing = BoxSizing::BorderBox;
   Display display = Display::Flex;
   PositionType position = PositionType::Relative;
   Overflow overflow = Overflow::Visible;
@@ -137,6 +247,9 @@ struct Style {
   AlignItems align_content = AlignItems::Start;
   AlignItems align_self = AlignItems::Auto;
   JustifyContent justify_content = JustifyContent::Start;
+  LayoutNodeType node_type = LayoutNodeType::Default;
+  bool is_reference_baseline = false;
+  bool always_forms_containing_block = false;
 
   Length width = Length::auto_size();
   Length height = Length::auto_size();
@@ -145,20 +258,24 @@ struct Style {
   Length max_width = Length::auto_size();
   Length max_height = Length::auto_size();
   Length flex_basis = Length::auto_size();
-  float flex_grow = 0.0f;
-  float flex_shrink = 0.0f;
-  float aspect_ratio = 0.0f;
+  StyleFloat flex = {};
+  StyleFloat flex_grow = {};
+  StyleFloat flex_shrink = {};
+  StyleFloat aspect_ratio = {};
 
   EdgeSizes margin = {};
   EdgeSizes padding = {};
   EdgeSizes position_inset = {};
-  float gap = 0.0f;
-  float row_gap = 0.0f;
-  float column_gap = 0.0f;
+  EdgeSizes border_widths = {};
+  StyleValue gap = {};
+  StyleValue row_gap = {};
+  StyleValue column_gap = {};
 
   Color background = {};
   Color border = {};
   Color text = {};
+  // Visual all-edge border shorthand; also feeds Yoga's all-edge border for
+  // existing callers. Use border_widths for per-edge Yoga layout borders.
   float border_width = 0.0f;
   uint16_t font_size = 0;
 };
@@ -174,6 +291,11 @@ struct MeasureInput {
   float height = 0.0f;
   MeasureMode width_mode = MeasureMode::Undefined;
   MeasureMode height_mode = MeasureMode::Undefined;
+};
+
+struct BaselineInput {
+  float width = 0.0f;
+  float height = 0.0f;
 };
 
 struct Size {
@@ -254,6 +376,7 @@ struct NodeMetadata {
 
 using CleanupFn = void (*)(void *user);
 using MeasureFn = Size (*)(MeasureInput input, void *user);
+using BaselineFn = float (*)(BaselineInput input, void *user);
 
 struct NodeSnapshot {
   NodeId id = 0;
@@ -273,6 +396,7 @@ struct NodeSnapshot {
   Rect layout = {};
   int child_count = 0;
   bool has_measure = false;
+  bool has_baseline = false;
   bool mounted_this_frame = false;
 };
 
@@ -296,8 +420,10 @@ public:
 
   bool set_cleanup(NodeId id, CleanupFn cleanup, void *user);
   bool set_measure(NodeId id, MeasureFn measure, void *user);
+  bool set_baseline(NodeId id, BaselineFn baseline, void *user);
   bool set_metadata(NodeId id, const NodeMetadata &metadata);
   bool measure(NodeId id, MeasureInput input, Size *out) const;
+  bool baseline(NodeId id, BaselineInput input, float *out) const;
   bool set_layout(NodeId id, Rect rect);
   bool invoke_focus(NodeId id) const;
   bool invoke_blur(NodeId id) const;
@@ -352,6 +478,8 @@ private:
     void *cleanup_user = nullptr;
     MeasureFn measure = nullptr;
     void *measure_user = nullptr;
+    BaselineFn baseline = nullptr;
+    void *baseline_user = nullptr;
   };
 
   Node *find_mutable(NodeId id);
