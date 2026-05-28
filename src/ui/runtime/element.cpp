@@ -247,6 +247,46 @@ UiChildren UiElementFrame::children(std::initializer_list<UiElement> items) {
   };
 }
 
+UiChildren UiElementFrame::children(std::initializer_list<UiChild> items) {
+  int child_count = 0;
+  for (const UiChild &item : items) {
+    if (!item.flatten_children) {
+      ++child_count;
+      continue;
+    }
+    if (item.children.count < 0 ||
+        (item.children.count > 0 && !item.children.items)) {
+      ++error_count_;
+      return {};
+    }
+    child_count += item.children.count;
+  }
+  if (child_count == 0)
+    return {};
+  if (child_element_count_ + child_count > UI_RETAINED_MAX_CHILD_ELEMENTS) {
+    ++error_count_;
+    return {};
+  }
+
+  UiElement *start = &child_elements_[child_element_count_];
+  int index = 0;
+  for (const UiChild &item : items) {
+    if (!item.flatten_children) {
+      start[index++] = item.element;
+      continue;
+    }
+    for (int child_index = 0; child_index < item.children.count;
+         ++child_index) {
+      start[index++] = item.children.items[child_index];
+    }
+  }
+  child_element_count_ += index;
+  return {
+      .items = start,
+      .count = index,
+  };
+}
+
 UiElement UiElementFrame::empty() { return {}; }
 
 UiElement UiElementFrame::fragment(UiChildren children) {
@@ -363,6 +403,11 @@ HostProps UiElementFrame::copy_host_props(const HostProps &props) {
 }
 
 UiChildren children(std::initializer_list<UiElement> items) {
+  UiElementFrame *frame = require_current_element_frame("children");
+  return frame ? frame->children(items) : UiChildren{};
+}
+
+UiChildren children(std::initializer_list<UiChild> items) {
   UiElementFrame *frame = require_current_element_frame("children");
   return frame ? frame->children(items) : UiChildren{};
 }

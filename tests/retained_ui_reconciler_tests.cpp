@@ -85,6 +85,47 @@ static bool host_elements_commit_to_retained_tree(void) {
   return true;
 }
 
+static bool child_lists_flatten_forwarded_children(void) {
+  react_init_runtime();
+  UiTree tree;
+  UiElementFrame frame;
+  UiElementFrameScope frame_scope(frame);
+
+  UiChildren forwarded = ::ui::children({
+      ::ui::text("Middle", "middle"),
+  });
+  UiElement root = ::ui::box({
+      .key = "root",
+      .children = ::ui::children({
+          ::ui::text("Before", "before"),
+          forwarded,
+          ::ui::text("After", "after"),
+      }),
+  });
+
+  ReconcileResult result =
+      reconcile_retained_tree(tree, frame, root, 640.0f, 480.0f);
+  CHECK(result.ok);
+
+  NodeId root_box = tree.child_at(tree.root_id(), 0);
+  NodeSnapshot root_snapshot = {};
+  CHECK(snapshot(tree, root_box, &root_snapshot));
+  CHECK(root_snapshot.child_count == 3);
+
+  NodeSnapshot before = {};
+  NodeSnapshot middle = {};
+  NodeSnapshot after = {};
+  CHECK(snapshot(tree, tree.child_at(root_box, 0), &before));
+  CHECK(snapshot(tree, tree.child_at(root_box, 1), &middle));
+  CHECK(snapshot(tree, tree.child_at(root_box, 2), &after));
+  CHECK(strcmp(before.value, "Before") == 0);
+  CHECK(strcmp(middle.value, "Middle") == 0);
+  CHECK(strcmp(after.value, "After") == 0);
+
+  react_shutdown();
+  return true;
+}
+
 struct CounterProps {
   const char *key = nullptr;
   const char *prefix = nullptr;
@@ -173,6 +214,8 @@ static bool provider_elements_scope_context_for_children(void) {
 
 int main(void) {
   if (!host_elements_commit_to_retained_tree())
+    return 1;
+  if (!child_lists_flatten_forwarded_children())
     return 1;
   if (!component_elements_own_hook_fiber_entry())
     return 1;

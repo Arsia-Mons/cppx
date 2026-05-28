@@ -10,8 +10,9 @@ namespace {
                       props)} accessibility =
                       {detail::accessibility_from_props(
                           props, ::ui::SemanticRole::Auto)} callbacks = {
-                          detail::callbacks_from_props(
-                              props)} children = {props.children} />
+                          detail::callbacks_from_props(props)}>
+    {props.children}
+  </detail.Host>
 }
 
 } // namespace

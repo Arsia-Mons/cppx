@@ -21,6 +21,7 @@ constexpr int UI_RETAINED_STRING_ARENA_BYTES = 8192;
 
 struct UiElement;
 class UiElementFrame;
+struct UiChild;
 
 struct UiChildren {
   const UiElement *items = nullptr;
@@ -107,6 +108,15 @@ struct UiElement {
   ProviderElement provider = {};
 };
 
+struct UiChild {
+  UiElement element = {};
+  UiChildren children = {};
+  bool flatten_children = false;
+
+  UiChild(UiElement value) : element(value) {}
+  UiChild(UiChildren value) : children(value), flatten_children(true) {}
+};
+
 class UiElementFrame {
 public:
   UiElementFrame();
@@ -118,6 +128,7 @@ public:
   void reset();
 
   UiChildren children(std::initializer_list<UiElement> items);
+  UiChildren children(std::initializer_list<UiChild> items);
   UiElement empty();
   UiElement fragment(UiChildren children);
   UiElement host(HostKind kind, const HostProps &props);
@@ -260,6 +271,7 @@ private:
 
 UiElementFrame *current_element_frame();
 UiChildren children(std::initializer_list<UiElement> items);
+UiChildren children(std::initializer_list<UiChild> items);
 UiElement empty();
 UiElement fragment(UiChildren children);
 UiElement host(HostKind kind, const HostProps &props);
