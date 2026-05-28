@@ -14,6 +14,37 @@ struct AccessibilityProps {
 
 namespace detail {
 
+struct HostProps {
+  retained::HostKind kind = retained::HostKind::Box;
+  const char *key = nullptr;
+  const char *id = nullptr;
+  int id_offset = 0;
+  retained::Style style = {};
+  retained::TextProps text = {};
+  retained::NodeInteraction interaction = {};
+  retained::TextEditMetadata text_edit = {};
+  retained::AccessibilityProps accessibility = {};
+  retained::HostCallbacks callbacks = {};
+  retained::UiChildren children = {};
+};
+
+inline retained::UiElement Host(retained::UiElementFrame &frame,
+                                const HostProps &props) {
+  return frame.host(props.kind,
+                    {
+                        .key = props.key,
+                        .id = props.id,
+                        .id_offset = props.id_offset,
+                        .style = props.style,
+                        .text = props.text,
+                        .interaction = props.interaction,
+                        .text_edit = props.text_edit,
+                        .accessibility = props.accessibility,
+                        .callbacks = props.callbacks,
+                        .children = props.children,
+                    });
+}
+
 constexpr retained::Color kControlFill = {24, 28, 36, 255};
 constexpr retained::Color kControlDisabledFill = {30, 34, 42, 255};
 constexpr retained::Color kControlBorder = {78, 88, 104, 255};

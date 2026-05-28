@@ -28,7 +28,8 @@ Makefile
 *.dSYM/
 
 # IDE / editor
-.vscode/
+.vscode/*
+!.vscode/settings.json
 .idea/
 .cache/
 *.swp

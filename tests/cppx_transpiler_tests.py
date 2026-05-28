@@ -62,8 +62,18 @@ def main(argv: list[str]) -> int:
     fixtures = args.fixtures
     checks = [
         compare_fixture(args.tool, fixtures / "panel.cppx", fixtures / "panel.expected.cpp"),
+        compare_fixture(
+            args.tool,
+            fixtures / "multiline.cppx",
+            fixtures / "multiline.expected.cpp",
+        ),
         compare_fixture(args.tool, fixtures / "components.hx", fixtures / "components.expected.h"),
         verify_fixture(args.tool, fixtures / "panel.cppx", fixtures / "panel.expected.cpp"),
+        verify_fixture(
+            args.tool,
+            fixtures / "multiline.cppx",
+            fixtures / "multiline.expected.cpp",
+        ),
         error_fixture(
             args.tool,
             fixtures / "bad_mismatch.cppx",

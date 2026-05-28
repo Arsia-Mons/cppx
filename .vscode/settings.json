@@ -1,0 +1,6 @@
+{
+  "files.associations": {
+    "*.cppx": "cpp",
+    "*.hx": "cpp"
+  }
+}

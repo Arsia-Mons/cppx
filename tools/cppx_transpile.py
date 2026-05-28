@@ -340,15 +340,56 @@ def is_jsx_line(line: str) -> bool:
     return jsx_start or stripped.startswith("return <")
 
 
+def jsx_tag_is_complete(source: str, path: pathlib.Path, line_no: int) -> bool:
+    tag_start = source.find("<")
+    if tag_start < 0:
+        return True
+    try:
+        find_tag_end(source, tag_start, path, line_no)
+        return True
+    except TranspileError as exc:
+        if exc.message == "unterminated JSX tag":
+            return False
+        raise
+
+
+def collect_jsx_source(
+    lines: list[str], start_index: int, path: pathlib.Path
+) -> tuple[str, int]:
+    line_no = start_index + 1
+    source = lines[start_index].strip()
+    next_index = start_index + 1
+    while not jsx_tag_is_complete(source, path, line_no):
+        if next_index >= len(lines):
+            column = lines[start_index].find("<") + 1
+            raise TranspileError(path, line_no, column, "unterminated JSX tag")
+        source += " " + lines[next_index].strip()
+        next_index += 1
+    return source, next_index
+
+
 def transpile_text(text: str, path: pathlib.Path) -> str:
     stack: list[StackEntry] = []
     out: list[str] = []
-    for line_no, line in enumerate(text.splitlines(), start=1):
+    lines = text.splitlines()
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        line_no = index + 1
         if not is_jsx_line(line):
+            if stack and line.strip():
+                indent = line[: len(line) - len(line.lstrip())]
+                generated = transpile_jsx_line(
+                    line.strip(), indent, path, line_no, stack
+                )
+                out.extend(generated)
+                index += 1
+                continue
             out.append(line)
+            index += 1
             continue
         indent = line[: len(line) - len(line.lstrip())]
-        stripped = line.strip()
+        stripped, index = collect_jsx_source(lines, index, path)
         prefix = ""
         if stripped.startswith("return <"):
             prefix = "return "

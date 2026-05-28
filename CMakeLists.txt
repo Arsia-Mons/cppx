@@ -55,8 +55,18 @@ FetchContent_MakeAvailable(yoga)
 
 enable_testing()
 
+cppx_transpile(UI_COMPONENT_GENERATED
+  src/ui/components/box.cppx
+  src/ui/components/box.hx
+)
+add_custom_target(cppx_generated_components DEPENDS ${UI_COMPONENT_GENERATED})
+set(UI_COMPONENT_GENERATED_INCLUDE_DIRS
+  "${CMAKE_CURRENT_BINARY_DIR}/generated/cppx/src"
+  "${CMAKE_CURRENT_BINARY_DIR}/generated/cppx/src/ui/components"
+)
+
 set(UI_COMPONENT_SOURCES
-  src/ui/components/box.cpp
+  ${UI_COMPONENT_GENERATED}
   src/ui/components/button.cpp
   src/ui/components/checkbox.cpp
   src/ui/components/dialog.cpp
@@ -64,8 +74,16 @@ set(UI_COMPONENT_SOURCES
   src/ui/components/text.cpp
 )
 
+function(target_use_ui_components target_name)
+  target_include_directories(${target_name} PRIVATE
+    ${UI_COMPONENT_GENERATED_INCLUDE_DIRS}
+  )
+  add_dependencies(${target_name} cppx_generated_components)
+endfunction()
+
 cppx_transpile(CPPX_FIXTURE_GENERATED
   tests/fixtures/cppx/panel.cppx
+  tests/fixtures/cppx/multiline.cppx
   tests/fixtures/cppx/components.hx
 )
 add_custom_target(cppx_generated_fixtures ALL DEPENDS ${CPPX_FIXTURE_GENERATED})
@@ -484,3 +502,17 @@ add_test(
     --out ${CMAKE_CURRENT_BINARY_DIR}/ui_cli_commands.bmp
     --capture-dir ${CMAKE_CURRENT_BINARY_DIR}/ui_cli_commands_capture
 )
+
+foreach(ui_component_consumer IN ITEMS
+  hello
+  ui_components_tests
+  retained_cppx_component_tests
+  retained_ui_primitives_tests
+  retained_ui_draw_list_tests
+  retained_ui_focus_tests
+  client_ui_tests
+  ui_pipeline_tests
+  shooter_ui_tests
+)
+  target_use_ui_components(${ui_component_consumer})
+endforeach()

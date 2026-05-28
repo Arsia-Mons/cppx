@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common.h"
+#include "ui/components/common.h"
 
 namespace ui::components {
 
