@@ -134,6 +134,14 @@ Generated `.cppx` output is now also compiled against generic retained
 components in `src/ui/retained/components.*`, proving the authored syntax path
 can create `UiTree` nodes and use retained hook identity without an external
 layout runtime.
+That immediate component-call output is transitional. The stricter target in
+`goal/real-retained-reconciliation.md` is returned element descriptions:
+components return `UiElement`, children are owned frame data in props, and the
+reconciler owns component invocation plus hook entry/exit. The first generic
+layer for that target lives in `src/ui/retained/element.*`, where
+`UiElementFrame` owns descriptor/props/string storage and
+`reconcile_retained_tree()` commits `HostKind::Box` / `HostKind::Text` output
+into `UiTree`.
 The retained component surface now also writes copied node metadata for role,
 control id, label/value, and interaction state, so retained `Button`, `Toggle`,
 and `Selectable` primitives have semantic data that focus and renderer code can

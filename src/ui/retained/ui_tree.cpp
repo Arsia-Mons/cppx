@@ -147,6 +147,7 @@ bool UiTree::set_metadata(NodeId id, const NodeMetadata &metadata) {
   if (!node)
     return false;
   node->role = metadata.role;
+  node->semantic_role = metadata.semantic_role;
   node->interaction = metadata.interaction;
   node->visual = metadata.visual;
   node->on_focus = metadata.on_focus;
@@ -208,6 +209,7 @@ bool UiTree::snapshot(NodeId id, NodeSnapshot *out) const {
       .control_offset = node->control_offset,
       .value = node->value,
       .role = node->role,
+      .semantic_role = node->semantic_role,
       .interaction = node->interaction,
       .style = node->style,
       .visual = node->visual,
@@ -286,6 +288,7 @@ UiTree::Node *UiTree::ensure_node(NodeId id, NodeId parent_id, const char *type,
     existing->mounted_this_frame = false;
     existing->style = style;
     existing->role = NodeRole::Generic;
+    existing->semantic_role = SemanticRole::Auto;
     existing->interaction = {};
     existing->visual = {};
     existing->on_focus = {};

@@ -62,6 +62,15 @@ enum class NodeRole : uint8_t {
   ScrollContainer,
 };
 
+enum class SemanticRole : uint8_t {
+  Auto,
+  Button,
+  Checkbox,
+  Switch,
+  Tab,
+  Dialog,
+};
+
 struct EdgeSizes {
   float left = 0.0f;
   float right = 0.0f;
@@ -136,6 +145,7 @@ struct NodeInteraction {
 
 struct NodeMetadata {
   NodeRole role = NodeRole::Generic;
+  SemanticRole semantic_role = SemanticRole::Auto;
   const char *control_id = "";
   int control_offset = 0;
   const char *value = "";
@@ -157,6 +167,7 @@ struct NodeSnapshot {
   int control_offset = 0;
   const char *value = "";
   NodeRole role = NodeRole::Generic;
+  SemanticRole semantic_role = SemanticRole::Auto;
   NodeInteraction interaction = {};
   Style style = {};
   VisualStyle visual = {};
@@ -219,6 +230,7 @@ private:
     char value[UI_RETAINED_VALUE_CAP] = {};
     std::array<NodeId, UI_RETAINED_MAX_CHILDREN> children = {};
     NodeRole role = NodeRole::Generic;
+    SemanticRole semantic_role = SemanticRole::Auto;
     NodeInteraction interaction = {};
     std::function<void()> on_focus = {};
     std::function<void()> on_confirm = {};

@@ -7,7 +7,7 @@ The generic UI toolkit. **This directory must not know which game is being built
 ```text
 input.h      UI-shaped input frame shared by app/client/runtime code
 span.h       tiny non-owning span used by framework containers
-retained/    UiTree, retained components, flex layout, focus, draw commands
+retained/    UiTree, UiElement/reconciler, retained components, flex layout, focus, draw commands
 ```
 
 The retained runtime is the app path. Add new subdirectories only when they
@@ -27,9 +27,13 @@ have multiple files, not preemptively.
 - References to `client::ui` or `game::ui` — dependency flows the other way.
 - Screen-level layout. Screens live in `client/ui/` and game-specific dirs.
 
-## Hooks
+## Composition
 
-Retained primitives are React-style hook components — see `../../react.h`. They use `REACT_RETAINED_COMPONENT_BEGIN` for stable hook identity and emit retained `UiTree` nodes. Reorderable lists must use keyed component/node identity with a stable key.
+The target authoring model is returned `UiElement` descriptions committed by
+the reconciler in `retained/element.*`. The older retained component helpers
+still exist while app/client code migrates, but new generic runtime work should
+move toward `UiElement` factories, provider elements, and reconciler-owned hook
+entry/exit. Reorderable lists must use stable keys.
 
 ## Testing
 

@@ -117,6 +117,7 @@ add_executable(hello
   src/game/shooter_game.cpp
   src/ui/retained/components.cpp
   src/ui/retained/draw_list.cpp
+  src/ui/retained/element.cpp
   src/ui/retained/flex_layout.cpp
   src/ui/retained/focus.cpp
   src/ui/retained/ui_tree.cpp
@@ -201,6 +202,23 @@ target_link_libraries(retained_ui_yoga_tests PRIVATE
 )
 
 add_test(NAME retained_ui_yoga_tests COMMAND retained_ui_yoga_tests)
+
+add_executable(retained_ui_reconciler_tests
+  tests/retained_ui_reconciler_tests.cpp
+  src/react.cpp
+  src/ui/retained/element.cpp
+  src/ui/retained/ui_tree.cpp
+)
+
+target_include_directories(retained_ui_reconciler_tests PRIVATE
+  src
+)
+
+target_compile_options(retained_ui_reconciler_tests PRIVATE
+  $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall -Wextra -Wno-missing-field-initializers -Wno-c99-designator -Wno-unused-parameter>
+)
+
+add_test(NAME retained_ui_reconciler_tests COMMAND retained_ui_reconciler_tests)
 
 add_executable(retained_cppx_component_tests
   tests/retained_cppx_component_tests.cpp
@@ -309,6 +327,7 @@ add_executable(client_ui_tests
   src/client/ui/navigation/screen_stack.cpp
   src/ui/retained/components.cpp
   src/ui/retained/draw_list.cpp
+  src/ui/retained/element.cpp
   src/ui/retained/flex_layout.cpp
   src/ui/retained/focus.cpp
   src/ui/retained/ui_tree.cpp

@@ -24,6 +24,10 @@ checklist for the branch and PR.
 - `tools/ui_cli.py` drives the app through the control mailbox. That path must
   remain deterministic through the migration. Retained focusables now appear in
   the same inspect/state `focusables` array used by CLI pointer targeting.
+- `goal/real-retained-reconciliation.md` tightens the final authoring model:
+  app/client components must return `UiElement` descriptions, the reconciler
+  must own component invocation and hook entry/exit, and old immediate
+  retained declarations must not remain the production authoring API.
 
 ## Flexbox Evaluation
 
@@ -178,6 +182,22 @@ and mismatch/unclosed-tag diagnostics.
      retained assertions covered the behavior.
    - added `runtime_dependency_guard` to prevent obsolete UI runtime
      dependencies from re-entering source and CMake paths.
+
+10. Returned-element reconciler:
+   - foundation started through `src/ui/retained/element.*`.
+   - `UiElement` now covers empty, fragment, host, component, and provider
+     descriptions.
+   - `UiElementFrame` owns bounded frame storage for element descriptors,
+     child lists, copied component props, copied strings, and destructors.
+   - `reconcile_retained_tree()` walks returned elements, invokes component
+     render thunks, pushes provider context, owns hook fiber entry/exit, and
+     commits `HostKind::Box` / `HostKind::Text` nodes into `UiTree`.
+   - `retained_ui_reconciler_tests` verifies host commit metadata, component
+     hook identity across frames, and provider context scoping.
+   - remaining: convert retained primitives to element factories, rewrite the
+     transpiler to emit returned elements with `children` props, migrate every
+     app/client screen to returned `UiElement` roots, and delete/guard the old
+     immediate authoring API.
 
 ## Verification Gates
 
