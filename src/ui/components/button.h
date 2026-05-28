@@ -29,6 +29,6 @@ struct ButtonProps {
   };
 };
 
-extern const ::ui::Component<ButtonProps> Button;
+::ui::UiElement Button(const ButtonProps &props);
 
 } // namespace ui::components

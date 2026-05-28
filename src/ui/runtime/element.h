@@ -117,6 +117,21 @@ struct UiChild {
   UiChild(UiChildren value) : children(value), flatten_children(true) {}
 };
 
+namespace detail {
+
+template <typename Props>
+auto component_key_from_props(const Props &props, int)
+    -> decltype((void)props.key, static_cast<const char *>(nullptr)) {
+  return props.key && props.key[0] != '\0' ? props.key : nullptr;
+}
+
+template <typename Props>
+const char *component_key_from_props(const Props &, long) {
+  return nullptr;
+}
+
+} // namespace detail
+
 class UiElementFrame {
 public:
   UiElementFrame();
@@ -144,22 +159,6 @@ public:
 
   template <typename Props>
   UiElement component(const char *name, const Props &props,
-                      UiElement (*render)(const Props &, UiElementFrame &),
-                      const char *key = nullptr) {
-    ComponentFrameRecord<Props> record = {
-        .render = render,
-        .props = props,
-    };
-    const ComponentFrameRecord<Props> *stored = store(record);
-    if (!stored)
-      return empty();
-    return component_raw(name, key, stored,
-                         &render_component_frame_record<Props>);
-  }
-
-  template <typename Props>
-  UiElement component(const char *name, const Props &props,
-                      UiElement (*render)(const Props &),
                       const char *key = nullptr) {
     ComponentRecord<Props> record = {
         .render = render,
@@ -168,7 +167,10 @@ public:
     const ComponentRecord<Props> *stored = store(record);
     if (!stored)
       return empty();
-    return component_raw(name, key, stored, &render_component_record<Props>);
+    const char *resolved_key =
+        key ? key : detail::component_key_from_props(props, 0);
+    return component_raw(name, resolved_key, stored,
+                         &render_component_record<Props>);
   }
 
   const char *copy_string(const char *value);
@@ -178,11 +180,6 @@ public:
 private:
   template <typename Props> struct ComponentRecord {
     UiElement (*render)(const Props &);
-    Props props;
-  };
-
-  template <typename Props> struct ComponentFrameRecord {
-    UiElement (*render)(const Props &, UiElementFrame &);
     Props props;
   };
 
@@ -204,16 +201,6 @@ private:
       return frame.empty();
     (void)frame;
     return record->render(record->props);
-  }
-
-  template <typename T>
-  static UiElement render_component_frame_record(const void *raw,
-                                                 UiElementFrame &frame) {
-    const ComponentFrameRecord<T> *record =
-        static_cast<const ComponentFrameRecord<T> *>(raw);
-    if (!record || !record->render)
-      return frame.empty();
-    return record->render(record->props, frame);
   }
 
   template <typename T> const T *store(const T &value) {
@@ -305,40 +292,6 @@ UiElement component(const char *name, const Props &props,
   }
   return frame->component(name, props, render, key);
 }
-
-namespace detail {
-
-template <typename Props>
-auto component_key_from_props(const Props &props, int)
-    -> decltype((void)props.key, static_cast<const char *>(nullptr)) {
-  return props.key && props.key[0] != '\0' ? props.key : nullptr;
-}
-
-template <typename Props>
-const char *component_key_from_props(const Props &, long) {
-  return nullptr;
-}
-
-} // namespace detail
-
-template <typename Props> class Component {
-public:
-  using RenderFn = UiElement (*)(const Props &);
-
-  constexpr Component(const char *name, RenderFn render)
-      : name_(name), render_(render) {}
-
-  UiElement operator()() const { return (*this)(Props{}); }
-
-  UiElement operator()(const Props &props) const {
-    return component(name_, props, render_,
-                     detail::component_key_from_props(props, 0));
-  }
-
-private:
-  const char *name_ = "";
-  RenderFn render_ = nullptr;
-};
 
 struct ReconcileResult {
   bool ok = false;

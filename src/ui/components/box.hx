@@ -22,6 +22,6 @@ struct BoxProps {
   ::ui::UiChildren children = {};
 };
 
-extern const ::ui::Component<BoxProps> Box;
+::ui::UiElement Box(const BoxProps &props);
 
 } // namespace ui::components

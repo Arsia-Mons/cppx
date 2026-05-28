@@ -1,9 +1,8 @@
 #include "box.h"
 
 namespace ui::components {
-namespace {
 
-::ui::UiElement render_box(const BoxProps &props) {
+::ui::UiElement Box(const BoxProps &props) {
   return <detail.Host kind = {::ui::HostKind::Box} key = {props.key} id =
               {props.id} idOffset = {props.id_offset} style =
                   {props.style} interaction = {detail::interaction_from_props(
@@ -14,9 +13,5 @@ namespace {
     {props.children}
   </detail.Host>
 }
-
-} // namespace
-
-const ::ui::Component<BoxProps> Box{"Box", render_box};
 
 } // namespace ui::components

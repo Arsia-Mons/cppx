@@ -19,15 +19,11 @@
 //   current value of a context.
 //
 // Component shapes:
-//   void Component(const ComponentProps &props);
+//   ui::UiElement Component(const ComponentProps &props);
 //
-// Components that expose a child slot add a direct C++ callback:
-//   template <typename Children>
-//   void SlotComponent(const SlotProps &props, Children children);
-//
-// Slot components decide where children render by calling children() inside
-// their component body. Children are invoked synchronously; don't store them
-// beyond the component call.
+// Components receive children as ordinary props data. Parent components create
+// element descriptors for children; the retained reconciler later invokes
+// component functions, owns fiber entry/exit, and walks child descriptors.
 
 #pragma once
 

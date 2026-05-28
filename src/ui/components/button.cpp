@@ -11,7 +11,9 @@ namespace {
   return callbacks;
 }
 
-::ui::UiElement render_button(const ButtonProps &props) {
+} // namespace
+
+::ui::UiElement Button(const ButtonProps &props) {
   return ::ui::host(
       ::ui::HostKind::Button,
       {
@@ -29,9 +31,5 @@ namespace {
                           : detail::label_child(props.label),
       });
 }
-
-} // namespace
-
-const ::ui::Component<ButtonProps> Button{"Button", render_button};
 
 } // namespace ui::components
