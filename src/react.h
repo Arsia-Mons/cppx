@@ -11,9 +11,8 @@
 //   react_begin_frame()            - call once per frame, before component
 //   tree. react_end_frame()        - call once per frame, after layout.
 //   REACT_COMPONENT_BEGIN/END      - bracket a component body without emitting
-//   a layout node. REACT_RETAINED_COMPONENT_BEGIN/END - compatibility alias for
-//   retained component bodies. REACT_PROVIDER_ENTER/EXIT      -
-//   bracket a transparent provider body. use_state_int(initial)         -
+//   a layout node. REACT_PROVIDER_ENTER/EXIT      - bracket a transparent
+//   provider body. use_state_int(initial)         -
 //   returns int* that persists across frames. use_effect(fn, cleanup, user,
 //   deps_hash) - runs after commit when deps change. PROVIDE(ctx_ptr, value) {
 //   ... } - pushes a context value for the body. use_context(ctx_ptr) - reads
@@ -111,15 +110,6 @@ ReactFiberId react_make_instance_fiber_key_id(const char *name,
     react_enter(REACT_INSTANCE_ID_KEY(name_literal, key_index))
 
 #define REACT_PROVIDER_EXIT() react_leave()
-
-#define REACT_RETAINED_COMPONENT_BEGIN(name_literal)                           \
-    REACT_COMPONENT_BEGIN(name_literal)
-
-#define REACT_RETAINED_COMPONENT_BEGIN_KEY(name_literal, key_index)            \
-    REACT_COMPONENT_BEGIN_KEY(name_literal, key_index)
-
-#define REACT_RETAINED_COMPONENT_END()                                         \
-    REACT_COMPONENT_END()
 
 typedef struct ReactNoProps {
     uint8_t unused;

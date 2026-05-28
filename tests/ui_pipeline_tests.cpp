@@ -2,8 +2,8 @@
 
 #include "client/ui/navigation/ui_screen.h"
 #include "react.h"
-#include "ui/retained/components.h"
 #include "ui/retained/draw_list.h"
+#include "ui/retained/element_components.h"
 #include "ui/retained/focus.h"
 
 #include <memory>
@@ -47,36 +47,79 @@ private:
     bool *observed_;
 };
 
+struct RetainedProbeScreenProps {
+    uint32_t unused = 0;
+};
+
+struct PopOnRetainedConfirmScreenProps {
+    uint32_t unused = 0;
+};
+
+static const char *screen_entry_key(::ui::retained::UiElementFrame &frame,
+                                    const char *prefix,
+                                    client::ui::UiScreenEntryId entry_id) {
+    char key[64] = {};
+    snprintf(key, sizeof(key), "%s-%u", prefix, entry_id);
+    return frame.copy_string(key);
+}
+
+static ::ui::retained::UiElement
+render_retained_probe_screen(const RetainedProbeScreenProps &props,
+                             ::ui::retained::UiElementFrame &frame) {
+    (void)props;
+    return ::ui::retained::ButtonElement(frame,
+                                         {
+                                             .key = "confirm",
+                                             .id = "PipelineRetainedButton",
+                                             .label = "Retained",
+                                         });
+}
+
+static ::ui::retained::UiElement render_pop_on_retained_confirm_screen(
+    const PopOnRetainedConfirmScreenProps &props,
+    ::ui::retained::UiElementFrame &frame) {
+    (void)props;
+    ScreenNavigator nav = client::ui::use_screen_navigator();
+    return ::ui::retained::ButtonElement(frame,
+                                         {
+                                             .key = "pop",
+                                             .id = "PipelineRetainedPopButton",
+                                             .label = "Pop",
+                                             .on_confirm = nav.pop_current,
+                                         });
+}
+
 class RetainedProbeScreen final : public UiScreen {
 public:
     const char *debug_name() const override { return "RetainedProbe"; }
 
-    void build_ui() override {
-        REACT_RETAINED_COMPONENT_BEGIN_KEY("RetainedProbeScreenView", entry_id()) {
-            ::ui::retained::Button({
-                .key = "confirm",
-                .id = "PipelineRetainedButton",
-                .label = "Retained",
-            });
-        } REACT_RETAINED_COMPONENT_END();
+    bool build_element(::ui::retained::UiElementFrame &frame,
+                       ::ui::retained::UiElement *out) override {
+        if (!out) return false;
+        *out = frame.component("RetainedProbeScreenView", RetainedProbeScreenProps{},
+                               render_retained_probe_screen,
+                               screen_entry_key(frame, "retained-probe", entry_id()));
+        return true;
     }
+
+    void build_ui() override {}
 };
 
 class PopOnRetainedConfirmScreen final : public UiScreen {
 public:
     const char *debug_name() const override { return "PopOnRetainedConfirm"; }
 
-    void build_ui() override {
-        REACT_RETAINED_COMPONENT_BEGIN_KEY("PopOnRetainedConfirmScreenView", entry_id()) {
-            ScreenNavigator nav = client::ui::use_screen_navigator();
-            ::ui::retained::Button({
-                .key = "pop",
-                .id = "PipelineRetainedPopButton",
-                .label = "Pop",
-                .on_confirm = nav.pop_current,
-            });
-        } REACT_RETAINED_COMPONENT_END();
+    bool build_element(::ui::retained::UiElementFrame &frame,
+                       ::ui::retained::UiElement *out) override {
+        if (!out) return false;
+        *out = frame.component("PopOnRetainedConfirmScreenView",
+                               PopOnRetainedConfirmScreenProps{},
+                               render_pop_on_retained_confirm_screen,
+                               screen_entry_key(frame, "pop-retained", entry_id()));
+        return true;
     }
+
+    void build_ui() override {}
 };
 
 struct RenderProbe {

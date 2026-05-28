@@ -1,6 +1,6 @@
 #include "client/ui/client_ui.h"
 #include "react.h"
-#include "ui/retained/components.h"
+#include "ui/retained/element_components.h"
 #include "ui/retained/yoga_flex_layout.h"
 
 #include <functional>
@@ -115,19 +115,46 @@ private:
     int *destroy_count_;
 };
 
+struct HookStateScreenProps {
+    int *observed = nullptr;
+};
+
+static const char *screen_entry_key(::ui::retained::UiElementFrame &frame,
+                                    const char *prefix,
+                                    UiScreenEntryId entry_id) {
+    char key[64] = {};
+    snprintf(key, sizeof(key), "%s-%u", prefix, entry_id);
+    return frame.copy_string(key);
+}
+
+static ::ui::retained::UiElement
+render_hook_state_screen(const HookStateScreenProps &props,
+                         ::ui::retained::UiElementFrame &frame) {
+    int *value = use_state_int(0);
+    if (props.observed) {
+        *props.observed = *value;
+    }
+    *value += 1;
+    return frame.empty();
+}
+
 class HookStateScreen final : public UiScreen {
 public:
     explicit HookStateScreen(int *observed) : observed_(observed) {}
 
     const char *debug_name() const override { return "HookState"; }
 
-    void build_ui() override {
-        REACT_RETAINED_COMPONENT_BEGIN_KEY("HookStateScreenView", entry_id()) {
-            int *value = use_state_int(0);
-            *observed_ = *value;
-            *value += 1;
-        } REACT_RETAINED_COMPONENT_END();
+    bool build_element(::ui::retained::UiElementFrame &frame,
+                       ::ui::retained::UiElement *out) override {
+        if (!out) return false;
+        *out = frame.component("HookStateScreenView",
+                               HookStateScreenProps{.observed = observed_},
+                               render_hook_state_screen,
+                               screen_entry_key(frame, "hook-state", entry_id()));
+        return true;
     }
+
+    void build_ui() override {}
 
 private:
     int *observed_;
@@ -138,10 +165,9 @@ static bool run_client_frame(ClientUi &client_ui,
                              bool drain_deferred_mutations = true) {
     client_ui.begin_frame(input);
     react_begin_frame();
-    CHECK(::ui::retained::begin_retained_tree_frame(client_ui.retained_tree(),
-                                                    640.0f, 480.0f));
+    client_ui.retained_tree().begin_frame(640.0f, 480.0f);
     client_ui.build_visible_screens();
-    CHECK(::ui::retained::end_retained_tree_frame());
+    CHECK(client_ui.retained_tree().end_frame());
     client_ui.end_layout(input);
     ::ui::retained::FlexLayoutAdapter adapter =
         ::ui::retained::make_yoga_flex_layout_adapter();
@@ -159,10 +185,9 @@ static bool run_client_frame_with_probe(
     const ::ui::UiInputFrame &input = {}) {
     client_ui.begin_frame(input);
     react_begin_frame();
-    CHECK(::ui::retained::begin_retained_tree_frame(client_ui.retained_tree(),
-                                                    640.0f, 480.0f));
+    client_ui.retained_tree().begin_frame(640.0f, 480.0f);
     client_ui.build_visible_screens();
-    CHECK(::ui::retained::end_retained_tree_frame());
+    CHECK(client_ui.retained_tree().end_frame());
     client_ui.end_layout(input);
     bool ok = probe ? probe() : true;
     ::ui::retained::FlexLayoutAdapter adapter =
@@ -358,16 +383,21 @@ static bool screen_local_hook_state_survives_rerender_and_resets_on_unmount(void
 static bool client_ui_owns_retained_runtime_outputs(void) {
     react_init_runtime();
     ClientUi client_ui;
+    ::ui::retained::UiElementFrame frame;
     int focus_count = 0;
 
-    CHECK(::ui::retained::begin_retained_frame(client_ui.retained_tree(), 240.0f, 120.0f));
-    ::ui::retained::Button(::ui::retained::ButtonProps{
-        .key = "confirm",
-        .id = "ConfirmRetainedButton",
-        .label = "Confirm",
-        .on_focus = [&focus_count] { focus_count += 1; },
-    });
-    CHECK(::ui::retained::end_retained_frame());
+    ::ui::retained::UiElement root = ::ui::retained::ButtonElement(
+        frame,
+        {
+            .key = "confirm",
+            .id = "ConfirmRetainedButton",
+            .label = "Confirm",
+            .on_focus = [&focus_count] { focus_count += 1; },
+        });
+    ::ui::retained::ReconcileResult result =
+        ::ui::retained::reconcile_retained_tree(client_ui.retained_tree(), frame,
+                                                root, 240.0f, 120.0f);
+    CHECK(result.ok);
 
     ::ui::retained::NodeId button_id = client_ui.retained_tree().child_at(client_ui.retained_tree().root_id(), 0);
     CHECK(button_id != 0);

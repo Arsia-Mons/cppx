@@ -115,7 +115,6 @@ add_executable(hello
   src/game/inventory.cpp
   src/game/economy.cpp
   src/game/shooter_game.cpp
-  src/ui/retained/components.cpp
   src/ui/retained/draw_list.cpp
   src/ui/retained/element.cpp
   src/ui/retained/element_components.cpp
@@ -269,7 +268,8 @@ add_test(NAME retained_cppx_component_tests COMMAND retained_cppx_component_test
 add_executable(retained_ui_primitives_tests
   tests/retained_ui_primitives_tests.cpp
   src/react.cpp
-  src/ui/retained/components.cpp
+  src/ui/retained/element.cpp
+  src/ui/retained/element_components.cpp
   src/ui/retained/ui_tree.cpp
   src/ui/retained/flex_layout.cpp
   src/ui/retained/yoga_flex_layout.cpp
@@ -293,8 +293,9 @@ add_test(NAME retained_ui_primitives_tests COMMAND retained_ui_primitives_tests)
 add_executable(retained_ui_draw_list_tests
   tests/retained_ui_draw_list_tests.cpp
   src/react.cpp
-  src/ui/retained/components.cpp
   src/ui/retained/draw_list.cpp
+  src/ui/retained/element.cpp
+  src/ui/retained/element_components.cpp
   src/ui/retained/ui_tree.cpp
   src/ui/retained/flex_layout.cpp
   src/ui/retained/yoga_flex_layout.cpp
@@ -318,7 +319,8 @@ add_test(NAME retained_ui_draw_list_tests COMMAND retained_ui_draw_list_tests)
 add_executable(retained_ui_focus_tests
   tests/retained_ui_focus_tests.cpp
   src/react.cpp
-  src/ui/retained/components.cpp
+  src/ui/retained/element.cpp
+  src/ui/retained/element_components.cpp
   src/ui/retained/focus.cpp
   src/ui/retained/ui_tree.cpp
   src/ui/retained/flex_layout.cpp
@@ -345,7 +347,6 @@ add_executable(client_ui_tests
   src/react.cpp
   src/client/ui/client_ui.cpp
   src/client/ui/navigation/screen_stack.cpp
-  src/ui/retained/components.cpp
   src/ui/retained/draw_list.cpp
   src/ui/retained/element.cpp
   src/ui/retained/element_components.cpp
@@ -376,7 +377,6 @@ add_executable(ui_pipeline_tests
   src/client/ui/client_ui.cpp
   src/client/ui/navigation/screen_stack.cpp
   src/client/ui/ui_pipeline.cpp
-  src/ui/retained/components.cpp
   src/ui/retained/draw_list.cpp
   src/ui/retained/element.cpp
   src/ui/retained/element_components.cpp
@@ -424,7 +424,6 @@ add_executable(shooter_ui_tests
   src/game/inventory.cpp
   src/game/economy.cpp
   src/game/shooter_game.cpp
-  src/ui/retained/components.cpp
   src/ui/retained/draw_list.cpp
   src/ui/retained/element.cpp
   src/ui/retained/element_components.cpp

@@ -90,33 +90,33 @@ static bool keyed_siblings_keep_state_across_reorder(void) {
     return true;
 }
 
-static void RetainedStateProbe(int key, int initial, int write_value) {
-    REACT_RETAINED_COMPONENT_BEGIN_KEY("RetainedStateProbe", key) {
+static void ComponentStateProbe(int key, int initial, int write_value) {
+    REACT_COMPONENT_BEGIN_KEY("ComponentStateProbe", key) {
         int *value = use_state_int(initial);
         if (write_value >= 0) {
             *value = write_value;
         }
         g_probe_values[key] = *value;
     }
-    REACT_RETAINED_COMPONENT_END();
+    REACT_COMPONENT_END();
 }
 
-static bool retained_components_use_hooks_without_layout_backend(void) {
+static bool components_use_hooks_without_layout_backend(void) {
     react_init_runtime();
     g_probe_values[0] = 0;
     g_probe_values[1] = 0;
 
     react_begin_frame();
-    RetainedStateProbe(0, 1, 10);
-    RetainedStateProbe(1, 2, 20);
+    ComponentStateProbe(0, 1, 10);
+    ComponentStateProbe(1, 2, 20);
     react_end_frame();
     CHECK(react_error_count() == 0);
     CHECK(g_probe_values[0] == 10);
     CHECK(g_probe_values[1] == 20);
 
     react_begin_frame();
-    RetainedStateProbe(1, 99, -1);
-    RetainedStateProbe(0, 99, -1);
+    ComponentStateProbe(1, 99, -1);
+    ComponentStateProbe(0, 99, -1);
     react_end_frame();
     CHECK(react_error_count() == 0);
     CHECK(g_probe_values[0] == 10);
@@ -643,7 +643,7 @@ int main(void) {
         return 1;
     if (!keyed_siblings_keep_state_across_reorder())
         return 1;
-    if (!retained_components_use_hooks_without_layout_backend())
+    if (!components_use_hooks_without_layout_backend())
         return 1;
     if (!transparent_providers_use_instance_identity())
         return 1;

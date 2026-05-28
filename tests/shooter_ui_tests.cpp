@@ -433,6 +433,32 @@ static bool shooter_game_mutations_wait_for_client_ui_drain(void) {
 
 namespace {
 
+struct GameAndQuitConsumerProps {
+    shooter::ShooterGame **observed_game = nullptr;
+    bool *observed_quit_present = nullptr;
+};
+
+static const char *screen_entry_key(::ui::retained::UiElementFrame &frame,
+                                    const char *prefix,
+                                    client::ui::UiScreenEntryId entry_id) {
+    char key[64] = {};
+    snprintf(key, sizeof(key), "%s-%u", prefix, entry_id);
+    return frame.copy_string(key);
+}
+
+static ::ui::retained::UiElement
+render_game_and_quit_consumer(const GameAndQuitConsumerProps &props,
+                              ::ui::retained::UiElementFrame &frame) {
+    if (props.observed_game) {
+        *props.observed_game = shooter::use_shooter_game();
+    }
+    if (props.observed_quit_present) {
+        std::function<void()> quit = client::ui::use_request_quit();
+        *props.observed_quit_present = static_cast<bool>(quit);
+    }
+    return frame.empty();
+}
+
 class GameAndQuitConsumerScreen final : public client::ui::UiScreen {
 public:
     GameAndQuitConsumerScreen(shooter::ShooterGame **observed_game,
@@ -442,17 +468,22 @@ public:
 
     const char *debug_name() const override { return "GameAndQuitConsumer"; }
 
-    void build_ui() override {
-        REACT_RETAINED_COMPONENT_BEGIN_KEY("GameAndQuitConsumerView", entry_id()) {
-            if (observed_game_) {
-                *observed_game_ = shooter::use_shooter_game();
-            }
-            if (observed_quit_present_) {
-                std::function<void()> quit = client::ui::use_request_quit();
-                *observed_quit_present_ = static_cast<bool>(quit);
-            }
-        } REACT_RETAINED_COMPONENT_END();
+    bool build_element(::ui::retained::UiElementFrame &frame,
+                       ::ui::retained::UiElement *out) override {
+        if (!out)
+            return false;
+        *out = frame.component(
+            "GameAndQuitConsumerView",
+            GameAndQuitConsumerProps{
+                .observed_game = observed_game_,
+                .observed_quit_present = observed_quit_present_,
+            },
+            render_game_and_quit_consumer,
+            screen_entry_key(frame, "game-quit-consumer", entry_id()));
+        return true;
     }
+
+    void build_ui() override {}
 
 private:
     shooter::ShooterGame **observed_game_;

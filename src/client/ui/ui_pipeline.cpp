@@ -1,7 +1,6 @@
 #include "ui_pipeline.h"
 
 #include "../../react.h"
-#include "../../ui/retained/components.h"
 #include "../../ui/retained/yoga_flex_layout.h"
 
 namespace client::ui {
@@ -59,12 +58,8 @@ void UiPipeline::render_client_ui_frame(const UiPipelineFrame &frame,
                                         const RenderFrame &render_frame) {
     client_ui_.begin_frame(frame.input);
     react_begin_frame();
-    bool retained_frame_started = ::ui::retained::begin_retained_tree_frame(
-        client_ui_.retained_tree(), frame.layout.width, frame.layout.height);
-    if (!retained_frame_started) {
-        react_report_error(
-            "client/ui: failed to begin retained tree frame\n");
-    }
+    client_ui_.retained_tree().begin_frame(frame.layout.width,
+                                           frame.layout.height);
     REACT_PROVIDER_ENTER("UiPipelineFrameProvider");
     PROVIDE(&UiPipelineFrameContext, const_cast<UiPipelineFrame *>(&frame)) {
         auto build = [this] { client_ui_.build_visible_screens(); };
@@ -76,17 +71,13 @@ void UiPipeline::render_client_ui_frame(const UiPipelineFrame &frame,
     }
     REACT_PROVIDER_EXIT();
 
-    bool retained_frame_ended = false;
-    if (retained_frame_started) {
-        retained_frame_ended = ::ui::retained::end_retained_tree_frame();
-        if (!retained_frame_ended) {
-            react_report_error(
-                "client/ui: failed to end retained tree frame\n");
-        }
+    bool retained_frame_ended = client_ui_.retained_tree().end_frame();
+    if (!retained_frame_ended) {
+        react_report_error("client/ui: failed to end retained tree frame\n");
     }
     client_ui_.end_layout(frame.input);
 
-    if (retained_frame_started && retained_frame_ended) {
+    if (retained_frame_ended) {
         bool retained_updated = client_ui_.update_retained_runtime(
             retained_layout_, { frame.layout.width, frame.layout.height },
             retained_input_frame(frame));

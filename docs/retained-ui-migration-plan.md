@@ -216,8 +216,11 @@ immediate component calls.
      confirm dialog are migrated to returned `UiElement` roots/components
      through `BoxElement`, `TextElement`, `ButtonElement`, `ToggleElement`,
      `SelectableElement`, and frame-owned provider values.
-   - remaining: delete or make private the old immediate authoring API and add
-     guards that keep it out of app/client code.
+   - old immediate retained authoring API (`components.*` and
+     `REACT_RETAINED_COMPONENT_*`) deleted.
+   - `runtime_dependency_guard` now blocks the old immediate retained helper
+     files, CMake links to them, and app/client/platform/renderer/game usage of
+     the old frame/component terms.
 
 ## Verification Gates
 

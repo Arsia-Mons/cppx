@@ -176,6 +176,9 @@ consult the `ScreenProvider` top-screen flag before emitting modal nodes, so a
 retained overlay does not render or trap input after a higher overlay covers it.
 Indexed retained control metadata preserves deterministic CLI targeting for
 weapon tiles and other repeated controls.
+The old immediate retained helper API has been removed; app/client code now
+enters the retained runtime by returning `UiElement` descriptors that the
+reconciler commits into `UiTree`.
 
 ## Component API Direction
 
