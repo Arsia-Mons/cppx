@@ -9,16 +9,15 @@ The grammar is intentionally small and native-C++ shaped:
     </Panel.Header>
   </Panel>
 
-lowers to component calls:
+lowers to returned element construction:
 
-  Panel({ .key = "pause", .width = Length::points(320) }, [&] {
-    Panel::Header({}, [&] {
-      Text({ .value = "Paused" });
-    });
-  });
+  Panel(frame, { .key = "pause", .width = Length::points(320), .children = frame.children({
+    Panel::Header(frame, { .children = frame.children({
+      Text(frame, { .value = "Paused" }),
+    }) }),
+  }) });
 
-Children are emitted as synchronous lambdas. Text children lower to `cppx_text`
-so the component library can decide how literal children are represented.
+Children are emitted as owned frame data. Text children lower to `frame.text`.
 """
 
 from __future__ import annotations
@@ -76,14 +75,35 @@ def component_name(tag: str) -> str:
 
 
 def prop_name(name: str) -> str:
-    return name.replace("-", "_")
+    source = name.replace("-", "_")
+    out: list[str] = []
+    for index, ch in enumerate(source):
+        if ch.isupper():
+            if index > 0 and source[index - 1] != "_" and (
+                source[index - 1].islower() or source[index - 1].isdigit()
+            ):
+                out.append("_")
+            out.append(ch.lower())
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+def props_fields(attrs: list[Attr]) -> list[str]:
+    return [f".{prop_name(attr.name)} = {attr.value}" for attr in attrs]
 
 
 def props_init(attrs: list[Attr]) -> str:
-    if not attrs:
+    parts = props_fields(attrs)
+    if not parts:
         return "{}"
-    parts = [f".{prop_name(attr.name)} = {attr.value}" for attr in attrs]
     return "{ " + ", ".join(parts) + " }"
+
+
+def props_open_with_children(attrs: list[Attr]) -> str:
+    parts = props_fields(attrs)
+    parts.append(".children = frame.children({")
+    return "{ " + ", ".join(parts)
 
 
 def find_tag_end(text: str, start: int, path: pathlib.Path, line: int) -> int:
@@ -237,9 +257,24 @@ def transpile_jsx_line(
     path: pathlib.Path,
     line_no: int,
     stack: list[StackEntry],
+    prefix: str = "",
 ) -> list[str]:
     out: list[str] = []
     i = 0
+    pending_prefix = prefix
+
+    def expression_end() -> str:
+        return "," if stack else ";"
+
+    def close_children_expression() -> str:
+        return "}) })," if stack else "}) });"
+
+    def take_prefix() -> str:
+        nonlocal pending_prefix
+        value = pending_prefix
+        pending_prefix = ""
+        return value
+
     while i < len(source):
         if source[i].isspace():
             i += 1
@@ -253,9 +288,13 @@ def transpile_jsx_line(
                 stripped = text.strip()
                 out.append(line_directive(path, line_no))
                 if stripped.startswith("{") and stripped.endswith("}"):
-                    out.append(f"{base_indent}{stripped[1:-1].strip()};")
+                    out.append(
+                        f"{base_indent}{take_prefix()}{stripped[1:-1].strip()}{expression_end()}"
+                    )
                 else:
-                    out.append(f"{base_indent}cppx_text({cpp_string(stripped)});")
+                    out.append(
+                        f"{base_indent}{take_prefix()}frame.text({cpp_string(stripped)}){expression_end()}"
+                    )
             i = next_tag
             continue
 
@@ -277,24 +316,28 @@ def transpile_jsx_line(
                     f"mismatched closing tag {tag}; expected {entry.tag}",
                 )
             out.append(line_directive(path, line_no))
-            out.append(f"{base_indent}}});")
+            out.append(f"{base_indent}{close_children_expression()}")
         else:
             tag, attrs, self_closing = parse_open_tag(body, path, line_no, column)
             out.append(line_directive(path, line_no))
             name = component_name(tag)
-            props = props_init(attrs)
             if self_closing:
-                out.append(f"{base_indent}{name}({props});")
+                props = props_init(attrs)
+                out.append(
+                    f"{base_indent}{take_prefix()}{name}(frame, {props}){expression_end()}"
+                )
             else:
                 stack.append(StackEntry(tag=tag, line=line_no, column=column))
-                out.append(f"{base_indent}{name}({props}, [&] {{")
+                props = props_open_with_children(attrs)
+                out.append(f"{base_indent}{take_prefix()}{name}(frame, {props}")
         i = end + 1
     return out
 
 
 def is_jsx_line(line: str) -> bool:
     stripped = line.lstrip()
-    return stripped.startswith("<") and not stripped.startswith("<<")
+    jsx_start = stripped.startswith("<") and not stripped.startswith("<<")
+    return jsx_start or stripped.startswith("return <")
 
 
 def transpile_text(text: str, path: pathlib.Path) -> str:
@@ -305,7 +348,12 @@ def transpile_text(text: str, path: pathlib.Path) -> str:
             out.append(line)
             continue
         indent = line[: len(line) - len(line.lstrip())]
-        generated = transpile_jsx_line(line.strip(), indent, path, line_no, stack)
+        stripped = line.strip()
+        prefix = ""
+        if stripped.startswith("return <"):
+            prefix = "return "
+            stripped = stripped[len("return ") :]
+        generated = transpile_jsx_line(stripped, indent, path, line_no, stack, prefix)
         out.extend(generated)
     if stack:
         entry = stack[-1]

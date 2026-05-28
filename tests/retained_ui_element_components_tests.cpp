@@ -69,6 +69,46 @@ static bool button_element_returns_focusable_box_host(void) {
   return true;
 }
 
+static bool box_and_text_elements_return_host_nodes(void) {
+  react_init_runtime();
+  UiTree tree;
+  UiElementFrame frame;
+
+  UiElement root = BoxElement(frame, {
+                                         .key = "panel",
+                                         .width = Length::points(200.0f),
+                                         .height = Length::points(80.0f),
+                                         .modal = true,
+                                         .children = frame.children({
+                                             TextElement(frame,
+                                                         {
+                                                             .key = "title",
+                                                             .value = "Title",
+                                                         }),
+                                         }),
+                                     });
+
+  ReconcileResult result =
+      reconcile_retained_tree(tree, frame, root, 640.0f, 480.0f);
+  CHECK(result.ok);
+
+  NodeId panel = tree.child_at(tree.root_id(), 0);
+  NodeSnapshot panel_snapshot = {};
+  CHECK(snapshot(tree, panel, &panel_snapshot));
+  CHECK(strcmp(panel_snapshot.type, "Box") == 0);
+  CHECK(panel_snapshot.interaction.modal);
+  CHECK(panel_snapshot.style.width.value == 200.0f);
+
+  NodeSnapshot title = {};
+  CHECK(snapshot(tree, tree.child_at(panel, 0), &title));
+  CHECK(strcmp(title.type, "Text") == 0);
+  CHECK(strcmp(title.value, "Title") == 0);
+  CHECK(title.has_measure);
+
+  react_shutdown();
+  return true;
+}
+
 static bool toggle_element_dispatches_changed_value(void) {
   react_init_runtime();
   UiTree tree;
@@ -141,6 +181,8 @@ static bool selectable_element_accepts_owned_children(void) {
 
 int main(void) {
   if (!button_element_returns_focusable_box_host())
+    return 1;
+  if (!box_and_text_elements_return_host_nodes())
     return 1;
   if (!toggle_element_dispatches_changed_value())
     return 1;

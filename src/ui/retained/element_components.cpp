@@ -26,6 +26,43 @@ Style button_style(Length width, Length height) {
   };
 }
 
+Style box_style(const ElementBoxProps &props) {
+  return {
+      .width = props.width,
+      .height = props.height,
+      .flex_grow = props.flex_grow,
+      .direction = props.direction,
+      .align_items = props.align_items,
+      .justify_content = props.justify_content,
+      .padding = props.padding,
+      .gap = props.gap,
+  };
+}
+
+Style text_style(const ElementTextProps &props) {
+  return {
+      .width = props.width,
+      .height = props.height,
+  };
+}
+
+VisualStyle box_visual(const ElementBoxProps &props) {
+  return {
+      .background = props.background,
+      .border = props.border,
+      .text = props.text_color,
+      .border_width = props.border_width,
+      .font_size = props.font_size,
+  };
+}
+
+VisualStyle text_visual(const ElementTextProps &props) {
+  return {
+      .text = props.text_color,
+      .font_size = props.font_size,
+  };
+}
+
 Style toggle_style(Length width, Length height) {
   return {
       .width = width,
@@ -279,6 +316,25 @@ UiElement render_scroll_container(const ElementScrollContainerProps &props,
 }
 
 } // namespace
+
+UiElement BoxElement(UiElementFrame &frame, const ElementBoxProps &props) {
+  return frame.box({
+      .key = props.key,
+      .style = box_style(props),
+      .visual = box_visual(props),
+      .interaction = {.modal = props.modal},
+      .children = props.children,
+  });
+}
+
+UiElement TextElement(UiElementFrame &frame, const ElementTextProps &props) {
+  return frame.host(HostKind::Text, {
+                                        .key = props.key,
+                                        .style = text_style(props),
+                                        .visual = text_visual(props),
+                                        .text = {.value = props.value},
+                                    });
+}
 
 UiElement ButtonElement(UiElementFrame &frame,
                         const ElementButtonProps &props) {

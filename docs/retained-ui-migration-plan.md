@@ -82,10 +82,13 @@ Grammar principles:
   stored past the component call.
 - Diagnostics include source filename and line mapping.
 
-Current status: the transpiler handles JSX statement lines, compound component
-names (`Panel.Header` -> `Panel::Header`), string/expression/bool props, text
-children, expression children, `#line` source mappings, deterministic output,
-and mismatch/unclosed-tag diagnostics.
+Current status: the transpiler handles JSX statement and `return <...>` lines,
+compound component names (`Panel.Header` -> `Panel::Header`),
+string/expression/bool props, text children, expression children, camelCase to
+snake_case prop names, `#line` source mappings, deterministic output, and
+mismatch/unclosed-tag diagnostics. It now emits returned `UiElement`
+construction over `UiElementFrame` and `children` props instead of nested
+immediate component calls.
 
 ## Migration Slices
 
@@ -107,8 +110,9 @@ and mismatch/unclosed-tag diagnostics.
    - lexer/parser/generator.
    - golden fixtures.
    - CMake generated-source integration.
-   - remaining before screen ports: expand the grammar only where real retained
-     primitives need it, and start authoring migrated UI files as `.cppx` /
+   - returned-element output done for generated fixtures.
+   - remaining before screen ports: expand the grammar only where migrated
+     app/client UI needs it, and start authoring migrated UI files as `.cppx` /
      `.hx`.
 
 4. Retained hook runtime:
@@ -201,9 +205,12 @@ and mismatch/unclosed-tag diagnostics.
      `UiTree` directly.
    - `retained_ui_element_components_tests` verifies element button metadata
      and callbacks, toggle change dispatch, and selectable owned children.
-   - remaining: rewrite the transpiler to emit returned elements with
-     `children` props, migrate every app/client screen to returned `UiElement`
-     roots, and delete/guard the old immediate authoring API.
+   - `.cppx` / `.hx` output now emits returned element construction with
+     `children` props; `retained_cppx_component_tests` compiles that output
+     against `BoxElement`, `TextElement`, `ButtonElement`, and a stateful
+     component descriptor.
+   - remaining: migrate every app/client screen to returned `UiElement` roots,
+     and delete/guard the old immediate authoring API.
 
 ## Verification Gates
 

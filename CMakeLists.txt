@@ -243,7 +243,8 @@ add_executable(retained_cppx_component_tests
   tests/retained_cppx_component_tests.cpp
   ${CPPX_RETAINED_COMPONENT_GENERATED}
   src/react.cpp
-  src/ui/retained/components.cpp
+  src/ui/retained/element.cpp
+  src/ui/retained/element_components.cpp
   src/ui/retained/ui_tree.cpp
   src/ui/retained/flex_layout.cpp
   src/ui/retained/yoga_flex_layout.cpp

@@ -4,6 +4,34 @@
 
 namespace ui::retained {
 
+struct ElementBoxProps {
+  const char *key = nullptr;
+  Length width = Length::auto_size();
+  Length height = Length::auto_size();
+  float flex_grow = 0.0f;
+  FlexDirection direction = FlexDirection::Column;
+  AlignItems align_items = AlignItems::Stretch;
+  JustifyContent justify_content = JustifyContent::Start;
+  EdgeSizes padding = {};
+  float gap = 0.0f;
+  bool modal = false;
+  Color background = {};
+  Color border = {};
+  Color text_color = {};
+  float border_width = 0.0f;
+  uint16_t font_size = 0;
+  UiChildren children = {};
+};
+
+struct ElementTextProps {
+  const char *key = nullptr;
+  const char *value = nullptr;
+  Length width = Length::auto_size();
+  Length height = Length::auto_size();
+  Color text_color = {};
+  uint16_t font_size = 0;
+};
+
 struct ElementButtonProps {
   const char *key = nullptr;
   const char *id = nullptr;
@@ -97,6 +125,8 @@ struct ElementScrollContainerProps {
   UiChildren children = {};
 };
 
+UiElement BoxElement(UiElementFrame &frame, const ElementBoxProps &props);
+UiElement TextElement(UiElementFrame &frame, const ElementTextProps &props);
 UiElement ButtonElement(UiElementFrame &frame, const ElementButtonProps &props);
 UiElement ToggleElement(UiElementFrame &frame, const ElementToggleProps &props);
 UiElement SelectableElement(UiElementFrame &frame,

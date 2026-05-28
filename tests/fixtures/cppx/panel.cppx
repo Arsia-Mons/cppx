@@ -1,7 +1,7 @@
 #include "panel_components.h"
 
-void BuildPauseMenu(Actions &actions) {
-  <Panel key="pause" width={Length::points(320)} modal>
+UiElement BuildPauseMenu(UiElementFrame &frame, Actions &actions) {
+  return <Panel key="pause" width={Length::points(320)} modal>
     <Panel.Header>
       <Text value="Paused" />
     </Panel.Header>
