@@ -3,7 +3,7 @@
 
 The grammar is intentionally small and native-C++ shaped:
 
-  <Panel key="pause" width={Length::points(320)}>
+  <Panel key="pause" style={Style{.width = Length::points(320)}}>
     <Panel.Header>
       <Text value="Paused" />
     </Panel.Header>
@@ -11,7 +11,7 @@ The grammar is intentionally small and native-C++ shaped:
 
 lowers to returned element construction:
 
-  Panel(frame, { .key = "pause", .width = Length::points(320), .children = frame.children({
+  Panel(frame, { .key = "pause", .style = Style{.width = Length::points(320)}, .children = frame.children({
     Panel::Header(frame, { .children = frame.children({
       Text(frame, { .value = "Paused" }),
     }) }),

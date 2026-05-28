@@ -109,12 +109,12 @@ golden tests under `tests/`.
 The authored model should be React-like C++, not JavaScript:
 
 ```cpp
-<Panel key="pause">
+<Panel key="pause" style={Style{.width = Length::points(320)}}>
     <Panel.Header>
         <Text value="Paused" />
     </Panel.Header>
     <Panel.Body>
-        <Button id="ResumeButton" onConfirm={actions.resume}>
+        <Button id="ResumeButton" onActivate={actions.resume}>
             Resume
         </Button>
     </Panel.Body>
@@ -143,19 +143,24 @@ boundary. Main menu, options, pause, in-game HUD/action UI, loadout, and
 loadout dialogs are now migrated to returned elements. Loadout's provider value
 is copied into `UiElementFrame` storage so descendants see stable context when
 the reconciler invokes them.
-The retained component surface now also writes copied node metadata for role,
-control id, label/value, and interaction state, so retained `Button`, `Toggle`,
-and `Selectable` primitives have semantic data that focus and renderer code can
-consume without querying external element data. Retained `Button` nodes can also
-store confirm callbacks; `ClientUi` invokes the confirmed node's callback after
-retained focus/event update and before render-command handoff, preserving the
-same deferred-mutation frame boundary used by other controls.
+The retained component surface now writes copied node metadata for host role,
+semantic role, control id, accessibility metadata, label/value, interaction
+state, and text-editing state. The public foundation is the HTML-derived
+primitive set (`Box`, `Text`, `Button`, `Input`, `Checkbox`, `Dialog`);
+selected cards, tiles, and tabs are client components composed from those
+primitives rather than generic UI foundations. Retained controls store typed
+activation/focus/text callbacks; `ClientUi` invokes them after retained
+focus/event update and before render-command handoff, preserving the same
+deferred-mutation frame boundary used by other controls.
+The public component props are flat: `key` is retained reconciliation identity,
+`id` is the inspectable/control identifier, and `style` is the single style prop.
+`Style` contains the Yoga-backed layout fields plus renderer-owned visual fields
+such as background, border, text color, and font size.
 `src/ui/runtime/draw_list.*` is the renderer boundary: it walks
 retained snapshots after flex layout and emits app-owned rect/text draw
 commands from retained metadata.
-Retained nodes now carry optional visual metadata for panel backgrounds,
-borders, text color, and text size; draw-list generation uses that metadata for
-styled panels and headings while preserving default control styles.
+Draw-list generation uses the visual fields on `Style` for styled panels and
+headings while preserving default control styles.
 `src/ui/runtime/focus.*` is the retained focus/event boundary: it collects
 focusable retained nodes, uses computed `UiTree` layout boxes for spatial
 navigation and pointer hit testing, and treats modal retained nodes as active
@@ -170,8 +175,8 @@ The control mailbox now reports retained focusables in the same `focusables`
 array used by CLI pointer targeting.
 The app screens are retained end-to-end. `MainMenuScreen`, `OptionsScreen`,
 `PauseScreen`, `ShooterGameScreen`, `HudBand`, `LoadoutScreen`, and
-`LoadoutConfirmDialog` emit retained panels, text, buttons, selectables,
-toggles, focus callbacks, and confirm callbacks. Retained overlay screens
+`LoadoutConfirmDialog` emit retained panels, text, buttons, inputs, checkboxes,
+focus callbacks, and activation callbacks. Retained overlay screens
 consult the `ScreenProvider` top-screen flag before emitting modal nodes, so a
 retained overlay does not render or trap input after a higher overlay covers it.
 Indexed retained control metadata preserves deterministic CLI targeting for

@@ -34,9 +34,6 @@ static bool host_elements_commit_to_retained_tree(void) {
               .height = Length::points(120.0f),
               .direction = FlexDirection::Row,
               .gap = 8.0f,
-          },
-      .visual =
-          {
               .background = {10, 20, 30, 255},
               .border = {50, 60, 70, 255},
               .border_width = 2.0f,
@@ -46,11 +43,8 @@ static bool host_elements_commit_to_retained_tree(void) {
               .focusable = true,
               .initial_focus = true,
           },
-      .automation =
-          {
-              .id = "RootBox",
-              .offset = 4,
-          },
+      .id = "RootBox",
+      .id_offset = 4,
       .accessibility = {.role = SemanticRole::Dialog},
       .children = frame.children({
           frame.text("Ready", "label"),
@@ -69,13 +63,13 @@ static bool host_elements_commit_to_retained_tree(void) {
   CHECK(strcmp(root_snapshot.key, "root") == 0);
   CHECK(strcmp(root_snapshot.control_id, "RootBox") == 0);
   CHECK(root_snapshot.control_offset == 4);
-  CHECK(root_snapshot.role == NodeRole::Generic);
+  CHECK(root_snapshot.role == NodeRole::Box);
   CHECK(root_snapshot.semantic_role == SemanticRole::Dialog);
   CHECK(root_snapshot.interaction.focusable);
   CHECK(root_snapshot.interaction.initial_focus);
   CHECK(root_snapshot.style.direction == FlexDirection::Row);
   CHECK(root_snapshot.style.gap == 8.0f);
-  CHECK(root_snapshot.visual.background.r == 10);
+  CHECK(root_snapshot.style.background.r == 10);
   CHECK(root_snapshot.child_count == 1);
 
   NodeSnapshot text_snapshot = {};

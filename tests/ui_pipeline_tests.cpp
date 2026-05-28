@@ -83,7 +83,13 @@ static ::ui::retained::UiElement render_pop_on_retained_confirm_screen(
                                              .key = "pop",
                                              .id = "PipelineRetainedPopButton",
                                              .label = "Pop",
-                                             .on_confirm = nav.pop_current,
+                                             .on_activate =
+                                                 [pop = nav.pop_current](
+                                                     const ::ui::retained::
+                                                         ActivationEvent &) {
+                                                   if (pop)
+                                                     pop();
+                                                 },
                                          });
 }
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../input.h"
 #include "tree.h"
 
 #include <array>
@@ -39,6 +40,15 @@ struct InputFrame {
   float pointer_x = 0.0f;
   float pointer_y = 0.0f;
 
+  ::ui::UiKeyInputEvent key_events[::ui::UI_INPUT_MAX_KEY_EVENTS] = {};
+  int key_event_count = 0;
+
+  ::ui::UiTextInputEvent text_events[::ui::UI_INPUT_MAX_TEXT_EVENTS] = {};
+  int text_event_count = 0;
+
+  ::ui::UiTextEditingEvent editing_events[::ui::UI_INPUT_MAX_TEXT_EVENTS] = {};
+  int editing_event_count = 0;
+
   FocusSource source = FocusSource::Keyboard;
 };
 
@@ -57,6 +67,7 @@ struct FocusRuntime {
   NodeId active_scope_id = 0;
   NodeId previous_focus_before_modal = 0;
   NodeId focused_id = 0;
+  NodeId blurred_id = 0;
   NodeId focus_changed_id = 0;
   NodeId pointer_press_origin = 0;
   NodeId confirmed_id = 0;
@@ -69,6 +80,7 @@ bool focus_update(FocusRuntime *runtime, const UiTree &tree,
                   const InputFrame &input);
 
 NodeId focus_focused_id(const FocusRuntime &runtime);
+NodeId focus_blurred_id(const FocusRuntime &runtime);
 NodeId focus_changed_id(const FocusRuntime &runtime);
 NodeId focus_confirmed_id(const FocusRuntime &runtime);
 FocusSource focus_source(const FocusRuntime &runtime);

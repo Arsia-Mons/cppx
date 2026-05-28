@@ -166,10 +166,37 @@ bool contains_enabled(const FocusRuntime &runtime, NodeId id) {
 bool set_focus(FocusRuntime &runtime, NodeId id, FocusSource source) {
   if (same_id(runtime.focused_id, id))
     return false;
+  runtime.blurred_id = runtime.focused_id;
   runtime.focused_id = id;
   runtime.focus_changed_id = id;
   runtime.source = source;
   return true;
+}
+
+bool focused_text_input_should_handle_navigation(const UiTree &tree,
+                                                 const FocusRuntime &runtime,
+                                                 const InputFrame &input,
+                                                 FocusDirection dir) {
+  if (dir != FocusDirection::Left && dir != FocusDirection::Right)
+    return false;
+
+  NodeSnapshot focused = {};
+  if (!tree.snapshot(runtime.focused_id, &focused))
+    return false;
+  if (focused.role != NodeRole::Input &&
+      focused.semantic_role != SemanticRole::TextBox)
+    return false;
+
+  for (int i = 0; i < input.key_event_count; ++i) {
+    const ::ui::UiKeyInputEvent &event = input.key_events[i];
+    if (event.key == ::ui::UiKey::Left || event.key == ::ui::UiKey::Right ||
+        event.key == ::ui::UiKey::Home || event.key == ::ui::UiKey::End ||
+        event.key == ::ui::UiKey::Backspace ||
+        event.key == ::ui::UiKey::DeleteForward) {
+      return true;
+    }
+  }
+  return input.text_event_count > 0 || input.editing_event_count > 0;
 }
 
 NodeId first_enabled(const FocusRuntime &runtime) {
@@ -258,6 +285,7 @@ bool focus_update(FocusRuntime *runtime, const UiTree &tree,
   runtime->focusable_count = 0;
   runtime->confirmed_id = 0;
   runtime->focus_changed_id = 0;
+  runtime->blurred_id = 0;
 
   NodeId active_scope = tree.root_id();
   if (!find_active_modal(tree, tree.root_id(), &active_scope)) {
@@ -265,8 +293,7 @@ bool focus_update(FocusRuntime *runtime, const UiTree &tree,
     return false;
   }
   NodeId previous_scope = runtime->active_scope_id;
-  if (!same_id(previous_scope, active_scope) &&
-      runtime->focused_id != 0 &&
+  if (!same_id(previous_scope, active_scope) && runtime->focused_id != 0 &&
       tree.contains(runtime->focused_id) &&
       !subtree_contains(tree, active_scope, runtime->focused_id)) {
     runtime->previous_focus_before_modal = runtime->focused_id;
@@ -277,12 +304,10 @@ bool focus_update(FocusRuntime *runtime, const UiTree &tree,
   if (!collect_focusables(tree, *runtime, active_scope, &order))
     return false;
 
-  bool restore_parent_focus = previous_scope != 0 &&
-                              !same_id(previous_scope, active_scope) &&
-                              runtime->previous_focus_before_modal != 0 &&
-                              contains_enabled(
-                                  *runtime,
-                                  runtime->previous_focus_before_modal);
+  bool restore_parent_focus =
+      previous_scope != 0 && !same_id(previous_scope, active_scope) &&
+      runtime->previous_focus_before_modal != 0 &&
+      contains_enabled(*runtime, runtime->previous_focus_before_modal);
   if (restore_parent_focus) {
     set_focus(*runtime, runtime->previous_focus_before_modal,
               FocusSource::Programmatic);
@@ -294,7 +319,8 @@ bool focus_update(FocusRuntime *runtime, const UiTree &tree,
   }
 
   FocusDirection dir = FocusDirection::Down;
-  if (read_nav_dir(input, &dir)) {
+  if (read_nav_dir(input, &dir) && !focused_text_input_should_handle_navigation(
+                                       tree, *runtime, input, dir)) {
     NodeId next = resolve_spatial(*runtime, runtime->focused_id, dir);
     if (next != 0 && !same_id(next, runtime->focused_id)) {
       set_focus(*runtime, next, navigation_source(input));
@@ -329,6 +355,10 @@ bool focus_update(FocusRuntime *runtime, const UiTree &tree,
 
 NodeId focus_focused_id(const FocusRuntime &runtime) {
   return runtime.focused_id;
+}
+
+NodeId focus_blurred_id(const FocusRuntime &runtime) {
+  return runtime.blurred_id;
 }
 
 NodeId focus_changed_id(const FocusRuntime &runtime) {

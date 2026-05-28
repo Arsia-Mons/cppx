@@ -15,8 +15,8 @@ namespace ui::retained {
 
 constexpr int UI_RETAINED_MAX_ELEMENTS = 384;
 constexpr int UI_RETAINED_MAX_CHILD_ELEMENTS = 384;
-constexpr int UI_RETAINED_ELEMENT_ARENA_BYTES = 8192;
-constexpr int UI_RETAINED_MAX_ELEMENT_DESTRUCTORS = 128;
+constexpr int UI_RETAINED_ELEMENT_ARENA_BYTES = 32768;
+constexpr int UI_RETAINED_MAX_ELEMENT_DESTRUCTORS = 256;
 constexpr int UI_RETAINED_STRING_ARENA_BYTES = 8192;
 
 struct UiElement;
@@ -38,33 +38,39 @@ enum class UiElementKind : uint8_t {
 enum class HostKind : uint8_t {
   Box,
   Text,
+  Button,
+  Input,
+  Checkbox,
+  Dialog,
 };
 
 struct TextProps {
   const char *value = "";
 };
 
-struct AutomationProps {
-  const char *id = "";
-  int offset = 0;
-};
-
 struct AccessibilityProps {
   SemanticRole role = SemanticRole::Auto;
+  const char *label = "";
+  const char *description = "";
 };
 
 struct HostCallbacks {
-  std::function<void()> on_focus = {};
-  std::function<void()> on_confirm = {};
+  std::function<void(const FocusEvent &)> on_focus = {};
+  std::function<void(const BlurEvent &)> on_blur = {};
+  std::function<void(const ActivationEvent &)> on_activate = {};
+  std::function<void(const KeyEvent &)> on_key = {};
+  std::function<void(const TextInputEvent &)> on_text_input = {};
+  std::function<void(const TextEditingEvent &)> on_text_editing = {};
 };
 
 struct HostProps {
   const char *key = nullptr;
+  const char *id = nullptr;
+  int id_offset = 0;
   Style style = {};
-  VisualStyle visual = {};
   TextProps text = {};
   NodeInteraction interaction = {};
-  AutomationProps automation = {};
+  TextEditMetadata text_edit = {};
   AccessibilityProps accessibility = {};
   HostCallbacks callbacks = {};
   UiChildren children = {};
@@ -117,7 +123,7 @@ public:
   UiElement host(HostKind kind, const HostProps &props);
   UiElement box(const HostProps &props);
   UiElement text(const char *value, const char *key = nullptr,
-                 const VisualStyle &visual = {});
+                 const Style &style = {});
   UiElement provider(const char *name, ReactContext *context, void *value,
                      UiChildren children, const char *key = nullptr);
 

@@ -64,36 +64,54 @@ render_shooter_game_screen(const ShooterGameScreenProps &props,
       frame,
       {
           .key = "root",
-          .width = retained::Length::percent(100.0f),
-          .height = retained::Length::percent(100.0f),
-          .direction = retained::FlexDirection::Column,
-          .padding = {24.0f, 24.0f, 24.0f, 24.0f},
-          .gap = 18.0f,
-          .background = {10, 16, 18, 255},
+          .style =
+              {
+                  .width = retained::Length::percent(100.0f),
+                  .height = retained::Length::percent(100.0f),
+                  .direction = retained::FlexDirection::Column,
+                  .padding = {24.0f, 24.0f, 24.0f, 24.0f},
+                  .gap = 18.0f,
+                  .background = {10, 16, 18, 255},
+              },
           .children = frame.children({
               HudBand(frame),
               components::Box(
                   frame,
                   {
                       .key = "actions",
-                      .direction = retained::FlexDirection::Row,
-                      .align_items = retained::AlignItems::Start,
-                      .gap = 12.0f,
+                      .style =
+                          {
+                              .direction = retained::FlexDirection::Row,
+                              .align_items = retained::AlignItems::Start,
+                              .gap = 12.0f,
+                          },
                       .children = frame.children({
-                          components::Button(frame,
-                                             {
-                                                 .key = "pause",
-                                                 .id = "OpenPauseButton",
-                                                 .label = "Pause",
-                                                 .on_confirm = open_pause,
-                                             }),
-                          components::Button(frame,
-                                             {
-                                                 .key = "loadout",
-                                                 .id = "OpenLoadoutButton",
-                                                 .label = "Loadout",
-                                                 .on_confirm = open_loadout,
-                                             }),
+                          components::Button(
+                              frame,
+                              {
+                                  .key = "pause",
+                                  .id = "OpenPauseButton",
+                                  .label = "Pause",
+                                  .on_activate =
+                                      [open_pause](
+                                          const retained::ActivationEvent &) {
+                                        if (open_pause)
+                                          open_pause();
+                                      },
+                              }),
+                          components::Button(
+                              frame,
+                              {
+                                  .key = "loadout",
+                                  .id = "OpenLoadoutButton",
+                                  .label = "Loadout",
+                                  .on_activate =
+                                      [open_loadout](
+                                          const retained::ActivationEvent &) {
+                                        if (open_loadout)
+                                          open_loadout();
+                                      },
+                              }),
                       }),
                   }),
           }),

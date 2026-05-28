@@ -217,6 +217,8 @@ def command_main(args: argparse.Namespace) -> int:
     payload: dict = {}
     if op == "key":
         payload = {"key": args.key, "action": args.action}
+    elif op == "text":
+        payload = {"text": args.text}
     elif op == "gamepad":
         payload = {"button": args.button, "action": args.action}
     elif op == "pointer":
@@ -353,6 +355,11 @@ def build_parser() -> argparse.ArgumentParser:
     add_common(p)
     p.add_argument("--key", required=True)
     p.add_argument("--action", choices=["press", "down", "up", "release"], default="press")
+    p.set_defaults(func=command_main)
+
+    p = sub.add_parser("text")
+    add_common(p)
+    p.add_argument("--text", required=True)
     p.set_defaults(func=command_main)
 
     p = sub.add_parser("gamepad")

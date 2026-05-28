@@ -53,58 +53,72 @@ render_weapon_tile(const WeaponTileProps &props,
                        weapon.owned ? (weapon.equipped ? "equipped" : "owned")
                                     : (disabled ? "locked" : "available"));
 
-  return components::Selectable(
+  return components::Button(
       frame,
       {
           .key = weapon_tile_key(index),
           .id = WEAPON_TILE_CONTROL_ID,
-          .offset = index,
-          .selected = selected,
+          .id_offset = index,
           .disabled = disabled,
-          .initial_focus = selected,
-          .width = retained::Length::points(190.0f),
-          .height = retained::Length::points(78.0f),
-          .align_items = retained::AlignItems::Start,
-          .justify_content = retained::JustifyContent::Start,
-          .padding = {10.0f, 10.0f, 10.0f, 10.0f},
-          .gap = 5.0f,
-          .background = selected ? retained::Color{35, 72, 62, 255}
-                                 : retained::Color{24, 31, 36, 255},
-          .border = disabled ? retained::Color{58, 62, 66, 255}
-                             : retained::Color{102, 142, 150, 255},
-          .border_width = selected ? 2.0f : 1.0f,
-          .children = frame.children({
-              components::Text(frame,
-                               {
-                                   .key = "name",
-                                   .value = weapon.name,
-                                   .height = retained::Length::points(18.0f),
-                                   .text_color = {238, 246, 244, 255},
-                                   .font_size = 16,
-                               }),
-              components::Text(
-                  frame,
-                  {
-                      .key = "detail",
-                      .value = detail,
-                      .height = retained::Length::points(16.0f),
-                      .text_color = disabled
-                                        ? retained::Color{142, 148, 150, 255}
-                                        : retained::Color{184, 204, 204, 255},
-                      .font_size = 12,
-                  }),
-          }),
+          .autofocus = selected,
+          .accessibility =
+              {
+                  .label = weapon.name,
+              },
           .on_focus =
-              [set_selected, index] {
+              [set_selected, index](const retained::FocusEvent &) {
                 if (set_selected)
                   set_selected(index);
               },
-          .on_confirm =
-              [set_selected, index, select] {
+          .children = frame.children({
+              components::Text(
+                  frame,
+                  {
+                      .key = "name",
+                      .value = weapon.name,
+                      .style =
+                          {
+                              .height = retained::Length::points(18.0f),
+                              .text = {238, 246, 244, 255},
+                              .font_size = 16,
+                          },
+                  }),
+              components::Text(frame,
+                               {
+                                   .key = "detail",
+                                   .value = detail,
+                                   .style =
+                                       {
+                                           .height = retained::Length::points(
+                                               16.0f),
+                                           .text = disabled
+                                                       ? retained::Color{142, 148, 150, 255}
+                                                       : retained::Color{184,
+                                                                         204, 204, 255},
+                                           .font_size = 12,
+                                       },
+                               }),
+          }),
+          .on_activate =
+              [set_selected, index, select](const retained::ActivationEvent &) {
                 if (set_selected)
                   set_selected(index);
                 if (select)
                   select();
+              },
+          .style =
+              {
+                  .width = retained::Length::points(190.0f),
+                  .height = retained::Length::points(78.0f),
+                  .align_items = retained::AlignItems::Start,
+                  .justify_content = retained::JustifyContent::Start,
+                  .padding = {10.0f, 10.0f, 10.0f, 10.0f},
+                  .gap = 5.0f,
+                  .background = selected ? retained::Color{35, 72, 62, 255}
+                                         : retained::Color{24, 31, 36, 255},
+                  .border = disabled ? retained::Color{58, 62, 66, 255}
+                                     : retained::Color{102, 142, 150, 255},
+                  .border_width = selected ? 2.0f : 1.0f,
               },
       });
 }

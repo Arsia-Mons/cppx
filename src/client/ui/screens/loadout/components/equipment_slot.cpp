@@ -34,45 +34,57 @@ render_equipment_slot(const EquipmentSlotProps &props,
   const char *slot_text = use_text_storage(
       "%s: %s", props.label, weapon.owned ? weapon.name : "empty");
 
-  return components::Selectable(
+  return components::Button(
       frame,
       {
           .key = props.id,
           .id = props.id,
-          .label = slot_text,
-          .selected = selected,
-          .initial_focus = selected,
-          .width = retained::Length::points(232.0f),
-          .height = retained::Length::points(38.0f),
-          .align_items = retained::AlignItems::Start,
-          .justify_content = retained::JustifyContent::Center,
-          .padding = {10.0f, 10.0f, 8.0f, 8.0f},
-          .background = selected ? retained::Color{35, 72, 62, 255}
-                                 : retained::Color{24, 28, 36, 255},
-          .border = selected ? retained::Color{122, 176, 238, 255}
-                             : retained::Color{78, 88, 104, 255},
-          .border_width = selected ? 2.0f : 1.0f,
-          .children = frame.children({
-              components::Text(frame,
-                               {
-                                   .key = "label",
-                                   .value = slot_text,
-                                   .height = retained::Length::points(16.0f),
-                                   .text_color = {226, 238, 236, 255},
-                                   .font_size = 14,
-                               }),
-          }),
+          .autofocus = selected,
+          .accessibility =
+              {
+                  .label = slot_text,
+              },
           .on_focus =
-              [set_selected, weapon_index = props.weapon_index] {
+              [set_selected, weapon_index = props.weapon_index](
+                  const retained::FocusEvent &) {
                 if (set_selected)
                   set_selected(weapon_index);
               },
-          .on_confirm =
-              [set_selected, weapon_index = props.weapon_index, select] {
+          .label = slot_text,
+          .children = frame.children({
+              components::Text(
+                  frame,
+                  {
+                      .key = "label",
+                      .value = slot_text,
+                      .style =
+                          {
+                              .height = retained::Length::points(16.0f),
+                              .text = {226, 238, 236, 255},
+                              .font_size = 14,
+                          },
+                  }),
+          }),
+          .on_activate =
+              [set_selected, weapon_index = props.weapon_index,
+               select](const retained::ActivationEvent &) {
                 if (set_selected)
                   set_selected(weapon_index);
                 if (select)
                   select();
+              },
+          .style =
+              {
+                  .width = retained::Length::points(232.0f),
+                  .height = retained::Length::points(38.0f),
+                  .align_items = retained::AlignItems::Start,
+                  .justify_content = retained::JustifyContent::Center,
+                  .padding = {10.0f, 10.0f, 8.0f, 8.0f},
+                  .background = selected ? retained::Color{35, 72, 62, 255}
+                                         : retained::Color{24, 28, 36, 255},
+                  .border = selected ? retained::Color{122, 176, 238, 255}
+                                     : retained::Color{78, 88, 104, 255},
+                  .border_width = selected ? 2.0f : 1.0f,
               },
       });
 }

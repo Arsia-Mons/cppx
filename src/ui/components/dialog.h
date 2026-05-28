@@ -4,7 +4,7 @@
 
 namespace ui::components {
 
-struct TextProps {
+struct DialogProps {
   const char *key = nullptr;
   const char *id = nullptr;
   int id_offset = 0;
@@ -18,11 +18,12 @@ struct TextProps {
   std::function<void(const retained::KeyEvent &)> on_key = {};
   std::function<void(const retained::TextInputEvent &)> on_text_input = {};
   std::function<void(const retained::TextEditingEvent &)> on_text_editing = {};
-  const char *value = nullptr;
+  bool modal = true;
   retained::Style style = {};
+  retained::UiChildren children = {};
 };
 
-retained::UiElement Text(retained::UiElementFrame &frame,
-                         const TextProps &props);
+retained::UiElement Dialog(retained::UiElementFrame &frame,
+                           const DialogProps &props);
 
 } // namespace ui::components

@@ -1,47 +1,34 @@
 #include "button.h"
 
-#include "common.h"
-
 namespace ui::components {
 namespace {
 
-retained::Style button_style(retained::Length width, retained::Length height) {
-  return {
-      .width = width,
-      .height = height,
-      .direction = retained::FlexDirection::Column,
-      .align_items = retained::AlignItems::Center,
-      .justify_content = retained::JustifyContent::Center,
-      .padding = {14.0f, 14.0f, 8.0f, 8.0f},
-  };
+retained::HostCallbacks button_callbacks(const ButtonProps &props) {
+  retained::HostCallbacks callbacks = detail::callbacks_from_props(props);
+  if (props.on_activate) {
+    callbacks.on_activate = props.on_activate;
+  }
+  return callbacks;
 }
 
 retained::UiElement render_button(const ButtonProps &props,
                                   retained::UiElementFrame &frame) {
-  return frame.box({
-      .key = props.key,
-      .style = button_style(props.width, props.height),
-      .visual = detail::control_visual(props.disabled),
-      .text = {.value = props.label},
-      .interaction =
-          {
-              .focusable = true,
-              .disabled = props.disabled,
-              .initial_focus = props.initial_focus,
-          },
-      .automation =
-          {
-              .id = props.id,
-              .offset = props.offset,
-          },
-      .accessibility = {.role = retained::SemanticRole::Button},
-      .callbacks =
-          {
-              .on_focus = props.on_focus,
-              .on_confirm = props.on_confirm,
-          },
-      .children = detail::label_child(frame, props.label),
-  });
+  return frame.host(
+      retained::HostKind::Button,
+      {
+          .key = props.key,
+          .id = props.id,
+          .id_offset = props.id_offset,
+          .style = detail::control_style(props.disabled, props.style),
+          .text = {.value = props.label},
+          .interaction = detail::interaction_from_props(props, true),
+          .accessibility = detail::accessibility_from_props(
+              props, retained::SemanticRole::Button),
+          .callbacks = button_callbacks(props),
+          .children = props.children.count > 0
+                          ? props.children
+                          : detail::label_child(frame, props.label),
+      });
 }
 
 } // namespace
@@ -49,7 +36,7 @@ retained::UiElement render_button(const ButtonProps &props,
 retained::UiElement Button(retained::UiElementFrame &frame,
                            const ButtonProps &props) {
   return frame.component("Button", props, render_button,
-                         detail::component_key(props.key));
+                         detail::component_key(props));
 }
 
 } // namespace ui::components

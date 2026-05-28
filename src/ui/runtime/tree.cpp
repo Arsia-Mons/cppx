@@ -149,11 +149,20 @@ bool UiTree::set_metadata(NodeId id, const NodeMetadata &metadata) {
   node->role = metadata.role;
   node->semantic_role = metadata.semantic_role;
   node->interaction = metadata.interaction;
-  node->visual = metadata.visual;
+  node->text_edit = metadata.text_edit;
+  copy_value(node->composition, metadata.text_edit.composition);
+  node->text_edit.composition = node->composition;
   node->on_focus = metadata.on_focus;
-  node->on_confirm = metadata.on_confirm;
+  node->on_blur = metadata.on_blur;
+  node->on_activate = metadata.on_activate;
+  node->on_key = metadata.on_key;
+  node->on_text_input = metadata.on_text_input;
+  node->on_text_editing = metadata.on_text_editing;
   node->control_offset = metadata.control_offset;
   copy_label(node->control_id, metadata.control_id);
+  copy_value(node->accessibility_label, metadata.accessibility_label);
+  copy_value(node->accessibility_description,
+             metadata.accessibility_description);
   copy_value(node->value, metadata.value);
   return true;
 }
@@ -181,16 +190,67 @@ bool UiTree::invoke_focus(NodeId id) const {
   if (!node || !node->interaction.focusable || node->interaction.disabled ||
       !node->on_focus)
     return false;
-  node->on_focus();
+  node->on_focus({.target = id});
   return true;
 }
 
-bool UiTree::invoke_confirm(NodeId id) const {
+bool UiTree::invoke_blur(NodeId id) const {
   const Node *node = find(id);
   if (!node || !node->interaction.focusable || node->interaction.disabled ||
-      !node->on_confirm)
+      !node->on_blur)
     return false;
-  node->on_confirm();
+  node->on_blur({.target = id});
+  return true;
+}
+
+bool UiTree::invoke_activate(NodeId id) const {
+  const Node *node = find(id);
+  if (!node || !node->interaction.focusable || node->interaction.disabled ||
+      !node->on_activate)
+    return false;
+  node->on_activate({.target = id});
+  return true;
+}
+
+bool UiTree::invoke_key(NodeId id, const ::ui::UiKeyInputEvent &event) const {
+  const Node *node = find(id);
+  if (!node || !node->interaction.focusable || node->interaction.disabled ||
+      !node->on_key)
+    return false;
+  node->on_key({
+      .target = id,
+      .key = event.key,
+      .modifiers = event.modifiers,
+      .repeat = event.repeat,
+  });
+  return true;
+}
+
+bool UiTree::invoke_text_input(NodeId id,
+                               const ::ui::UiTextInputEvent &event) const {
+  const Node *node = find(id);
+  if (!node || !node->interaction.focusable || node->interaction.disabled ||
+      !node->on_text_input)
+    return false;
+  node->on_text_input({
+      .target = id,
+      .text = event.text,
+  });
+  return true;
+}
+
+bool UiTree::invoke_text_editing(NodeId id,
+                                 const ::ui::UiTextEditingEvent &event) const {
+  const Node *node = find(id);
+  if (!node || !node->interaction.focusable || node->interaction.disabled ||
+      !node->on_text_editing)
+    return false;
+  node->on_text_editing({
+      .target = id,
+      .text = event.text,
+      .start = event.start,
+      .length = event.length,
+  });
   return true;
 }
 
@@ -207,12 +267,14 @@ bool UiTree::snapshot(NodeId id, NodeSnapshot *out) const {
       .key = node->key,
       .control_id = node->control_id,
       .control_offset = node->control_offset,
+      .accessibility_label = node->accessibility_label,
+      .accessibility_description = node->accessibility_description,
       .value = node->value,
       .role = node->role,
       .semantic_role = node->semantic_role,
       .interaction = node->interaction,
+      .text_edit = node->text_edit,
       .style = node->style,
-      .visual = node->visual,
       .layout = node->layout,
       .child_count = node->child_count,
       .has_measure = node->measure != nullptr,
@@ -290,12 +352,19 @@ UiTree::Node *UiTree::ensure_node(NodeId id, NodeId parent_id, const char *type,
     existing->role = NodeRole::Generic;
     existing->semantic_role = SemanticRole::Auto;
     existing->interaction = {};
-    existing->visual = {};
+    existing->text_edit = {};
     existing->on_focus = {};
-    existing->on_confirm = {};
+    existing->on_blur = {};
+    existing->on_activate = {};
+    existing->on_key = {};
+    existing->on_text_input = {};
+    existing->on_text_editing = {};
     existing->control_offset = 0;
     existing->control_id[0] = '\0';
+    existing->accessibility_label[0] = '\0';
+    existing->accessibility_description[0] = '\0';
     existing->value[0] = '\0';
+    existing->composition[0] = '\0';
     copy_label(existing->type, type);
     copy_label(existing->key, key);
     return existing;

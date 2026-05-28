@@ -23,35 +23,42 @@ render_hud_band(const HudBandProps &props,
   namespace components = ::ui::components;
 
   auto hud_text = [&frame](const char *key, const char *value) {
-    return components::Text(frame,
-                            {
-                                .key = key,
-                                .value = value,
-                                .height = retained::Length::points(22.0f),
-                                .text_color = {224, 238, 236, 255},
-                                .font_size = 18,
-                            });
+    return components::Text(
+        frame, {
+                   .key = key,
+                   .value = value,
+                   .style =
+                       {
+                           .height = retained::Length::points(22.0f),
+                           .text = {224, 238, 236, 255},
+                           .font_size = 18,
+                       },
+               });
   };
 
-  return components::Box(frame, {
-                                    .key = "band",
-                                    .width = retained::Length::percent(100.0f),
-                                    .height = retained::Length::points(44.0f),
-                                    .direction = retained::FlexDirection::Row,
-                                    .align_items = retained::AlignItems::Center,
-                                    .padding = {16.0f, 16.0f, 10.0f, 10.0f},
-                                    .gap = 18.0f,
-                                    .background = {18, 24, 28, 245},
-                                    .border = {82, 106, 118, 255},
-                                    .border_width = 1.0f,
-                                    .children = frame.children({
-                                        hud_text("health", health),
-                                        hud_text("armor", armor),
-                                        hud_text("ammo", ammo),
-                                        hud_text("credits", credits),
-                                        hud_text("weapon", hud.weapon),
-                                    }),
-                                });
+  return components::Box(
+      frame, {
+                 .key = "band",
+                 .style =
+                     {
+                         .width = retained::Length::percent(100.0f),
+                         .height = retained::Length::points(44.0f),
+                         .direction = retained::FlexDirection::Row,
+                         .align_items = retained::AlignItems::Center,
+                         .padding = {16.0f, 16.0f, 10.0f, 10.0f},
+                         .gap = 18.0f,
+                         .background = {18, 24, 28, 245},
+                         .border = {82, 106, 118, 255},
+                         .border_width = 1.0f,
+                     },
+                 .children = frame.children({
+                     hud_text("health", health),
+                     hud_text("armor", armor),
+                     hud_text("ammo", ammo),
+                     hud_text("credits", credits),
+                     hud_text("weapon", hud.weapon),
+                 }),
+             });
 }
 
 ::ui::retained::UiElement HudBand(::ui::retained::UiElementFrame &frame) {

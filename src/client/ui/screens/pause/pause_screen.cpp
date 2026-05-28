@@ -50,45 +50,60 @@ render_pause_screen(const PauseScreenProps &props,
   if (!is_top)
     return frame.empty();
 
-  return components::Box(
+  return components::Dialog(
       frame,
       {
           .key = "root",
-          .width = retained::Length::percent(100.0f),
-          .height = retained::Length::percent(100.0f),
-          .direction = retained::FlexDirection::Column,
-          .align_items = retained::AlignItems::Center,
-          .justify_content = retained::JustifyContent::Center,
-          .modal = true,
+          .style =
+              {
+                  .width = retained::Length::percent(100.0f),
+                  .height = retained::Length::percent(100.0f),
+                  .direction = retained::FlexDirection::Column,
+                  .align_items = retained::AlignItems::Center,
+                  .justify_content = retained::JustifyContent::Center,
+              },
           .children = frame.children({
               components::Box(
                   frame,
                   {
                       .key = "panel",
-                      .width = retained::Length::points(220.0f),
-                      .direction = retained::FlexDirection::Column,
-                      .align_items = retained::AlignItems::Center,
-                      .padding = {18.0f, 18.0f, 18.0f, 18.0f},
-                      .gap = 12.0f,
-                      .background = {17, 24, 30, 255},
-                      .border = {78, 96, 108, 255},
-                      .border_width = 1.0f,
+                      .style =
+                          {
+                              .width = retained::Length::points(220.0f),
+                              .direction = retained::FlexDirection::Column,
+                              .align_items = retained::AlignItems::Center,
+                              .padding = {18.0f, 18.0f, 18.0f, 18.0f},
+                              .gap = 12.0f,
+                              .background = {17, 24, 30, 255},
+                              .border = {78, 96, 108, 255},
+                              .border_width = 1.0f,
+                          },
                       .children = frame.children({
                           components::Text(
                               frame,
                               {
                                   .key = "title",
                                   .value = "Paused",
-                                  .height = retained::Length::points(34.0f),
-                                  .text_color = {236, 246, 242, 255},
-                                  .font_size = 28,
+                                  .style =
+                                      {
+                                          .height =
+                                              retained::Length::points(34.0f),
+                                          .text = {236, 246, 242, 255},
+                                          .font_size = 28,
+                                      },
                               }),
                           components::Button(frame,
                                              {
                                                  .key = "resume",
                                                  .id = "ResumeButton",
                                                  .label = "Resume",
-                                                 .on_confirm = nav.pop_current,
+                                                 .on_activate =
+                                                     [pop = nav.pop_current](
+                                                         const retained::
+                                                             ActivationEvent &) {
+                                                       if (pop)
+                                                         pop();
+                                                     },
                                              }),
                           components::Button(
                               frame,
@@ -96,7 +111,12 @@ render_pause_screen(const PauseScreenProps &props,
                                   .key = "options",
                                   .id = "OpenOptionsFromPauseButton",
                                   .label = "Options",
-                                  .on_confirm = open_options,
+                                  .on_activate =
+                                      [open_options](
+                                          const retained::ActivationEvent &) {
+                                        if (open_options)
+                                          open_options();
+                                      },
                               }),
                           components::Button(
                               frame,
@@ -104,7 +124,12 @@ render_pause_screen(const PauseScreenProps &props,
                                   .key = "loadout",
                                   .id = "OpenLoadoutFromPauseButton",
                                   .label = "Loadout",
-                                  .on_confirm = open_loadout,
+                                  .on_activate =
+                                      [open_loadout](
+                                          const retained::ActivationEvent &) {
+                                        if (open_loadout)
+                                          open_loadout();
+                                      },
                               }),
                           components::Button(
                               frame,
@@ -112,7 +137,12 @@ render_pause_screen(const PauseScreenProps &props,
                                   .key = "exit-to-menu",
                                   .id = "ExitToMainMenuButton",
                                   .label = "Exit To Menu",
-                                  .on_confirm = exit_to_main_menu,
+                                  .on_activate =
+                                      [exit_to_main_menu](
+                                          const retained::ActivationEvent &) {
+                                        if (exit_to_main_menu)
+                                          exit_to_main_menu();
+                                      },
                               }),
                       }),
                   }),

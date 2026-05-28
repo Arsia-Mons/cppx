@@ -54,14 +54,20 @@ YGFlexDirection map_direction(FlexDirection direction) {
   switch (direction) {
   case FlexDirection::Row:
     return YGFlexDirectionRow;
+  case FlexDirection::RowReverse:
+    return YGFlexDirectionRowReverse;
   case FlexDirection::Column:
     return YGFlexDirectionColumn;
+  case FlexDirection::ColumnReverse:
+    return YGFlexDirectionColumnReverse;
   }
   return YGFlexDirectionColumn;
 }
 
 YGAlign map_align(AlignItems align) {
   switch (align) {
+  case AlignItems::Auto:
+    return YGAlignAuto;
   case AlignItems::Stretch:
     return YGAlignStretch;
   case AlignItems::Start:
@@ -70,6 +76,14 @@ YGAlign map_align(AlignItems align) {
     return YGAlignCenter;
   case AlignItems::End:
     return YGAlignFlexEnd;
+  case AlignItems::Baseline:
+    return YGAlignBaseline;
+  case AlignItems::SpaceBetween:
+    return YGAlignSpaceBetween;
+  case AlignItems::SpaceAround:
+    return YGAlignSpaceAround;
+  case AlignItems::SpaceEvenly:
+    return YGAlignSpaceEvenly;
   }
   return YGAlignStretch;
 }
@@ -84,58 +98,149 @@ YGJustify map_justify(JustifyContent justify) {
     return YGJustifyFlexEnd;
   case JustifyContent::SpaceBetween:
     return YGJustifySpaceBetween;
+  case JustifyContent::SpaceAround:
+    return YGJustifySpaceAround;
+  case JustifyContent::SpaceEvenly:
+    return YGJustifySpaceEvenly;
   }
   return YGJustifyFlexStart;
 }
 
-void set_width(YGNodeRef node, Length length) {
+YGWrap map_wrap(FlexWrap wrap) {
+  switch (wrap) {
+  case FlexWrap::NoWrap:
+    return YGWrapNoWrap;
+  case FlexWrap::Wrap:
+    return YGWrapWrap;
+  case FlexWrap::WrapReverse:
+    return YGWrapWrapReverse;
+  }
+  return YGWrapNoWrap;
+}
+
+YGPositionType map_position(PositionType position) {
+  switch (position) {
+  case PositionType::Static:
+    return YGPositionTypeStatic;
+  case PositionType::Relative:
+    return YGPositionTypeRelative;
+  case PositionType::Absolute:
+    return YGPositionTypeAbsolute;
+  }
+  return YGPositionTypeRelative;
+}
+
+YGOverflow map_overflow(Overflow overflow) {
+  switch (overflow) {
+  case Overflow::Visible:
+    return YGOverflowVisible;
+  case Overflow::Hidden:
+    return YGOverflowHidden;
+  case Overflow::Scroll:
+    return YGOverflowScroll;
+  }
+  return YGOverflowVisible;
+}
+
+YGDisplay map_display(Display display) {
+  switch (display) {
+  case Display::Flex:
+    return YGDisplayFlex;
+  case Display::None:
+    return YGDisplayNone;
+  case Display::Contents:
+    return YGDisplayContents;
+  }
+  return YGDisplayFlex;
+}
+
+void set_dimension(YGNodeRef node, Length length,
+                   void (*set_points)(YGNodeRef, float),
+                   void (*set_percent)(YGNodeRef, float),
+                   void (*set_auto)(YGNodeRef)) {
   switch (length.kind) {
   case LengthKind::Auto:
-    YGNodeStyleSetWidthAuto(node);
+    set_auto(node);
     break;
   case LengthKind::Points:
-    YGNodeStyleSetWidth(node, length.value);
+    set_points(node, length.value);
     break;
   case LengthKind::Percent:
-    YGNodeStyleSetWidthPercent(node, length.value);
+    set_percent(node, length.value);
     break;
   case LengthKind::Grow:
-    YGNodeStyleSetWidthAuto(node);
+    set_auto(node);
     YGNodeStyleSetFlexGrow(node, length.value);
     break;
   }
 }
 
-void set_height(YGNodeRef node, Length length) {
+void set_optional_length(YGNodeRef node, Length length,
+                         void (*set_points)(YGNodeRef, float),
+                         void (*set_percent)(YGNodeRef, float)) {
   switch (length.kind) {
   case LengthKind::Auto:
-    YGNodeStyleSetHeightAuto(node);
     break;
   case LengthKind::Points:
-    YGNodeStyleSetHeight(node, length.value);
+    set_points(node, length.value);
     break;
   case LengthKind::Percent:
-    YGNodeStyleSetHeightPercent(node, length.value);
+    set_percent(node, length.value);
     break;
   case LengthKind::Grow:
-    YGNodeStyleSetHeightAuto(node);
     YGNodeStyleSetFlexGrow(node, length.value);
     break;
   }
+}
+
+void set_flex_basis(YGNodeRef node, Length length) {
+  switch (length.kind) {
+  case LengthKind::Auto:
+    YGNodeStyleSetFlexBasisAuto(node);
+    break;
+  case LengthKind::Points:
+    YGNodeStyleSetFlexBasis(node, length.value);
+    break;
+  case LengthKind::Percent:
+    YGNodeStyleSetFlexBasisPercent(node, length.value);
+    break;
+  case LengthKind::Grow:
+    YGNodeStyleSetFlexBasisAuto(node);
+    YGNodeStyleSetFlexGrow(node, length.value);
+    break;
+  }
+}
+
+void set_edges(YGNodeRef node, const EdgeSizes &edges,
+               void (*set_edge)(YGNodeRef, YGEdge, float)) {
+  set_edge(node, YGEdgeLeft, edges.left);
+  set_edge(node, YGEdgeRight, edges.right);
+  set_edge(node, YGEdgeTop, edges.top);
+  set_edge(node, YGEdgeBottom, edges.bottom);
 }
 
 void apply_style(YGNodeRef yoga_node, const NodeSnapshot &snapshot,
                  LayoutViewport viewport) {
   const Style &style = snapshot.style;
   YGNodeStyleSetBoxSizing(yoga_node, YGBoxSizingBorderBox);
+  YGNodeStyleSetDisplay(yoga_node, map_display(style.display));
+  YGNodeStyleSetPositionType(yoga_node, map_position(style.position));
+  YGNodeStyleSetOverflow(yoga_node, map_overflow(style.overflow));
   YGNodeStyleSetFlexDirection(yoga_node, map_direction(style.direction));
+  YGNodeStyleSetFlexWrap(yoga_node, map_wrap(style.wrap));
   YGNodeStyleSetAlignItems(yoga_node, map_align(style.align_items));
+  YGNodeStyleSetAlignContent(yoga_node, map_align(style.align_content));
+  YGNodeStyleSetAlignSelf(yoga_node, map_align(style.align_self));
   YGNodeStyleSetJustifyContent(yoga_node, map_justify(style.justify_content));
-  YGNodeStyleSetPadding(yoga_node, YGEdgeLeft, style.padding.left);
-  YGNodeStyleSetPadding(yoga_node, YGEdgeRight, style.padding.right);
-  YGNodeStyleSetPadding(yoga_node, YGEdgeTop, style.padding.top);
-  YGNodeStyleSetPadding(yoga_node, YGEdgeBottom, style.padding.bottom);
+  set_edges(yoga_node, style.margin, YGNodeStyleSetMargin);
+  set_edges(yoga_node, style.padding, YGNodeStyleSetPadding);
+  set_edges(yoga_node, style.position_inset, YGNodeStyleSetPosition);
+  YGNodeStyleSetBorder(yoga_node, YGEdgeAll, style.border_width);
   YGNodeStyleSetGap(yoga_node, YGGutterAll, style.gap);
+  if (style.row_gap > 0.0f)
+    YGNodeStyleSetGap(yoga_node, YGGutterRow, style.row_gap);
+  if (style.column_gap > 0.0f)
+    YGNodeStyleSetGap(yoga_node, YGGutterColumn, style.column_gap);
 
   if (snapshot.id == UI_RETAINED_ROOT_ID) {
     YGNodeStyleSetWidth(yoga_node, viewport.width);
@@ -143,10 +248,25 @@ void apply_style(YGNodeRef yoga_node, const NodeSnapshot &snapshot,
     return;
   }
 
-  set_width(yoga_node, style.width);
-  set_height(yoga_node, style.height);
+  set_dimension(yoga_node, style.width, YGNodeStyleSetWidth,
+                YGNodeStyleSetWidthPercent, YGNodeStyleSetWidthAuto);
+  set_dimension(yoga_node, style.height, YGNodeStyleSetHeight,
+                YGNodeStyleSetHeightPercent, YGNodeStyleSetHeightAuto);
+  set_optional_length(yoga_node, style.min_width, YGNodeStyleSetMinWidth,
+                      YGNodeStyleSetMinWidthPercent);
+  set_optional_length(yoga_node, style.min_height, YGNodeStyleSetMinHeight,
+                      YGNodeStyleSetMinHeightPercent);
+  set_optional_length(yoga_node, style.max_width, YGNodeStyleSetMaxWidth,
+                      YGNodeStyleSetMaxWidthPercent);
+  set_optional_length(yoga_node, style.max_height, YGNodeStyleSetMaxHeight,
+                      YGNodeStyleSetMaxHeightPercent);
+  set_flex_basis(yoga_node, style.flex_basis);
   if (style.flex_grow > 0.0f)
     YGNodeStyleSetFlexGrow(yoga_node, style.flex_grow);
+  if (style.flex_shrink > 0.0f)
+    YGNodeStyleSetFlexShrink(yoga_node, style.flex_shrink);
+  if (style.aspect_ratio > 0.0f)
+    YGNodeStyleSetAspectRatio(yoga_node, style.aspect_ratio);
 }
 
 YGNodeRef build_yoga_tree(UiTree &tree, BuildContext &context, NodeId id,

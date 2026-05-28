@@ -40,6 +40,7 @@ public:
   const ::ui::retained::DrawList &retained_draw_list() const {
     return retained_draw_list_;
   }
+  bool wants_text_input() const { return wants_text_input_; }
 
   void begin_frame(const ::ui::UiInputFrame &input);
   void build_visible_screens();
@@ -84,6 +85,7 @@ private:
   ::ui::retained::DrawList retained_draw_list_ = {};
   std::array<QueuedMutation, CLIENT_UI_MAX_QUEUED_MUTATIONS> mutations_ = {};
   int mutation_count_ = 0;
+  bool wants_text_input_ = false;
 };
 
 ScreenNavigator use_screen_navigator();

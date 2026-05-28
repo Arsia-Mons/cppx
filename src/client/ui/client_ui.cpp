@@ -77,6 +77,11 @@ bool ClientUi::update_retained_runtime(
     return false;
   if (!::ui::retained::focus_update(&retained_focus_, retained_tree_, input))
     return false;
+  ::ui::retained::NodeId blurred =
+      ::ui::retained::focus_blurred_id(retained_focus_);
+  if (blurred != 0) {
+    retained_tree_.invoke_blur(blurred);
+  }
   ::ui::retained::NodeId focused =
       ::ui::retained::focus_changed_id(retained_focus_);
   if (focused != 0) {
@@ -85,9 +90,30 @@ bool ClientUi::update_retained_runtime(
   ::ui::retained::NodeId confirmed =
       ::ui::retained::focus_confirmed_id(retained_focus_);
   if (confirmed != 0) {
-    retained_tree_.invoke_confirm(confirmed);
+    retained_tree_.invoke_activate(confirmed);
   }
-  return ::ui::retained::build_draw_list(retained_tree_, &retained_draw_list_);
+
+  ::ui::retained::NodeId active =
+      ::ui::retained::focus_focused_id(retained_focus_);
+  for (int i = 0; i < input.key_event_count; ++i) {
+    retained_tree_.invoke_key(active, input.key_events[i]);
+  }
+  for (int i = 0; i < input.text_event_count; ++i) {
+    retained_tree_.invoke_text_input(active, input.text_events[i]);
+  }
+  for (int i = 0; i < input.editing_event_count; ++i) {
+    retained_tree_.invoke_text_editing(active, input.editing_events[i]);
+  }
+
+  ::ui::retained::NodeSnapshot active_snapshot = {};
+  wants_text_input_ =
+      active != 0 && retained_tree_.snapshot(active, &active_snapshot) &&
+      !active_snapshot.interaction.disabled &&
+      (active_snapshot.role == ::ui::retained::NodeRole::Input ||
+       active_snapshot.semantic_role == ::ui::retained::SemanticRole::TextBox);
+
+  return ::ui::retained::build_draw_list(retained_tree_, &retained_draw_list_,
+                                         active);
 }
 
 bool ClientUi::push_screen(std::unique_ptr<UiScreen> screen) {

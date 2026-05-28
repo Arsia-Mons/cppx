@@ -33,6 +33,6 @@ struct DrawList {
   bool push(const DrawCommand &command);
 };
 
-bool build_draw_list(const UiTree &tree, DrawList *out);
+bool build_draw_list(const UiTree &tree, DrawList *out, NodeId focused_id = 0);
 
 } // namespace ui::retained

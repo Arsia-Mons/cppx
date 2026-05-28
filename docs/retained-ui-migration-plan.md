@@ -156,7 +156,7 @@ immediate component calls.
    - control-mailbox retained focusable readback: foundation done.
    - main menu: ported to retained panels, text, buttons, focus, confirm
      callbacks, and CLI targeting.
-   - options: ported to retained modal panel, text, toggles, back button,
+   - options: ported to retained modal panel, text, checkbox, back button,
      focus, confirm callbacks, and CLI targeting.
    - retained overlay top-screen gating: foundation done through
      `ScreenProvider`.
@@ -164,8 +164,8 @@ immediate component calls.
      callbacks, and CLI targeting.
    - in-game HUD/action buttons: ported to retained panels, text, buttons,
      focus, confirm callbacks, and top-screen gating.
-   - loadout and confirm dialog: ported to retained panels, text, selectables,
-     toggles, buttons, focus callbacks, confirm callbacks, indexed CLI
+   - loadout and confirm dialog: ported to retained panels, text, composed
+     buttons, checkbox, focus callbacks, confirm callbacks, indexed CLI
      targeting, and modal focus restoration.
 
 8. Renderer replacement:
@@ -199,11 +199,11 @@ immediate component calls.
    - `retained_ui_reconciler_tests` verifies host commit metadata, component
      hook identity across frames, and provider context scoping.
    - generic UI components now live under `src/ui/components/`, one component
-     per file: box, text, button, toggle, selectable, focusable, and
-     scroll-container components return `UiElement` descriptors over
-     `HostKind::Box` / `HostKind::Text` instead of mutating `UiTree` directly.
-   - `ui_components_tests` verifies button metadata and callbacks, toggle
-     change dispatch, and selectable owned children.
+     per file: `Box`, `Text`, `Button`, `Input`, `Checkbox`, and `Dialog`
+     return `UiElement` descriptors over explicit host kinds instead of
+     mutating `UiTree` directly.
+   - `ui_components_tests` verifies host metadata and callbacks, checkbox
+     change dispatch, input editing, and focusable `Box` behavior.
    - `.cppx` / `.hx` output now emits returned element construction with
      `children` props; `retained_cppx_component_tests` compiles that output
      against `Box`, `Text`, `Button`, and a stateful component descriptor.
@@ -212,8 +212,8 @@ immediate component calls.
      boundary.
    - main menu, options, pause, in-game HUD/action UI, loadout, and loadout
      confirm dialog are migrated to returned `UiElement` roots/components
-     through `Box`, `Text`, `Button`, `Toggle`, `Selectable`, and frame-owned
-     provider values.
+     through `Box`, `Text`, `Button`, `Input`, `Checkbox`, `Dialog`, and
+     frame-owned provider values.
    - old immediate retained authoring API (`components.*` and
      `REACT_RETAINED_COMPONENT_*`) deleted.
    - `runtime_dependency_guard` now blocks the old immediate retained helper

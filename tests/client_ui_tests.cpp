@@ -405,8 +405,11 @@ static bool client_ui_owns_retained_runtime_outputs(void) {
       frame, {
                  .key = "confirm",
                  .id = "ConfirmRetainedButton",
+                 .on_focus =
+                     [&focus_count](const ::ui::retained::FocusEvent &) {
+                       focus_count += 1;
+                     },
                  .label = "Confirm",
-                 .on_focus = [&focus_count] { focus_count += 1; },
              });
   ::ui::retained::ReconcileResult result =
       ::ui::retained::reconcile_retained_tree(client_ui.retained_tree(), frame,

@@ -76,8 +76,9 @@ static bool generated_cppx_builds_retained_tree_and_hooks(void) {
 
   NodeSnapshot button = {};
   CHECK(snapshot(tree, tree.child_at(panel_id, 1), &button));
-  CHECK(strcmp(button.type, "Box") == 0);
+  CHECK(strcmp(button.type, "Button") == 0);
   CHECK(strcmp(button.key, "confirm") == 0);
+  CHECK(button.role == NodeRole::Button);
   CHECK(button.semantic_role == SemanticRole::Button);
   CHECK(button.child_count == 1);
 

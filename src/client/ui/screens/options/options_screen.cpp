@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <stdio.h>
+#include <string>
 
 #include "../../../../react.h"
 #include "../../../../ui/components/components.h"
@@ -40,65 +41,94 @@ render_options_screen(const OptionsScreenProps &props,
   bool is_top = client::ui::use_screen_is_top();
   int *large_hud = use_state_int(0);
   int *reduced_motion = use_state_int(1);
+  std::string *player_name = use_state<std::string>(std::string("Ace"));
   namespace retained = ::ui::retained;
   namespace components = ::ui::components;
 
-  if (!is_top)
+  if (!is_top || !player_name)
     return frame.empty();
 
-  return components::Box(
+  return components::Dialog(
       frame,
       {
           .key = "root",
-          .width = retained::Length::percent(100.0f),
-          .height = retained::Length::percent(100.0f),
-          .direction = retained::FlexDirection::Column,
-          .align_items = retained::AlignItems::Start,
-          .padding = {24.0f, 24.0f, 24.0f, 24.0f},
-          .gap = 12.0f,
-          .modal = true,
-          .background = {14, 22, 28, 245},
+          .style =
+              {
+                  .width = retained::Length::percent(100.0f),
+                  .height = retained::Length::percent(100.0f),
+                  .direction = retained::FlexDirection::Column,
+                  .align_items = retained::AlignItems::Start,
+                  .padding = {24.0f, 24.0f, 24.0f, 24.0f},
+                  .gap = 12.0f,
+                  .background = {14, 22, 28, 245},
+              },
           .children = frame.children({
-              components::Text(frame,
-                               {
-                                   .key = "title",
-                                   .value = "Options",
-                                   .height = retained::Length::points(32.0f),
-                                   .text_color = {236, 246, 242, 255},
-                                   .font_size = 26,
-                               }),
-              components::Toggle(frame,
-                                 {
-                                     .key = "large-hud",
-                                     .id = "LargeHudToggle",
-                                     .label = "Large HUD",
-                                     .checked = large_hud && *large_hud != 0,
-                                     .on_change =
-                                         [large_hud](bool enabled) {
-                                           if (large_hud)
-                                             *large_hud = enabled ? 1 : 0;
-                                         },
-                                 }),
-              components::Toggle(
+              components::Text(
+                  frame,
+                  {
+                      .key = "title",
+                      .value = "Options",
+                      .style =
+                          {
+                              .height = retained::Length::points(32.0f),
+                              .text = {236, 246, 242, 255},
+                              .font_size = 26,
+                          },
+                  }),
+              components::Checkbox(frame,
+                                   {
+                                       .key = "large-hud",
+                                       .id = "LargeHudToggle",
+                                       .checked = large_hud && *large_hud != 0,
+                                       .label = "Large HUD",
+                                       .on_change =
+                                           [large_hud](bool enabled) {
+                                             if (large_hud)
+                                               *large_hud = enabled ? 1 : 0;
+                                           },
+                                   }),
+              components::Checkbox(
                   frame,
                   {
                       .key = "reduced-motion",
                       .id = "ReducedMotionToggle",
-                      .label = "Reduce Motion",
                       .checked = reduced_motion && *reduced_motion != 0,
+                      .label = "Reduce Motion",
                       .on_change =
                           [reduced_motion](bool enabled) {
                             if (reduced_motion)
                               *reduced_motion = enabled ? 1 : 0;
                           },
                   }),
-              components::Button(frame,
-                                 {
-                                     .key = "back",
-                                     .id = "BackFromOptionsButton",
-                                     .label = "Back",
-                                     .on_confirm = nav.pop_current,
-                                 }),
+              components::Button(
+                  frame,
+                  {
+                      .key = "back",
+                      .id = "BackFromOptionsButton",
+                      .label = "Back",
+                      .on_activate =
+                          [pop = nav.pop_current](
+                              const retained::ActivationEvent &) {
+                            if (pop)
+                              pop();
+                          },
+                  }),
+              components::Input(
+                  frame,
+                  {
+                      .key = "name",
+                      .id = "NameInput",
+                      .accessibility =
+                          {
+                              .label = "Name",
+                          },
+                      .value = player_name->c_str(),
+                      .on_change =
+                          [player_name](const std::string &value) {
+                            if (player_name)
+                              *player_name = value;
+                          },
+                  }),
           }),
       });
 }

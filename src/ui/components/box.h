@@ -1,25 +1,24 @@
 #pragma once
 
-#include "../runtime/element.h"
+#include "common.h"
 
 namespace ui::components {
 
 struct BoxProps {
   const char *key = nullptr;
-  retained::Length width = retained::Length::auto_size();
-  retained::Length height = retained::Length::auto_size();
-  float flex_grow = 0.0f;
-  retained::FlexDirection direction = retained::FlexDirection::Column;
-  retained::AlignItems align_items = retained::AlignItems::Stretch;
-  retained::JustifyContent justify_content = retained::JustifyContent::Start;
-  retained::EdgeSizes padding = {};
-  float gap = 0.0f;
-  bool modal = false;
-  retained::Color background = {};
-  retained::Color border = {};
-  retained::Color text_color = {};
-  float border_width = 0.0f;
-  uint16_t font_size = 0;
+  const char *id = nullptr;
+  int id_offset = 0;
+  bool disabled = false;
+  bool focusable = false;
+  bool autofocus = false;
+  AccessibilityProps accessibility = {};
+  std::function<void(const retained::FocusEvent &)> on_focus = {};
+  std::function<void(const retained::BlurEvent &)> on_blur = {};
+  std::function<void(const retained::ActivationEvent &)> on_activate = {};
+  std::function<void(const retained::KeyEvent &)> on_key = {};
+  std::function<void(const retained::TextInputEvent &)> on_text_input = {};
+  std::function<void(const retained::TextEditingEvent &)> on_text_editing = {};
+  retained::Style style = {};
   retained::UiChildren children = {};
 };
 

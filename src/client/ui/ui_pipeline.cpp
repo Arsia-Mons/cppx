@@ -11,44 +11,58 @@ namespace {
 
 ::ui::retained::FocusSource
 to_retained_focus_source(::ui::UiFocusSource source) {
-    switch (source) {
-    case ::ui::UiFocusSource::None:
-        return ::ui::retained::FocusSource::None;
-    case ::ui::UiFocusSource::Keyboard:
-        return ::ui::retained::FocusSource::Keyboard;
-    case ::ui::UiFocusSource::Gamepad:
-        return ::ui::retained::FocusSource::Gamepad;
-    case ::ui::UiFocusSource::Mouse:
-        return ::ui::retained::FocusSource::Mouse;
-    case ::ui::UiFocusSource::Touch:
-        return ::ui::retained::FocusSource::Touch;
-    case ::ui::UiFocusSource::Programmatic:
-        return ::ui::retained::FocusSource::Programmatic;
-    }
+  switch (source) {
+  case ::ui::UiFocusSource::None:
+    return ::ui::retained::FocusSource::None;
+  case ::ui::UiFocusSource::Keyboard:
     return ::ui::retained::FocusSource::Keyboard;
+  case ::ui::UiFocusSource::Gamepad:
+    return ::ui::retained::FocusSource::Gamepad;
+  case ::ui::UiFocusSource::Mouse:
+    return ::ui::retained::FocusSource::Mouse;
+  case ::ui::UiFocusSource::Touch:
+    return ::ui::retained::FocusSource::Touch;
+  case ::ui::UiFocusSource::Programmatic:
+    return ::ui::retained::FocusSource::Programmatic;
+  }
+  return ::ui::retained::FocusSource::Keyboard;
 }
 
 ::ui::retained::InputFrame retained_input_frame(const UiPipelineFrame &frame) {
-    return {
-        .nav_up = frame.input.nav_up,
-        .nav_down = frame.input.nav_down,
-        .nav_left = frame.input.nav_left,
-        .nav_right = frame.input.nav_right,
-        .confirm_pressed = frame.input.confirm_pressed,
-        .pointer_pressed = frame.input.pointer_pressed,
-        .pointer_down = frame.input.pointer_down,
-        .pointer_released = frame.input.pointer_released,
-        .pointer_valid = true,
-        .pointer_x = frame.pointer.x,
-        .pointer_y = frame.pointer.y,
-        .source = to_retained_focus_source(frame.input.source),
-    };
+  ::ui::retained::InputFrame retained = {
+      .nav_up = frame.input.nav_up,
+      .nav_down = frame.input.nav_down,
+      .nav_left = frame.input.nav_left,
+      .nav_right = frame.input.nav_right,
+      .confirm_pressed = frame.input.confirm_pressed,
+      .pointer_pressed = frame.input.pointer_pressed,
+      .pointer_down = frame.input.pointer_down,
+      .pointer_released = frame.input.pointer_released,
+      .pointer_valid = true,
+      .pointer_x = frame.pointer.x,
+      .pointer_y = frame.pointer.y,
+      .source = to_retained_focus_source(frame.input.source),
+  };
+  retained.key_event_count = frame.input.key_event_count;
+  for (int i = 0; i < retained.key_event_count; ++i) {
+    retained.key_events[i] = frame.input.key_events[i];
+  }
+  retained.text_event_count = frame.input.text_event_count;
+  for (int i = 0; i < retained.text_event_count; ++i) {
+    retained.text_events[i] = frame.input.text_events[i];
+  }
+  retained.editing_event_count = frame.input.editing_event_count;
+  for (int i = 0; i < retained.editing_event_count; ++i) {
+    retained.editing_events[i] = frame.input.editing_events[i];
+  }
+  return retained;
 }
 
 } // namespace
 
 const UiPipelineFrame *use_ui_pipeline_frame() {
-    return static_cast<const UiPipelineFrame *>(use_context(&UiPipelineFrameContext));
+  return static_cast<const UiPipelineFrame *>(
+      use_context(&UiPipelineFrameContext));
 }
 
 UiPipeline::UiPipeline()
@@ -56,43 +70,42 @@ UiPipeline::UiPipeline()
 
 void UiPipeline::render_client_ui_frame(const UiPipelineFrame &frame,
                                         const RenderFrame &render_frame) {
-    client_ui_.begin_frame(frame.input);
-    react_begin_frame();
-    client_ui_.retained_tree().begin_frame(frame.layout.width,
-                                           frame.layout.height);
-    REACT_PROVIDER_ENTER("UiPipelineFrameProvider");
-    PROVIDE(&UiPipelineFrameContext, const_cast<UiPipelineFrame *>(&frame)) {
-        auto build = [this] { client_ui_.build_visible_screens(); };
-        if (frame_provider_) {
-            frame_provider_(build);
-        } else {
-            build();
-        }
+  client_ui_.begin_frame(frame.input);
+  react_begin_frame();
+  client_ui_.retained_tree().begin_frame(frame.layout.width,
+                                         frame.layout.height);
+  REACT_PROVIDER_ENTER("UiPipelineFrameProvider");
+  PROVIDE(&UiPipelineFrameContext, const_cast<UiPipelineFrame *>(&frame)) {
+    auto build = [this] { client_ui_.build_visible_screens(); };
+    if (frame_provider_) {
+      frame_provider_(build);
+    } else {
+      build();
     }
-    REACT_PROVIDER_EXIT();
+  }
+  REACT_PROVIDER_EXIT();
 
-    bool retained_frame_ended = client_ui_.retained_tree().end_frame();
-    if (!retained_frame_ended) {
-        react_report_error("client/ui: failed to end retained tree frame\n");
+  bool retained_frame_ended = client_ui_.retained_tree().end_frame();
+  if (!retained_frame_ended) {
+    react_report_error("client/ui: failed to end retained tree frame\n");
+  }
+  client_ui_.end_layout(frame.input);
+
+  if (retained_frame_ended) {
+    bool retained_updated = client_ui_.update_retained_runtime(
+        retained_layout_, {frame.layout.width, frame.layout.height},
+        retained_input_frame(frame));
+    if (!retained_updated) {
+      react_report_error("client/ui: failed to update retained runtime\n");
     }
-    client_ui_.end_layout(frame.input);
+  }
+  react_end_frame();
 
-    if (retained_frame_ended) {
-        bool retained_updated = client_ui_.update_retained_runtime(
-            retained_layout_, { frame.layout.width, frame.layout.height },
-            retained_input_frame(frame));
-        if (!retained_updated) {
-            react_report_error(
-                "client/ui: failed to update retained runtime\n");
-        }
-    }
-    react_end_frame();
+  if (render_frame) {
+    render_frame();
+  }
 
-    if (render_frame) {
-        render_frame();
-    }
-
-    client_ui_.drain_deferred_mutations();
+  client_ui_.drain_deferred_mutations();
 }
 
 } // namespace client::ui

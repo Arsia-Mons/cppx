@@ -42,52 +42,69 @@ render_loadout_confirm_dialog_body(const LoadoutPendingAction &pending,
           : use_text_storage("Equip %s as active weapon?", weapon.name);
   int action = pending.action;
 
-  return components::Box(
+  return components::Dialog(
       frame,
       {
           .key = "scrim",
-          .width = retained::Length::percent(100.0f),
-          .height = retained::Length::percent(100.0f),
-          .align_items = retained::AlignItems::Center,
-          .justify_content = retained::JustifyContent::Center,
-          .modal = true,
-          .background = {0, 0, 0, 160},
+          .style =
+              {
+                  .width = retained::Length::percent(100.0f),
+                  .height = retained::Length::percent(100.0f),
+                  .align_items = retained::AlignItems::Center,
+                  .justify_content = retained::JustifyContent::Center,
+                  .background = {0, 0, 0, 160},
+              },
           .children = frame.children({
               components::Box(
                   frame,
                   {
                       .key = "panel",
-                      .width = retained::Length::points(360.0f),
-                      .padding = {18.0f, 18.0f, 18.0f, 18.0f},
-                      .gap = 12.0f,
-                      .background = {18, 26, 32, 255},
-                      .border = {92, 116, 126, 255},
-                      .border_width = 1.0f,
+                      .style =
+                          {
+                              .width = retained::Length::points(360.0f),
+                              .padding = {18.0f, 18.0f, 18.0f, 18.0f},
+                              .gap = 12.0f,
+                              .background = {18, 26, 32, 255},
+                              .border = {92, 116, 126, 255},
+                              .border_width = 1.0f,
+                          },
                       .children = frame.children({
                           components::Text(
                               frame,
                               {
                                   .key = "title",
                                   .value = title,
-                                  .height = retained::Length::points(24.0f),
-                                  .text_color = {240, 248, 244, 255},
-                                  .font_size = 22,
+                                  .style =
+                                      {
+                                          .height =
+                                              retained::Length::points(24.0f),
+                                          .text = {240, 248, 244, 255},
+                                          .font_size = 22,
+                                      },
                               }),
                           components::Text(
                               frame,
                               {
                                   .key = "message",
                                   .value = message,
-                                  .height = retained::Length::points(18.0f),
-                                  .text_color = {202, 218, 216, 255},
-                                  .font_size = 15,
+                                  .style =
+                                      {
+                                          .height =
+                                              retained::Length::points(18.0f),
+                                          .text = {202, 218, 216, 255},
+                                          .font_size = 15,
+                                      },
                               }),
                           components::Box(
                               frame,
                               {
                                   .key = "actions",
-                                  .direction = retained::FlexDirection::Row,
-                                  .gap = 10.0f,
+                                  .style =
+                                      {
+                                          .direction =
+                                              retained::FlexDirection::Row,
+                                          .gap = 10.0f,
+                                      },
                                   .children = frame.children({
                                       components::Button(
                                           frame,
@@ -95,10 +112,12 @@ render_loadout_confirm_dialog_body(const LoadoutPendingAction &pending,
                                               .key = "confirm",
                                               .id =
                                                   "ConfirmLoadoutActionButton",
+                                              .autofocus = true,
                                               .label = "Confirm",
-                                              .initial_focus = true,
-                                              .on_confirm =
-                                                  [action, buy, equip, close] {
+                                              .on_activate =
+                                                  [action, buy, equip, close](
+                                                      const retained::
+                                                          ActivationEvent &) {
                                                     if (action ==
                                                         LOADOUT_ACTION_BUY) {
                                                       if (buy)
@@ -117,9 +136,16 @@ render_loadout_confirm_dialog_body(const LoadoutPendingAction &pending,
                                           frame,
                                           {
                                               .key = "cancel",
-                                              .id = "CancelLoadoutActionButton",
+                                              .id =
+                                                  "CancelLoadoutActionButton",
                                               .label = "Cancel",
-                                              .on_confirm = close,
+                                              .on_activate =
+                                                  [close](
+                                                      const retained::
+                                                          ActivationEvent &) {
+                                                    if (close)
+                                                      close();
+                                                  },
                                           }),
                                   }),
                               }),

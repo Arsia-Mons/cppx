@@ -141,6 +141,110 @@ static bool yoga_applies_padding_to_child_layout(void) {
   return true;
 }
 
+static bool yoga_applies_margins_min_max_and_absolute_positioning(void) {
+  UiTree tree;
+
+  Style row = {};
+  row.width = Length::points(220.0f);
+  row.height = Length::points(90.0f);
+  row.direction = FlexDirection::Row;
+  row.align_items = AlignItems::Start;
+
+  Style first = {};
+  first.width = Length::points(40.0f);
+  first.height = Length::points(20.0f);
+  first.margin = {10.0f, 5.0f, 0.0f, 0.0f};
+
+  Style clamped = {};
+  clamped.width = Length::points(200.0f);
+  clamped.height = Length::points(10.0f);
+  clamped.max_width = Length::points(90.0f);
+  clamped.min_height = Length::points(24.0f);
+
+  Style absolute = {};
+  absolute.position = PositionType::Absolute;
+  absolute.position_inset = {120.0f, 0.0f, 35.0f, 0.0f};
+  absolute.width = Length::points(20.0f);
+  absolute.height = Length::points(15.0f);
+
+  tree.begin_frame(220.0f, 90.0f);
+  NodeId row_id = tree.begin_keyed_node("Row", "root", row);
+  NodeId first_id = tree.begin_keyed_node("Child", "first", first);
+  CHECK(tree.end_node());
+  NodeId clamped_id = tree.begin_keyed_node("Child", "clamped", clamped);
+  CHECK(tree.end_node());
+  NodeId absolute_id = tree.begin_keyed_node("Child", "absolute", absolute);
+  CHECK(tree.end_node());
+  CHECK(tree.end_node());
+  CHECK(tree.end_frame());
+
+  CHECK(compute_flex_layout(make_yoga_flex_layout_adapter(), tree,
+                            {220.0f, 90.0f}));
+
+  NodeSnapshot row_snapshot = {};
+  NodeSnapshot first_snapshot = {};
+  NodeSnapshot clamped_snapshot = {};
+  NodeSnapshot absolute_snapshot = {};
+  CHECK(snapshot(tree, row_id, &row_snapshot));
+  CHECK(snapshot(tree, first_id, &first_snapshot));
+  CHECK(snapshot(tree, clamped_id, &clamped_snapshot));
+  CHECK(snapshot(tree, absolute_id, &absolute_snapshot));
+
+  CHECK(row_snapshot.layout.width == 220.0f);
+  CHECK(first_snapshot.layout.x == 10.0f);
+  CHECK(first_snapshot.layout.width == 40.0f);
+  CHECK(clamped_snapshot.layout.x == 55.0f);
+  CHECK(clamped_snapshot.layout.width == 90.0f);
+  CHECK(clamped_snapshot.layout.height == 24.0f);
+  CHECK(absolute_snapshot.layout.x == 120.0f);
+  CHECK(absolute_snapshot.layout.y == 35.0f);
+  CHECK(absolute_snapshot.layout.width == 20.0f);
+  return true;
+}
+
+static bool yoga_applies_wrap_and_row_gap(void) {
+  UiTree tree;
+
+  Style row = {};
+  row.width = Length::points(100.0f);
+  row.height = Length::points(80.0f);
+  row.direction = FlexDirection::Row;
+  row.wrap = FlexWrap::Wrap;
+  row.align_items = AlignItems::Start;
+  row.align_content = AlignItems::Start;
+  row.row_gap = 6.0f;
+
+  Style child = {};
+  child.width = Length::points(60.0f);
+  child.height = Length::points(20.0f);
+
+  tree.begin_frame(100.0f, 80.0f);
+  NodeId row_id = tree.begin_keyed_node("Row", "wrap", row);
+  NodeId first_id = tree.begin_keyed_node("Child", "first", child);
+  CHECK(tree.end_node());
+  NodeId second_id = tree.begin_keyed_node("Child", "second", child);
+  CHECK(tree.end_node());
+  CHECK(tree.end_node());
+  CHECK(tree.end_frame());
+
+  CHECK(compute_flex_layout(make_yoga_flex_layout_adapter(), tree,
+                            {100.0f, 80.0f}));
+
+  NodeSnapshot row_snapshot = {};
+  NodeSnapshot first_snapshot = {};
+  NodeSnapshot second_snapshot = {};
+  CHECK(snapshot(tree, row_id, &row_snapshot));
+  CHECK(snapshot(tree, first_id, &first_snapshot));
+  CHECK(snapshot(tree, second_id, &second_snapshot));
+
+  CHECK(row_snapshot.layout.width == 100.0f);
+  CHECK(first_snapshot.layout.x == 0.0f);
+  CHECK(first_snapshot.layout.y == 0.0f);
+  CHECK(second_snapshot.layout.x == 0.0f);
+  CHECK(second_snapshot.layout.y == 26.0f);
+  return true;
+}
+
 struct MeasureProbe {
   int count = 0;
   MeasureInput input = {};
@@ -193,6 +297,10 @@ int main(void) {
   if (!yoga_computes_row_percent_and_grow())
     return 1;
   if (!yoga_applies_padding_to_child_layout())
+    return 1;
+  if (!yoga_applies_margins_min_max_and_absolute_positioning())
+    return 1;
+  if (!yoga_applies_wrap_and_row_gap())
     return 1;
   if (!yoga_uses_retained_measure_function())
     return 1;

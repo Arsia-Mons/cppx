@@ -12,8 +12,34 @@ const char *host_kind_name(HostKind kind) {
     return "Box";
   case HostKind::Text:
     return "Text";
+  case HostKind::Button:
+    return "Button";
+  case HostKind::Input:
+    return "Input";
+  case HostKind::Checkbox:
+    return "Checkbox";
+  case HostKind::Dialog:
+    return "Dialog";
   }
   return "Box";
+}
+
+NodeRole node_role_for_host_kind(HostKind kind) {
+  switch (kind) {
+  case HostKind::Box:
+    return NodeRole::Box;
+  case HostKind::Text:
+    return NodeRole::Text;
+  case HostKind::Button:
+    return NodeRole::Button;
+  case HostKind::Input:
+    return NodeRole::Input;
+  case HostKind::Checkbox:
+    return NodeRole::Checkbox;
+  case HostKind::Dialog:
+    return NodeRole::Dialog;
+  }
+  return NodeRole::Generic;
 }
 
 Size measure_text_node(MeasureInput input, void *user) {
@@ -78,16 +104,21 @@ private:
     }
 
     NodeMetadata metadata = {
-        .role =
-            host.kind == HostKind::Text ? NodeRole::Text : NodeRole::Generic,
+        .role = node_role_for_host_kind(host.kind),
         .semantic_role = props.accessibility.role,
-        .control_id = props.automation.id,
-        .control_offset = props.automation.offset,
+        .control_id = props.id,
+        .control_offset = props.id_offset,
+        .accessibility_label = props.accessibility.label,
+        .accessibility_description = props.accessibility.description,
         .value = props.text.value,
         .interaction = props.interaction,
-        .visual = props.visual,
+        .text_edit = props.text_edit,
         .on_focus = props.callbacks.on_focus,
-        .on_confirm = props.callbacks.on_confirm,
+        .on_blur = props.callbacks.on_blur,
+        .on_activate = props.callbacks.on_activate,
+        .on_key = props.callbacks.on_key,
+        .on_text_input = props.callbacks.on_text_input,
+        .on_text_editing = props.callbacks.on_text_editing,
     };
     bool metadata_ok = tree_.set_metadata(id, metadata);
     if (!metadata_ok) {
@@ -231,10 +262,10 @@ UiElement UiElementFrame::box(const HostProps &props) {
 }
 
 UiElement UiElementFrame::text(const char *value, const char *key,
-                               const VisualStyle &visual) {
+                               const Style &style) {
   return host(HostKind::Text, {
                                   .key = key,
-                                  .visual = visual,
+                                  .style = style,
                                   .text = {.value = value},
                               });
 }
@@ -300,8 +331,12 @@ UiElement UiElementFrame::component_raw(const char *name, const char *key,
 HostProps UiElementFrame::copy_host_props(const HostProps &props) {
   HostProps copied = props;
   copied.key = copy_string(props.key);
+  copied.id = copy_string(props.id);
   copied.text.value = copy_string(props.text.value);
-  copied.automation.id = copy_string(props.automation.id);
+  copied.text_edit.composition = copy_string(props.text_edit.composition);
+  copied.accessibility.label = copy_string(props.accessibility.label);
+  copied.accessibility.description =
+      copy_string(props.accessibility.description);
   return copied;
 }
 

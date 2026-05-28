@@ -1,13 +1,13 @@
 #include "panel_components.h"
 
 UiElement BuildPauseMenu(UiElementFrame &frame, Actions &actions) {
-  return <Panel key="pause" width={Length::points(320)} modal>
+  return <Panel key="pause" style={Style{.width = Length::points(320)}} modal>
     <Panel.Header>
       <Text value="Paused" />
     </Panel.Header>
     <Panel.Body>
-      <Button id="ResumeButton" onConfirm={actions.resume}>Resume</Button>
-      <Button id="OptionsButton" onConfirm={actions.options} />
+      <Button id="ResumeButton" onActivate={actions.resume}>Resume</Button>
+      <Button id="OptionsButton" onActivate={actions.options} />
     </Panel.Body>
   </Panel>
 }

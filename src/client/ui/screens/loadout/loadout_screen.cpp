@@ -53,9 +53,12 @@ weapon_grid_children(::ui::retained::UiElementFrame &frame, int active_tab) {
         components::Box(frame,
                         {
                             .key = "gear-row",
-                            .direction = retained::FlexDirection::Row,
-                            .align_items = retained::AlignItems::Start,
-                            .gap = 10.0f,
+                            .style =
+                                {
+                                    .direction = retained::FlexDirection::Row,
+                                    .align_items = retained::AlignItems::Start,
+                                    .gap = 10.0f,
+                                },
                             .children = frame.children({
                                 WeaponTile(frame, 3),
                             }),
@@ -67,9 +70,12 @@ weapon_grid_children(::ui::retained::UiElementFrame &frame, int active_tab) {
       components::Box(frame,
                       {
                           .key = "weapon-row-0",
-                          .direction = retained::FlexDirection::Row,
-                          .align_items = retained::AlignItems::Start,
-                          .gap = 10.0f,
+                          .style =
+                              {
+                                  .direction = retained::FlexDirection::Row,
+                                  .align_items = retained::AlignItems::Start,
+                                  .gap = 10.0f,
+                              },
                           .children = frame.children({
                               WeaponTile(frame, 0),
                               WeaponTile(frame, 1),
@@ -78,9 +84,12 @@ weapon_grid_children(::ui::retained::UiElementFrame &frame, int active_tab) {
       components::Box(frame,
                       {
                           .key = "weapon-row-1",
-                          .direction = retained::FlexDirection::Row,
-                          .align_items = retained::AlignItems::Start,
-                          .gap = 10.0f,
+                          .style =
+                              {
+                                  .direction = retained::FlexDirection::Row,
+                                  .align_items = retained::AlignItems::Start,
+                                  .gap = 10.0f,
+                              },
                           .children = frame.children({
                               WeaponTile(frame, 2),
                           }),
@@ -132,45 +141,59 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props,
   bool confirm_open = pending.action != LOADOUT_ACTION_NONE;
   return frame.fragment(frame.children({
       LoadoutConfirmDialog(frame),
-      components::Box(
+      components::Dialog(
           frame,
           {
               .key = "root",
-              .width = retained::Length::percent(100.0f),
-              .height = retained::Length::percent(100.0f),
-              .padding = {24.0f, 24.0f, 24.0f, 24.0f},
-              .gap = 18.0f,
               .modal = !confirm_open,
-              .background = {12, 20, 24, 245},
+              .style =
+                  {
+                      .width = retained::Length::percent(100.0f),
+                      .height = retained::Length::percent(100.0f),
+                      .padding = {24.0f, 24.0f, 24.0f, 24.0f},
+                      .gap = 18.0f,
+                      .background = {12, 20, 24, 245},
+                  },
               .children = frame.children({
-                  components::Text(
-                      frame,
-                      {
-                          .key = "title",
-                          .value = "Loadout",
-                          .height = retained::Length::points(30.0f),
-                          .text_color = {236, 246, 242, 255},
-                          .font_size = 26,
-                      }),
+                  components::Text(frame,
+                                   {
+                                       .key = "title",
+                                       .value = "Loadout",
+                                       .style =
+                                           {
+                                               .height = retained::Length::
+                                                   points(30.0f),
+                                               .text = {236, 246, 242, 255},
+                                               .font_size = 26,
+                                           },
+                                   }),
                   components::Box(
                       frame,
                       {
                           .key = "tabs",
-                          .direction = retained::FlexDirection::Row,
-                          .align_items = retained::AlignItems::Start,
-                          .gap = 10.0f,
+                          .style =
+                              {
+                                  .direction = retained::FlexDirection::Row,
+                                  .align_items = retained::AlignItems::Start,
+                                  .gap =
+                                      10.0f,
+                              },
                           .children = frame.children({
-                              components::Selectable(
+                              components::Button(
                                   frame,
                                   {
                                       .key = "weapons",
                                       .id = "WeaponsTab",
+                                      .accessibility =
+                                          {
+                                              .role = retained::SemanticRole::Tab,
+                                          },
                                       .label = "Weapons",
-                                      .selected = *active_tab ==
-                                                  LOADOUT_TAB_WEAPONS,
-                                      .on_confirm =
+                                      .on_activate =
                                           [active_tab, set_selected_tile,
-                                           select_weapons_tab_weapon] {
+                                           select_weapons_tab_weapon](
+                                              const retained::ActivationEvent
+                                                  &) {
                                             if (active_tab)
                                               *active_tab = LOADOUT_TAB_WEAPONS;
                                             if (set_selected_tile)
@@ -180,44 +203,114 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props,
                                             if (select_weapons_tab_weapon)
                                               select_weapons_tab_weapon();
                                           },
-                                  }),
-                              components::Selectable(
-                                  frame,
-                                  {
-                                      .key = "gear",
-                                      .id = "GearTab",
-                                      .label = "Gear",
-                                      .selected = *active_tab ==
-                                                  LOADOUT_TAB_GEAR,
-                                      .on_confirm =
-                                          [active_tab, set_selected_tile,
-                                           select_gear_tab_weapon] {
-                                            if (active_tab)
-                                              *active_tab = LOADOUT_TAB_GEAR;
-                                            if (set_selected_tile)
-                                              set_selected_tile(
-                                                  first_weapon_for_tab(
-                                                      LOADOUT_TAB_GEAR));
-                                            if (select_gear_tab_weapon)
-                                              select_gear_tab_weapon();
+                                      .style =
+                                          {
+                                              .width =
+                                                  retained::Length::points(
+                                                      132.0f),
+                                              .height =
+                                                  retained::
+                                                      Length::points(34.0f),
+                                              .align_items =
+                                                  retained::AlignItems::Center,
+                                              .justify_content =
+                                                  retained::
+                                                      JustifyContent::Center,
+                                              .padding = {12.0f, 12.0f, 7.0f,
+                                                          7.0f},
+                                              .background =
+                                                  *active_tab ==
+                                                          LOADOUT_TAB_WEAPONS
+                                                      ? retained::
+                                                            Color{42,
+                                                                  80, 60, 255}
+                                                      : retained::
+                                                            Color{24,
+                                                                  28, 36, 255},
                                           },
                                   }),
+                              components::
+                                  Button(
+                                      frame,
+                                      {
+                                          .key =
+                                              "gear",
+                                          .id = "GearTab",
+                                          .accessibility =
+                                              {
+                                                  .role = retained::
+                                                      SemanticRole::Tab,
+                                              },
+                                          .label = "Gear",
+                                          .on_activate =
+                                              [active_tab, set_selected_tile,
+                                               select_gear_tab_weapon](
+                                                  const retained::
+                                                      ActivationEvent &) {
+                                                if (active_tab)
+                                                  *active_tab =
+                                                      LOADOUT_TAB_GEAR;
+                                                if (set_selected_tile)
+                                                  set_selected_tile(
+                                                      first_weapon_for_tab(
+                                                          LOADOUT_TAB_GEAR));
+                                                if (select_gear_tab_weapon)
+                                                  select_gear_tab_weapon();
+                                              },
+                                          .style =
+                                              {
+                                                  .width =
+                                                      retained::Length::points(
+                                                          132.0f),
+                                                  .height =
+                                                      retained::Length::points(
+                                                          34.0f),
+                                                  .align_items =
+                                                      retained::AlignItems::
+                                                          Center,
+                                                  .justify_content =
+                                                      retained::
+                                                          JustifyContent::
+                                                              Center,
+                                                  .padding = {12.0f, 12.0f,
+                                                              7.0f, 7.0f},
+                                                  .background =
+                                                      *active_tab ==
+                                                              LOADOUT_TAB_GEAR
+                                                          ? retained::
+                                                                Color{42,
+                                                                      80, 60, 255}
+                                                          : retained::
+                                                                Color{24,
+                                                                      28, 36, 255},
+                                              },
+                                      }),
                           }),
                       }),
                   components::Box(
                       frame,
                       {
                           .key = "body",
-                          .direction = retained::FlexDirection::Row,
-                          .align_items = retained::AlignItems::Start,
-                          .gap = 18.0f,
+                          .style =
+                              {
+                                  .direction = retained::FlexDirection::Row,
+                                  .align_items = retained::AlignItems::Start,
+                                  .gap =
+                                      18.0f,
+                              },
                           .children = frame.children({
                               components::Box(
                                   frame,
                                   {
                                       .key = "weapon-grid",
-                                      .width = retained::Length::points(400.0f),
-                                      .gap = 10.0f,
+                                      .style =
+                                          {
+                                              .width =
+                                                  retained::Length::points(
+                                                      400.0f),
+                                              .gap =
+                                                  10.0f,
+                                          },
                                       .children = weapon_grid_children(
                                           frame, *active_tab),
                                   }),
@@ -225,30 +318,39 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props,
                                   frame,
                                   {
                                       .key = "details",
-                                      .width = retained::Length::points(260.0f),
-                                      .padding = {14.0f, 14.0f, 14.0f, 14.0f},
-                                      .gap = 10.0f,
-                                      .background = {22, 30, 36, 255},
+                                      .style =
+                                          {
+                                              .width =
+                                                  retained::Length::points(
+                                                      260.0f),
+                                              .padding = {14.0f, 14.0f, 14.0f,
+                                                          14.0f},
+                                              .gap = 10.0f,
+                                              .background = {22, 30, 36, 255},
+                                          },
                                       .children = frame.children({
                                           components::Text(
                                               frame,
                                               {
                                                   .key = "summary",
                                                   .value = details,
-                                                  .height =
-                                                      retained::Length::points(
-                                                          18.0f),
-                                                  .text_color = {226, 238, 236,
-                                                                 255},
-                                                  .font_size = 14,
+                                                  .style =
+                                                      {
+                                                          .height =
+                                                              retained::
+                                                                  Length::points(
+                                                                      18.0f),
+                                                          .text = {226, 238, 236, 255},
+                                                          .font_size = 14,
+                                                      },
                                               }),
-                                          components::Toggle(
+                                          components::Checkbox(
                                               frame,
                                               {
                                                   .key = "compare",
                                                   .id = "CompareToggle",
-                                                  .label = "Compare",
                                                   .checked = compare_enabled,
+                                                  .label = "Compare",
                                                   .on_change =
                                                       set_compare_enabled,
                                               }),
@@ -257,11 +359,14 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props,
                                               {
                                                   .key = "buy",
                                                   .id = "BuyWeaponButton",
-                                                  .label = "Buy",
                                                   .disabled = !can_buy,
-                                                  .on_confirm =
+                                                  .label = "Buy",
+                                                  .on_activate =
                                                       [set_pending, pending,
-                                                       selected_index_seed] {
+                                                       selected_index_seed](
+                                                          const retained::
+                                                              ActivationEvent
+                                                                  &) {
                                                         if (set_pending) {
                                                           set_pending({
                                                               .action =
@@ -281,11 +386,14 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props,
                                               {
                                                   .key = "equip",
                                                   .id = "EquipWeaponButton",
-                                                  .label = "Equip",
                                                   .disabled = !can_equip,
-                                                  .on_confirm =
+                                                  .label = "Equip",
+                                                  .on_activate =
                                                       [set_pending, pending,
-                                                       selected_index_seed] {
+                                                       selected_index_seed](
+                                                          const retained::
+                                                              ActivationEvent
+                                                                  &) {
                                                         if (set_pending) {
                                                           set_pending({
                                                               .action =
@@ -306,19 +414,29 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props,
                                                   .key = "back",
                                                   .id = "BackFromLoadoutButton",
                                                   .label = "Back",
-                                                  .on_confirm = nav.pop_current,
+                                                  .on_activate =
+                                                      [pop = nav.pop_current](
+                                                          const retained::
+                                                              ActivationEvent
+                                                                  &) {
+                                                        if (pop)
+                                                          pop();
+                                                      },
                                               }),
                                           components::Text(
                                               frame,
                                               {
                                                   .key = "slots-title",
                                                   .value = "Equipment Slots",
-                                                  .height =
-                                                      retained::Length::points(
-                                                          16.0f),
-                                                  .text_color = {202, 218, 216,
-                                                                 255},
-                                                  .font_size = 14,
+                                                  .style =
+                                                      {
+                                                          .height =
+                                                              retained::
+                                                                  Length::points(
+                                                                      16.0f),
+                                                          .text = {202, 218, 216, 255},
+                                                          .font_size = 14,
+                                                      },
                                               }),
                                           EquipmentSlot(frame, "PrimarySlot",
                                                         "Primary", 0),

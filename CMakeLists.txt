@@ -58,11 +58,10 @@ enable_testing()
 set(UI_COMPONENT_SOURCES
   src/ui/components/box.cpp
   src/ui/components/button.cpp
-  src/ui/components/focusable.cpp
-  src/ui/components/scroll_container.cpp
-  src/ui/components/selectable.cpp
+  src/ui/components/checkbox.cpp
+  src/ui/components/dialog.cpp
+  src/ui/components/input.cpp
   src/ui/components/text.cpp
-  src/ui/components/toggle.cpp
 )
 
 cppx_transpile(CPPX_FIXTURE_GENERATED

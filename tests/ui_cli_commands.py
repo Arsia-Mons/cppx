@@ -118,6 +118,28 @@ def main() -> int:
             raise RuntimeError(f"options did not open from main menu: {result}")
         if screen_names(result) != ["MainMenu", "Options"]:
             raise RuntimeError(f"unexpected main menu options stack: {result}")
+        focusable(result, "NameInput")
+
+        run_cli(
+            cli,
+            control_dir,
+            "pointer",
+            "--target",
+            "NameInput",
+            "--action",
+            "click",
+        )
+        wait_frame(cli, control_dir)
+        run_cli(cli, control_dir, "text", "--text", "Z")
+        wait_frame(cli, control_dir)
+        state = run_cli(cli, control_dir, "inspect")
+        result = state["result"]
+        text_inputs = [
+            item for item in result.get("text_inputs", [])
+            if item.get("name") == "NameInput"
+        ]
+        if len(text_inputs) != 1 or text_inputs[0].get("value") != "AceZ":
+            raise RuntimeError(f"text input did not update through CLI: {result}")
 
         run_cli(cli, control_dir, "key", "--key", "escape")
         wait_frame(cli, control_dir)

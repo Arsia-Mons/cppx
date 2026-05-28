@@ -4,7 +4,7 @@ using namespace ui::retained;
 using namespace ui::components;
 
 UiElement BuildGeneratedRetainedTree(UiElementFrame &frame, int write) {
-  return <Box key="generated" width={Length::points(240.0f)} height={Length::points(120.0f)} gap={6.0f} padding={EdgeSizes{4.0f, 4.0f, 8.0f, 8.0f}} align_items={AlignItems::Start}>
+  return <Box key="generated" style={Style{.width = Length::points(240.0f), .height = Length::points(120.0f), .align_items = AlignItems::Start, .padding = EdgeSizes{4.0f, 4.0f, 8.0f, 8.0f}, .gap = 6.0f}}>
     <Text key="title" value="Generated" />
     <Button key="confirm" id="ConfirmButton" label="Confirm" />
     <StatefulProbe key="probe" slot={0} write={write} />

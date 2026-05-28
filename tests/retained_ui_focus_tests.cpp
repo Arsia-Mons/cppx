@@ -44,33 +44,40 @@ static bool layout_tree(FocusTree *out, bool show_modal = false) {
   out->modal_confirm = 0;
 
   UiElementFrame frame;
-  UiElement modal = show_modal
-                        ? Box(frame,
-                              {
-                                  .key = "modal",
-                                  .width = Length::points(180.0f),
-                                  .height = Length::points(80.0f),
-                                  .align_items = AlignItems::Start,
-                                  .padding = {8.0f, 8.0f, 8.0f, 8.0f},
-                                  .modal = true,
-                                  .children = frame.children({
-                                      Button(frame,
-                                             {
-                                                 .key = "confirm",
-                                                 .id = "ConfirmModalButton",
-                                                 .label = "Confirm",
-                                             }),
+  UiElement modal =
+      show_modal
+          ? Dialog(frame,
+                   {
+                       .key = "modal",
+                       .style =
+                           {
+                               .width = Length::points(180.0f),
+                               .height = Length::points(80.0f),
+                               .align_items = AlignItems::Start,
+                               .padding = {8.0f, 8.0f, 8.0f, 8.0f},
+                           },
+                       .children = frame.children({
+                           Button(frame,
+                                  {
+                                      .key = "confirm",
+                                      .id = "ConfirmModalButton",
+                                      .label = "Confirm",
                                   }),
-                              })
-                        : frame.empty();
+                       }),
+                   })
+          : frame.empty();
 
   UiElement root = Box(frame, {
                                   .key = "root",
-                                  .width = Length::points(320.0f),
-                                  .height = Length::points(240.0f),
-                                  .align_items = AlignItems::Start,
-                                  .padding = {4.0f, 4.0f, 4.0f, 4.0f},
-                                  .gap = 8.0f,
+                                  .style =
+                                      {
+                                          .width = Length::points(320.0f),
+                                          .height = Length::points(240.0f),
+                                          .align_items = AlignItems::Start,
+                                          .padding =
+                                              {4.0f, 4.0f, 4.0f, 4.0f},
+                                          .gap = 8.0f,
+                                      },
                                   .children = frame.children({
                                       Button(frame,
                                              {
@@ -82,8 +89,8 @@ static bool layout_tree(FocusTree *out, bool show_modal = false) {
                                              {
                                                  .key = "disabled",
                                                  .id = "DisabledButton",
-                                                 .label = "Disabled",
                                                  .disabled = true,
+                                                 .label = "Disabled",
                                              }),
                                       Button(frame,
                                              {

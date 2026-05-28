@@ -49,51 +49,71 @@ render_main_menu_screen(const MainMenuScreenProps &props,
       frame,
       {
           .key = "root",
-          .width = retained::Length::percent(100.0f),
-          .height = retained::Length::percent(100.0f),
-          .direction = retained::FlexDirection::Column,
-          .align_items = retained::AlignItems::Center,
-          .justify_content = retained::JustifyContent::Center,
-          .padding = {36.0f, 36.0f, 36.0f, 36.0f},
-          .background = {8, 14, 18, 255},
+          .style =
+              {
+                  .width = retained::Length::percent(100.0f),
+                  .height = retained::Length::percent(100.0f),
+                  .direction = retained::FlexDirection::Column,
+                  .align_items = retained::AlignItems::Center,
+                  .justify_content = retained::JustifyContent::Center,
+                  .padding = {36.0f, 36.0f, 36.0f, 36.0f},
+                  .background = {8, 14, 18, 255},
+              },
           .children = frame.children({
               components::Box(
                   frame,
                   {
                       .key = "panel",
-                      .width = retained::Length::points(340.0f),
-                      .direction = retained::FlexDirection::Column,
-                      .align_items = retained::AlignItems::Center,
-                      .padding = {24.0f, 24.0f, 24.0f, 24.0f},
-                      .gap = 14.0f,
-                      .background = {18, 27, 32, 245},
-                      .border = {83, 108, 118, 255},
-                      .border_width = 1.0f,
+                      .style =
+                          {
+                              .width = retained::Length::points(340.0f),
+                              .direction = retained::FlexDirection::Column,
+                              .align_items = retained::AlignItems::Center,
+                              .padding = {24.0f, 24.0f, 24.0f, 24.0f},
+                              .gap = 14.0f,
+                              .background = {18, 27, 32, 245},
+                              .border = {83, 108, 118, 255},
+                              .border_width = 1.0f,
+                          },
                       .children = frame.children({
                           components::Text(
                               frame,
                               {
                                   .key = "title",
                                   .value = "Reference Shooter",
-                                  .height = retained::Length::points(36.0f),
-                                  .text_color = {235, 246, 242, 255},
-                                  .font_size = 30,
+                                  .style =
+                                      {
+                                          .height =
+                                              retained::Length::points(36.0f),
+                                          .text = {235, 246, 242, 255},
+                                          .font_size = 30,
+                                      },
                               }),
                           components::Text(
                               frame,
                               {
                                   .key = "subtitle",
                                   .value = "SDL3 / retained UI flow",
-                                  .height = retained::Length::points(22.0f),
-                                  .text_color = {154, 177, 184, 255},
-                                  .font_size = 16,
+                                  .style =
+                                      {
+                                          .height =
+                                              retained::Length::points(22.0f),
+                                          .text = {154, 177, 184, 255},
+                                          .font_size = 16,
+                                      },
                               }),
                           components::Button(frame,
                                              {
                                                  .key = "start",
                                                  .id = "StartMatchButton",
                                                  .label = "Start Match",
-                                                 .on_confirm = start_match,
+                                                 .on_activate =
+                                                     [start_match](
+                                                         const retained::
+                                                             ActivationEvent &) {
+                                                       if (start_match)
+                                                         start_match();
+                                                     },
                                              }),
                           components::Button(
                               frame,
@@ -101,15 +121,26 @@ render_main_menu_screen(const MainMenuScreenProps &props,
                                   .key = "options",
                                   .id = "OpenOptionsFromMainMenuButton",
                                   .label = "Options",
-                                  .on_confirm = open_options,
+                                  .on_activate =
+                                      [open_options](
+                                          const retained::ActivationEvent &) {
+                                        if (open_options)
+                                          open_options();
+                                      },
                               }),
                           components::Button(frame,
                                              {
                                                  .key = "quit",
                                                  .id = "QuitButton",
-                                                 .label = "Quit",
                                                  .disabled = !request_quit,
-                                                 .on_confirm = request_quit,
+                                                 .label = "Quit",
+                                                 .on_activate =
+                                                     [request_quit](
+                                                         const retained::
+                                                             ActivationEvent &) {
+                                                       if (request_quit)
+                                                         request_quit();
+                                                     },
                                              }),
                       }),
                   }),
