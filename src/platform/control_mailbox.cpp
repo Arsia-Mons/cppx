@@ -140,67 +140,65 @@ static float json_float_value(const std::string &json, const char *key,
   return end == json.c_str() + pos ? fallback : value;
 }
 
-static const char *
-retained_focus_source_name(::ui::retained::FocusSource source) {
+static const char *retained_focus_source_name(::ui::FocusSource source) {
   switch (source) {
-  case ::ui::retained::FocusSource::None:
+  case ::ui::FocusSource::None:
     return "None";
-  case ::ui::retained::FocusSource::Keyboard:
+  case ::ui::FocusSource::Keyboard:
     return "Keyboard";
-  case ::ui::retained::FocusSource::Gamepad:
+  case ::ui::FocusSource::Gamepad:
     return "Gamepad";
-  case ::ui::retained::FocusSource::Mouse:
+  case ::ui::FocusSource::Mouse:
     return "Mouse";
-  case ::ui::retained::FocusSource::Touch:
+  case ::ui::FocusSource::Touch:
     return "Touch";
-  case ::ui::retained::FocusSource::Programmatic:
+  case ::ui::FocusSource::Programmatic:
     return "Programmatic";
   }
   return "None";
 }
 
-static const char *retained_node_role_name(::ui::retained::NodeRole role) {
+static const char *retained_node_role_name(::ui::NodeRole role) {
   switch (role) {
-  case ::ui::retained::NodeRole::Generic:
+  case ::ui::NodeRole::Generic:
     return "generic";
-  case ::ui::retained::NodeRole::Box:
+  case ::ui::NodeRole::Box:
     return "box";
-  case ::ui::retained::NodeRole::Text:
+  case ::ui::NodeRole::Text:
     return "text";
-  case ::ui::retained::NodeRole::Button:
+  case ::ui::NodeRole::Button:
     return "button";
-  case ::ui::retained::NodeRole::Input:
+  case ::ui::NodeRole::Input:
     return "input";
-  case ::ui::retained::NodeRole::Checkbox:
+  case ::ui::NodeRole::Checkbox:
     return "checkbox";
-  case ::ui::retained::NodeRole::Dialog:
+  case ::ui::NodeRole::Dialog:
     return "dialog";
   }
   return "generic";
 }
 
-static const char *
-retained_semantic_role_name(::ui::retained::SemanticRole role) {
+static const char *retained_semantic_role_name(::ui::SemanticRole role) {
   switch (role) {
-  case ::ui::retained::SemanticRole::Auto:
+  case ::ui::SemanticRole::Auto:
     return "auto";
-  case ::ui::retained::SemanticRole::Button:
+  case ::ui::SemanticRole::Button:
     return "button";
-  case ::ui::retained::SemanticRole::Checkbox:
+  case ::ui::SemanticRole::Checkbox:
     return "checkbox";
-  case ::ui::retained::SemanticRole::TextBox:
+  case ::ui::SemanticRole::TextBox:
     return "textbox";
-  case ::ui::retained::SemanticRole::Tab:
+  case ::ui::SemanticRole::Tab:
     return "tab";
-  case ::ui::retained::SemanticRole::Dialog:
+  case ::ui::SemanticRole::Dialog:
     return "dialog";
   }
   return "auto";
 }
 
-static bool is_text_input_node(const ::ui::retained::NodeSnapshot &node) {
-  return node.role == ::ui::retained::NodeRole::Input ||
-         node.semantic_role == ::ui::retained::SemanticRole::TextBox;
+static bool is_text_input_node(const ::ui::NodeSnapshot &node) {
+  return node.role == ::ui::NodeRole::Input ||
+         node.semantic_role == ::ui::SemanticRole::TextBox;
 }
 
 bool ControlMailbox::init(const char *dir) {
@@ -261,10 +259,10 @@ void ControlMailbox::write_error(int id, const char *code,
 std::string ControlMailbox::state_json(client::ui::UiPipeline &pipeline) {
   client::ui::ClientUi &client_ui = pipeline.client_ui();
   client::ui::UiScreen *top = client_ui.screens().top();
-  ::ui::retained::NodeId retained_focused =
-      ::ui::retained::focus_focused_id(client_ui.retained_focus());
-  ::ui::retained::FocusSource retained_source =
-      ::ui::retained::focus_source(client_ui.retained_focus());
+  ::ui::NodeId retained_focused =
+      ::ui::focus_focused_id(client_ui.retained_focus());
+  ::ui::FocusSource retained_source =
+      ::ui::focus_source(client_ui.retained_focus());
 
   std::ostringstream body;
   body << "\"result\":{"
@@ -296,10 +294,9 @@ std::string ControlMailbox::state_json(client::ui::UiPipeline &pipeline) {
   }
   body << "],\"focusables\":[";
   bool first_focusable = true;
-  const ::ui::retained::FocusRuntime &retained_focus =
-      client_ui.retained_focus();
+  const ::ui::FocusRuntime &retained_focus = client_ui.retained_focus();
   std::string retained_scope_name = "RetainedRoot";
-  ::ui::retained::NodeSnapshot retained_scope = {};
+  ::ui::NodeSnapshot retained_scope = {};
   if (client_ui.retained_tree().snapshot(retained_focus.active_scope_id,
                                          &retained_scope)) {
     retained_scope_name =
@@ -308,9 +305,8 @@ std::string ControlMailbox::state_json(client::ui::UiPipeline &pipeline) {
             : retained_scope.type;
   }
   for (int i = 0; i < retained_focus.focusable_count; ++i) {
-    const ::ui::retained::FocusableLayout &layout =
-        retained_focus.focusables[i];
-    ::ui::retained::NodeSnapshot node = {};
+    const ::ui::FocusableLayout &layout = retained_focus.focusables[i];
+    ::ui::NodeSnapshot node = {};
     if (!client_ui.retained_tree().snapshot(layout.id, &node))
       continue;
     if (!first_focusable)
@@ -342,9 +338,8 @@ std::string ControlMailbox::state_json(client::ui::UiPipeline &pipeline) {
   body << "],\"text_inputs\":[";
   bool first_text_input = true;
   for (int i = 0; i < retained_focus.focusable_count; ++i) {
-    const ::ui::retained::FocusableLayout &layout =
-        retained_focus.focusables[i];
-    ::ui::retained::NodeSnapshot node = {};
+    const ::ui::FocusableLayout &layout = retained_focus.focusables[i];
+    ::ui::NodeSnapshot node = {};
     if (!client_ui.retained_tree().snapshot(layout.id, &node) ||
         !is_text_input_node(node))
       continue;

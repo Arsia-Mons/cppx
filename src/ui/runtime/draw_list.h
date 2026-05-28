@@ -5,7 +5,7 @@
 #include <array>
 #include <stdint.h>
 
-namespace ui::retained {
+namespace ui {
 
 constexpr int UI_RETAINED_MAX_DRAW_COMMANDS = UI_RETAINED_MAX_NODES * 2;
 
@@ -35,4 +35,4 @@ struct DrawList {
 
 bool build_draw_list(const UiTree &tree, DrawList *out, NodeId focused_id = 0);
 
-} // namespace ui::retained
+} // namespace ui

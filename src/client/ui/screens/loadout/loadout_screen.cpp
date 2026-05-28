@@ -36,70 +36,63 @@ struct LoadoutScreenBodyProps {
   uint32_t unused = 0;
 };
 
-const char *screen_entry_key(::ui::retained::UiElementFrame &frame,
-                             const char *prefix,
+const char *screen_entry_key(const char *prefix,
                              client::ui::UiScreenEntryId entry_id) {
   char key[64] = {};
   snprintf(key, sizeof(key), "%s-%u", prefix, entry_id);
-  return frame.copy_string(key);
+  return ::ui::copy_string(key);
 }
 
-::ui::retained::UiChildren
-weapon_grid_children(::ui::retained::UiElementFrame &frame, int active_tab) {
-  namespace retained = ::ui::retained;
+::ui::UiChildren weapon_grid_children(int active_tab) {
   namespace components = ::ui::components;
   if (active_tab == LOADOUT_TAB_GEAR) {
-    return frame.children({
-        components::Box(frame,
-                        {
-                            .key = "gear-row",
-                            .style =
-                                {
-                                    .direction = retained::FlexDirection::Row,
-                                    .align_items = retained::AlignItems::Start,
-                                    .gap = 10.0f,
-                                },
-                            .children = frame.children({
-                                WeaponTile(frame, 3),
-                            }),
-                        }),
+    return ::ui::children({
+        components::Box({
+            .key = "gear-row",
+            .style =
+                {
+                    .direction = ::ui::FlexDirection::Row,
+                    .align_items = ::ui::AlignItems::Start,
+                    .gap = 10.0f,
+                },
+            .children = ::ui::children({
+                WeaponTile(3),
+            }),
+        }),
     });
   }
 
-  return frame.children({
-      components::Box(frame,
-                      {
-                          .key = "weapon-row-0",
-                          .style =
-                              {
-                                  .direction = retained::FlexDirection::Row,
-                                  .align_items = retained::AlignItems::Start,
-                                  .gap = 10.0f,
-                              },
-                          .children = frame.children({
-                              WeaponTile(frame, 0),
-                              WeaponTile(frame, 1),
-                          }),
-                      }),
-      components::Box(frame,
-                      {
-                          .key = "weapon-row-1",
-                          .style =
-                              {
-                                  .direction = retained::FlexDirection::Row,
-                                  .align_items = retained::AlignItems::Start,
-                                  .gap = 10.0f,
-                              },
-                          .children = frame.children({
-                              WeaponTile(frame, 2),
-                          }),
-                      }),
+  return ::ui::children({
+      components::Box({
+          .key = "weapon-row-0",
+          .style =
+              {
+                  .direction = ::ui::FlexDirection::Row,
+                  .align_items = ::ui::AlignItems::Start,
+                  .gap = 10.0f,
+              },
+          .children = ::ui::children({
+              WeaponTile(0),
+              WeaponTile(1),
+          }),
+      }),
+      components::Box({
+          .key = "weapon-row-1",
+          .style =
+              {
+                  .direction = ::ui::FlexDirection::Row,
+                  .align_items = ::ui::AlignItems::Start,
+                  .gap = 10.0f,
+              },
+          .children = ::ui::children({
+              WeaponTile(2),
+          }),
+      }),
   });
 }
 
-::ui::retained::UiElement
-render_loadout_screen_body(const LoadoutScreenBodyProps &props,
-                           ::ui::retained::UiElementFrame &frame) {
+::ui::UiElement
+render_loadout_screen_body(const LoadoutScreenBodyProps &props) {
   (void)props;
   bool is_top = client::ui::use_screen_is_top();
   client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
@@ -107,7 +100,7 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props,
   int selected_index_seed = use_selected_weapon_tile();
   int *active_tab = use_state<int>(LOADOUT_TAB_WEAPONS);
   if (!active_tab)
-    return frame.empty();
+    return ::ui::empty();
 
   if (selected_index_seed < 0 || selected_index_seed >= weapon_count) {
     selected_index_seed = 0;
@@ -132,354 +125,380 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props,
                        selected.cost, selected.ammo);
   bool compare_enabled = use_compare_enabled();
   std::function<void(bool)> set_compare_enabled = use_set_compare_enabled();
-  namespace retained = ::ui::retained;
   namespace components = ::ui::components;
 
   if (!is_top || !selected.valid)
-    return frame.empty();
+    return ::ui::empty();
 
   bool confirm_open = pending.action != LOADOUT_ACTION_NONE;
-  return frame.fragment(frame.children({
-      LoadoutConfirmDialog(frame),
-      components::Dialog(
-          frame,
+  return ::ui::fragment(
+      ::ui::children(
           {
-              .key = "root",
-              .modal = !confirm_open,
-              .style =
+              LoadoutConfirmDialog(),
+              components::Dialog(
                   {
-                      .width = retained::Length::percent(100.0f),
-                      .height = retained::Length::percent(100.0f),
-                      .padding = {24.0f, 24.0f, 24.0f, 24.0f},
-                      .gap = 18.0f,
-                      .background = {12, 20, 24, 245},
-                  },
-              .children = frame.children({
-                  components::Text(frame,
-                                   {
-                                       .key = "title",
-                                       .value = "Loadout",
-                                       .style =
-                                           {
-                                               .height = retained::Length::
-                                                   points(30.0f),
-                                               .text = {236, 246, 242, 255},
-                                               .font_size = 26,
-                                           },
-                                   }),
-                  components::Box(
-                      frame,
-                      {
-                          .key = "tabs",
-                          .style =
+                      .key = "root",
+                      .modal = !confirm_open,
+                      .style =
+                          {
+                              .width = ::ui::Length::percent(100.0f),
+                              .height = ::ui::Length::percent(100.0f),
+                              .padding = {24.0f, 24.0f, 24.0f, 24.0f},
+                              .gap = 18.0f,
+                              .background = {12, 20, 24, 245},
+                          },
+                      .children =
+                          ::ui::children(
                               {
-                                  .direction = retained::FlexDirection::Row,
-                                  .align_items = retained::AlignItems::Start,
-                                  .gap =
-                                      10.0f,
-                              },
-                          .children = frame.children({
-                              components::Button(
-                                  frame,
-                                  {
-                                      .key = "weapons",
-                                      .id = "WeaponsTab",
-                                      .accessibility =
-                                          {
-                                              .role = retained::SemanticRole::Tab,
-                                          },
-                                      .label = "Weapons",
-                                      .on_activate =
-                                          [active_tab, set_selected_tile,
-                                           select_weapons_tab_weapon](
-                                              const retained::ActivationEvent
-                                                  &) {
-                                            if (active_tab)
-                                              *active_tab = LOADOUT_TAB_WEAPONS;
-                                            if (set_selected_tile)
-                                              set_selected_tile(
-                                                  first_weapon_for_tab(
-                                                      LOADOUT_TAB_WEAPONS));
-                                            if (select_weapons_tab_weapon)
-                                              select_weapons_tab_weapon();
-                                          },
-                                      .style =
-                                          {
-                                              .width =
-                                                  retained::Length::points(
-                                                      132.0f),
-                                              .height =
-                                                  retained::
-                                                      Length::points(34.0f),
-                                              .align_items =
-                                                  retained::AlignItems::Center,
-                                              .justify_content =
-                                                  retained::
-                                                      JustifyContent::Center,
-                                              .padding = {12.0f, 12.0f, 7.0f,
-                                                          7.0f},
-                                              .background =
-                                                  *active_tab ==
-                                                          LOADOUT_TAB_WEAPONS
-                                                      ? retained::
-                                                            Color{42,
-                                                                  80, 60, 255}
-                                                      : retained::
-                                                            Color{24,
-                                                                  28, 36, 255},
-                                          },
-                                  }),
-                              components::
-                                  Button(
-                                      frame,
+                                  components::Text(
                                       {
-                                          .key =
-                                              "gear",
-                                          .id = "GearTab",
-                                          .accessibility =
-                                              {
-                                                  .role = retained::
-                                                      SemanticRole::Tab,
-                                              },
-                                          .label = "Gear",
-                                          .on_activate =
-                                              [active_tab, set_selected_tile,
-                                               select_gear_tab_weapon](
-                                                  const retained::
-                                                      ActivationEvent &) {
-                                                if (active_tab)
-                                                  *active_tab =
-                                                      LOADOUT_TAB_GEAR;
-                                                if (set_selected_tile)
-                                                  set_selected_tile(
-                                                      first_weapon_for_tab(
-                                                          LOADOUT_TAB_GEAR));
-                                                if (select_gear_tab_weapon)
-                                                  select_gear_tab_weapon();
-                                              },
+                                          .key = "title",
+                                          .value = "Loadout",
                                           .style =
                                               {
-                                                  .width =
-                                                      retained::Length::points(
-                                                          132.0f),
                                                   .height =
-                                                      retained::Length::points(
-                                                          34.0f),
-                                                  .align_items =
-                                                      retained::AlignItems::
-                                                          Center,
-                                                  .justify_content =
-                                                      retained::
-                                                          JustifyContent::
-                                                              Center,
-                                                  .padding = {12.0f, 12.0f,
-                                                              7.0f, 7.0f},
-                                                  .background =
-                                                      *active_tab ==
-                                                              LOADOUT_TAB_GEAR
-                                                          ? retained::
-                                                                Color{42,
-                                                                      80, 60, 255}
-                                                          : retained::
-                                                                Color{24,
-                                                                      28, 36, 255},
+                                                      ::ui::Length::points(
+                                                          30.0f),
+                                                  .text = {236, 246, 242, 255},
+                                                  .font_size = 26,
                                               },
                                       }),
-                          }),
-                      }),
-                  components::Box(
-                      frame,
-                      {
-                          .key = "body",
-                          .style =
-                              {
-                                  .direction = retained::FlexDirection::Row,
-                                  .align_items = retained::AlignItems::Start,
-                                  .gap =
-                                      18.0f,
-                              },
-                          .children = frame.children({
-                              components::Box(
-                                  frame,
-                                  {
-                                      .key = "weapon-grid",
-                                      .style =
-                                          {
-                                              .width =
-                                                  retained::Length::points(
-                                                      400.0f),
-                                              .gap =
-                                                  10.0f,
-                                          },
-                                      .children = weapon_grid_children(
-                                          frame, *active_tab),
-                                  }),
-                              components::Box(
-                                  frame,
-                                  {
-                                      .key = "details",
-                                      .style =
-                                          {
-                                              .width =
-                                                  retained::Length::points(
-                                                      260.0f),
-                                              .padding = {14.0f, 14.0f, 14.0f,
-                                                          14.0f},
-                                              .gap = 10.0f,
-                                              .background = {22, 30, 36, 255},
-                                          },
-                                      .children = frame.children({
-                                          components::Text(
-                                              frame,
+                                  components::Box(
+                                      {
+                                          .key = "tabs",
+                                          .style =
                                               {
-                                                  .key = "summary",
-                                                  .value = details,
-                                                  .style =
-                                                      {
-                                                          .height =
-                                                              retained::
-                                                                  Length::points(
-                                                                      18.0f),
-                                                          .text = {226, 238, 236, 255},
-                                                          .font_size = 14,
-                                                      },
-                                              }),
-                                          components::Checkbox(
-                                              frame,
-                                              {
-                                                  .key = "compare",
-                                                  .id = "CompareToggle",
-                                                  .checked = compare_enabled,
-                                                  .label = "Compare",
-                                                  .on_change =
-                                                      set_compare_enabled,
-                                              }),
-                                          components::Button(
-                                              frame,
-                                              {
-                                                  .key = "buy",
-                                                  .id = "BuyWeaponButton",
-                                                  .disabled = !can_buy,
-                                                  .label = "Buy",
-                                                  .on_activate =
-                                                      [set_pending, pending,
-                                                       selected_index_seed](
-                                                          const retained::
-                                                              ActivationEvent
-                                                                  &) {
-                                                        if (set_pending) {
-                                                          set_pending({
-                                                              .action =
-                                                                  LOADOUT_ACTION_BUY,
-                                                              .weapon_index =
-                                                                  selected_index_seed,
-                                                              .generation =
-                                                                  pending
-                                                                      .generation +
-                                                                  1,
-                                                          });
-                                                        }
-                                                      },
-                                              }),
-                                          components::Button(
-                                              frame,
-                                              {
-                                                  .key = "equip",
-                                                  .id = "EquipWeaponButton",
-                                                  .disabled = !can_equip,
-                                                  .label = "Equip",
-                                                  .on_activate =
-                                                      [set_pending, pending,
-                                                       selected_index_seed](
-                                                          const retained::
-                                                              ActivationEvent
-                                                                  &) {
-                                                        if (set_pending) {
-                                                          set_pending({
-                                                              .action =
-                                                                  LOADOUT_ACTION_EQUIP,
-                                                              .weapon_index =
-                                                                  selected_index_seed,
-                                                              .generation =
-                                                                  pending
-                                                                      .generation +
-                                                                  1,
-                                                          });
-                                                        }
-                                                      },
-                                              }),
-                                          components::Button(
-                                              frame,
-                                              {
-                                                  .key = "back",
-                                                  .id = "BackFromLoadoutButton",
-                                                  .label = "Back",
-                                                  .on_activate =
-                                                      [pop = nav.pop_current](
-                                                          const retained::
-                                                              ActivationEvent
-                                                                  &) {
-                                                        if (pop)
-                                                          pop();
-                                                      },
-                                              }),
-                                          components::Text(
-                                              frame,
-                                              {
-                                                  .key = "slots-title",
-                                                  .value = "Equipment Slots",
-                                                  .style =
-                                                      {
-                                                          .height =
-                                                              retained::
-                                                                  Length::points(
-                                                                      16.0f),
-                                                          .text = {202, 218, 216, 255},
-                                                          .font_size = 14,
-                                                      },
-                                              }),
-                                          EquipmentSlot(frame, "PrimarySlot",
-                                                        "Primary", 0),
-                                          EquipmentSlot(frame, "GearSlot",
-                                                        "Gear", 3),
+                                                  .direction =
+                                                      ::ui::FlexDirection::Row,
+                                                  .align_items =
+                                                      ::ui::AlignItems::Start,
+                                                  .gap = 10.0f,
+                                              },
+                                          .children =
+                                              ::ui::children(
+                                                  {
+                                                      components::Button({
+                                                          .key = "weapons",
+                                                          .id = "WeaponsTab",
+                                                          .accessibility =
+                                                              {
+                                                                  .role = ::
+                                                                      ui::SemanticRole::
+                                                                          Tab,
+                                                              },
+                                                          .label = "Weapons",
+                                                          .on_activate =
+                                                              [active_tab,
+                                                               set_selected_tile,
+                                                               select_weapons_tab_weapon](
+                                                                  const ::ui::
+                                                                      ActivationEvent
+                                                                          &) {
+                                                                if (active_tab)
+                                                                  *active_tab =
+                                                                      LOADOUT_TAB_WEAPONS;
+                                                                if (set_selected_tile)
+                                                                  set_selected_tile(
+                                                                      first_weapon_for_tab(
+                                                                          LOADOUT_TAB_WEAPONS));
+                                                                if (select_weapons_tab_weapon)
+                                                                  select_weapons_tab_weapon();
+                                                              },
+                                                          .style =
+                                                              {
+                                                                  .width =
+                                                                      ::
+                                                                          ui::Length::points(
+                                                                              132.0f),
+                                                                  .height =
+                                                                      ::ui::Length::points(34.0f),
+                                                                  .align_items =
+                                                                      ::ui::AlignItems::Center,
+                                                                  .justify_content =
+                                                                      ::
+                                                                          ui::JustifyContent::
+                                                                              Center,
+                                                                  .padding =
+                                                                      {12.0f,
+                                                                       12.0f,
+                                                                       7.0f,
+                                                                       7.0f},
+                                                                  .background =
+                                                                      *active_tab ==
+                                                                              LOADOUT_TAB_WEAPONS
+                                                                          ? ::ui::Color{42, 80, 60, 255}
+                                                                          : ::ui::Color{24, 28, 36, 255},
+                                                              },
+                                                      }),
+                                                      components::Button(
+                                                          {
+                                                              .key = "gear",
+                                                              .id = "GearTab",
+                                                              .accessibility =
+                                                                  {
+                                                                      .role = ::
+                                                                          ui::SemanticRole::
+                                                                              Tab,
+                                                                  },
+                                                              .label = "Gear",
+                                                              .on_activate =
+                                                                  [active_tab,
+                                                                   set_selected_tile,
+                                                                   select_gear_tab_weapon](
+                                                                      const ::ui::
+                                                                          ActivationEvent
+                                                                              &) {
+                                                                    if (active_tab)
+                                                                      *active_tab =
+                                                                          LOADOUT_TAB_GEAR;
+                                                                    if (set_selected_tile)
+                                                                      set_selected_tile(
+                                                                          first_weapon_for_tab(
+                                                                              LOADOUT_TAB_GEAR));
+                                                                    if (select_gear_tab_weapon)
+                                                                      select_gear_tab_weapon();
+                                                                  },
+                                                              .style =
+                                                                  {
+                                                                      .width =
+                                                                          ::
+                                                                              ui::Length::points(
+                                                                                  132.0f),
+                                                                      .height =
+                                                                          ::ui::Length::points(34.0f),
+                                                                      .align_items =
+                                                                          ::ui::AlignItems::Center,
+                                                                      .justify_content =
+                                                                          ::
+                                                                              ui::JustifyContent::
+                                                                                  Center,
+                                                                      .padding =
+                                                                          {12.0f,
+                                                                           12.0f,
+                                                                           7.0f,
+                                                                           7.0f},
+                                                                      .background =
+                                                                          *active_tab ==
+                                                                                  LOADOUT_TAB_GEAR
+                                                                              ? ::ui::Color{42, 80, 60, 255}
+                                                                              : ::ui::Color{24, 28, 36, 255},
+                                                                  },
+                                                          }),
+                                                  }),
                                       }),
-                                  }),
-                          }),
-                      }),
-              }),
-          }),
-  }));
+                                  components::Box(
+                                      {
+                                          .key = "body",
+                                          .style =
+                                              {
+                                                  .direction =
+                                                      ::ui::FlexDirection::Row,
+                                                  .align_items =
+                                                      ::ui::AlignItems::Start,
+                                                  .gap = 18.0f,
+                                              },
+                                          .children =
+                                              ::ui::children(
+                                                  {
+                                                      components::Box({
+                                                          .key = "weapon-grid",
+                                                          .style =
+                                                              {
+                                                                  .width =
+                                                                      ::
+                                                                          ui::Length::points(
+                                                                              400.0f),
+                                                                  .gap = 10.0f,
+                                                              },
+                                                          .children =
+                                                              weapon_grid_children(
+                                                                  *active_tab),
+                                                      }),
+                                                      components::Box(
+                                                          {
+                                                              .key = "details",
+                                                              .style =
+                                                                  {
+                                                                      .width =
+                                                                          ::
+                                                                              ui::Length::points(
+                                                                                  260.0f),
+                                                                      .padding =
+                                                                          {14.0f,
+                                                                           14.0f,
+                                                                           14.0f,
+                                                                           14.0f},
+                                                                      .gap =
+                                                                          10.0f,
+                                                                      .background =
+                                                                          {22,
+                                                                           30, 36, 255},
+                                                                  },
+                                                              .children = ::ui::
+                                                                  children({
+                                                                      components::Text({
+                                                                          .key =
+                                                                              "summary",
+                                                                          .value =
+                                                                              details,
+                                                                          .style =
+                                                                              {
+                                                                                  .height =
+                                                                                      ::ui::Length::points(18.0f),
+                                                                                  .text = {226, 238, 236, 255},
+                                                                                  .font_size =
+                                                                                      14,
+                                                                              },
+                                                                      }),
+                                                                      components::Checkbox({
+                                                                          .key =
+                                                                              "compare",
+                                                                          .id =
+                                                                              "CompareToggle",
+                                                                          .checked =
+                                                                              compare_enabled,
+                                                                          .label =
+                                                                              "Compare",
+                                                                          .on_change =
+                                                                              set_compare_enabled,
+                                                                      }),
+                                                                      components::Button({
+                                                                          .key =
+                                                                              "buy",
+                                                                          .id =
+                                                                              "BuyWeaponButton",
+                                                                          .disabled =
+                                                                              !can_buy,
+                                                                          .label =
+                                                                              "Buy",
+                                                                          .on_activate =
+                                                                              [set_pending,
+                                                                               pending,
+                                                                               selected_index_seed](
+                                                                                  const ::ui::ActivationEvent
+                                                                                      &) {
+                                                                                if (set_pending) {
+                                                                                  set_pending({
+                                                                                      .action =
+                                                                                          LOADOUT_ACTION_BUY,
+                                                                                      .weapon_index =
+                                                                                          selected_index_seed,
+                                                                                      .generation =
+                                                                                          pending
+                                                                                              .generation +
+                                                                                          1,
+                                                                                  });
+                                                                                }
+                                                                              },
+                                                                      }),
+                                                                      components::Button({
+                                                                          .key =
+                                                                              "equip",
+                                                                          .id =
+                                                                              "EquipWeaponButton",
+                                                                          .disabled =
+                                                                              !can_equip,
+                                                                          .label =
+                                                                              "Equip",
+                                                                          .on_activate =
+                                                                              [set_pending,
+                                                                               pending,
+                                                                               selected_index_seed](
+                                                                                  const ::ui::
+                                                                                      ActivationEvent &) {
+                                                                                if (set_pending) {
+                                                                                  set_pending({
+                                                                                      .action =
+                                                                                          LOADOUT_ACTION_EQUIP,
+                                                                                      .weapon_index =
+                                                                                          selected_index_seed,
+                                                                                      .generation =
+                                                                                          pending
+                                                                                              .generation +
+                                                                                          1,
+                                                                                  });
+                                                                                }
+                                                                              },
+                                                                      }),
+                                                                      components::Button({
+                                                                          .key =
+                                                                              "back",
+                                                                          .id =
+                                                                              "BackFromLoadoutButton",
+                                                                          .label =
+                                                                              "Back",
+                                                                          .on_activate =
+                                                                              [pop =
+                                                                                   nav.pop_current](
+                                                                                  const ::ui::ActivationEvent
+                                                                                      &) {
+                                                                                if (pop)
+                                                                                  pop();
+                                                                              },
+                                                                      }),
+                                                                      components::Text({
+                                                                          .key =
+                                                                              "slots-title",
+                                                                          .value =
+                                                                              "Equipment Slots",
+                                                                          .style =
+                                                                              {
+                                                                                  .height =
+                                                                                      ::ui::Length::points(16.0f),
+                                                                                  .text = {202, 218, 216, 255},
+                                                                                  .font_size =
+                                                                                      14,
+                                                                              },
+                                                                      }),
+                                                                      EquipmentSlot(
+                                                                          "Prim"
+                                                                          "aryS"
+                                                                          "lot",
+                                                                          "Prim"
+                                                                          "ary",
+                                                                          0),
+                                                                      EquipmentSlot(
+                                                                          "Gear"
+                                                                          "Slo"
+                                                                          "t",
+                                                                          "Gea"
+                                                                          "r",
+                                                                          3),
+                                                                  }),
+                                                          }),
+                                                  }),
+                                      }),
+                              }),
+                  }),
+          }));
 }
 
-::ui::retained::UiElement
-render_loadout_screen(const LoadoutScreenProps &props,
-                      ::ui::retained::UiElementFrame &frame) {
+::ui::UiElement render_loadout_screen(const LoadoutScreenProps &props) {
   (void)props;
   bool *compare_enabled = use_state<bool>(false);
   int *selected_index = use_state<int>(0);
   LoadoutPendingAction *pending = use_state<LoadoutPendingAction>({});
   if (!compare_enabled || !selected_index || !pending)
-    return frame.empty();
+    return ::ui::empty();
 
   LoadoutContextValue ctx =
       use_loadout_context_value(compare_enabled, selected_index, pending);
   return LoadoutProvider(
-      frame, ctx,
-      frame.children({
-          frame.component("LoadoutScreenBody", LoadoutScreenBodyProps{},
-                          render_loadout_screen_body),
-      }));
+      ctx, ::ui::children({
+               ::ui::component("LoadoutScreenBody", LoadoutScreenBodyProps{},
+                               render_loadout_screen_body),
+           }));
 }
 
 } // namespace
 
-bool LoadoutScreen::build_element(::ui::retained::UiElementFrame &frame,
-                                  ::ui::retained::UiElement *out) {
+bool LoadoutScreen::build_element(::ui::UiElementFrame &frame,
+                                  ::ui::UiElement *out) {
   if (!out)
     return false;
-  *out = frame.component("LoadoutScreen", LoadoutScreenProps{},
+  *out = ::ui::component("LoadoutScreen", LoadoutScreenProps{},
                          render_loadout_screen,
-                         screen_entry_key(frame, "loadout", entry_id()));
+                         screen_entry_key("loadout", entry_id()));
   return true;
 }
 

@@ -1,6 +1,6 @@
 #include "flex_layout.h"
 
-namespace ui::retained {
+namespace ui {
 
 bool compute_flex_layout(const FlexLayoutAdapter &adapter, UiTree &tree,
                          LayoutViewport viewport) {
@@ -13,4 +13,4 @@ bool compute_flex_layout(const FlexLayoutAdapter &adapter, UiTree &tree,
   return adapter.compute(tree, tree.root_id(), viewport, adapter.user);
 }
 
-} // namespace ui::retained
+} // namespace ui

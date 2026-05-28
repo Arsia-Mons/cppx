@@ -9,27 +9,26 @@ static ReactContext UiPipelineFrameContext = {};
 
 namespace {
 
-::ui::retained::FocusSource
-to_retained_focus_source(::ui::UiFocusSource source) {
+::ui::FocusSource to_retained_focus_source(::ui::UiFocusSource source) {
   switch (source) {
   case ::ui::UiFocusSource::None:
-    return ::ui::retained::FocusSource::None;
+    return ::ui::FocusSource::None;
   case ::ui::UiFocusSource::Keyboard:
-    return ::ui::retained::FocusSource::Keyboard;
+    return ::ui::FocusSource::Keyboard;
   case ::ui::UiFocusSource::Gamepad:
-    return ::ui::retained::FocusSource::Gamepad;
+    return ::ui::FocusSource::Gamepad;
   case ::ui::UiFocusSource::Mouse:
-    return ::ui::retained::FocusSource::Mouse;
+    return ::ui::FocusSource::Mouse;
   case ::ui::UiFocusSource::Touch:
-    return ::ui::retained::FocusSource::Touch;
+    return ::ui::FocusSource::Touch;
   case ::ui::UiFocusSource::Programmatic:
-    return ::ui::retained::FocusSource::Programmatic;
+    return ::ui::FocusSource::Programmatic;
   }
-  return ::ui::retained::FocusSource::Keyboard;
+  return ::ui::FocusSource::Keyboard;
 }
 
-::ui::retained::InputFrame retained_input_frame(const UiPipelineFrame &frame) {
-  ::ui::retained::InputFrame retained = {
+::ui::InputFrame retained_input_frame(const UiPipelineFrame &frame) {
+  ::ui::InputFrame retained = {
       .nav_up = frame.input.nav_up,
       .nav_down = frame.input.nav_down,
       .nav_left = frame.input.nav_left,
@@ -66,7 +65,7 @@ const UiPipelineFrame *use_ui_pipeline_frame() {
 }
 
 UiPipeline::UiPipeline()
-    : retained_layout_(::ui::retained::make_yoga_flex_layout_adapter()) {}
+    : retained_layout_(::ui::make_yoga_flex_layout_adapter()) {}
 
 void UiPipeline::render_client_ui_frame(const UiPipelineFrame &frame,
                                         const RenderFrame &render_frame) {

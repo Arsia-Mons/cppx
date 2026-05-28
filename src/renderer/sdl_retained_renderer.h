@@ -10,20 +10,20 @@ namespace renderer {
 
 class SdlRetainedRenderer {
 public:
-    bool initialize(SDL_Renderer *renderer, FontRegistry &fonts);
+  bool initialize(SDL_Renderer *renderer, FontRegistry &fonts);
 
-    void clear(::ui::retained::Color background);
-    void render(const ::ui::retained::DrawList &draw_list);
-    void present();
+  void clear(::ui::Color background);
+  void render(const ::ui::DrawList &draw_list);
+  void present();
 
-    SDL_Renderer *sdl_renderer() const { return renderer_; }
+  SDL_Renderer *sdl_renderer() const { return renderer_; }
 
 private:
-    void render_rect(const ::ui::retained::DrawCommand &command);
-    void render_text(const ::ui::retained::DrawCommand &command);
+  void render_rect(const ::ui::DrawCommand &command);
+  void render_text(const ::ui::DrawCommand &command);
 
-    SDL_Renderer *renderer_ = nullptr;
-    FontRegistry *fonts_ = nullptr;
+  SDL_Renderer *renderer_ = nullptr;
+  FontRegistry *fonts_ = nullptr;
 };
 
 } // namespace renderer

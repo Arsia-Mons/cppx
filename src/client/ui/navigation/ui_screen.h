@@ -23,8 +23,7 @@ public:
   ScreenKind kind() const { return kind_; }
 
   virtual const char *debug_name() const = 0;
-  virtual bool build_element(::ui::retained::UiElementFrame &frame,
-                             ::ui::retained::UiElement *out);
+  virtual bool build_element(::ui::UiElementFrame &frame, ::ui::UiElement *out);
   virtual void build_ui() = 0;
 
 protected:

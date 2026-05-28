@@ -5,7 +5,7 @@
 
 #include <array>
 
-namespace ui::retained {
+namespace ui {
 
 constexpr int UI_RETAINED_MAX_FOCUSABLES = UI_RETAINED_MAX_NODES;
 
@@ -86,4 +86,4 @@ NodeId focus_confirmed_id(const FocusRuntime &runtime);
 FocusSource focus_source(const FocusRuntime &runtime);
 int focus_error_count(const FocusRuntime &runtime);
 
-} // namespace ui::retained
+} // namespace ui

@@ -121,23 +121,21 @@ struct HookStateScreenProps {
   int *observed = nullptr;
 };
 
-static const char *screen_entry_key(::ui::retained::UiElementFrame &frame,
-                                    const char *prefix,
+static const char *screen_entry_key(const char *prefix,
                                     UiScreenEntryId entry_id) {
   char key[64] = {};
   snprintf(key, sizeof(key), "%s-%u", prefix, entry_id);
-  return frame.copy_string(key);
+  return ::ui::copy_string(key);
 }
 
-static ::ui::retained::UiElement
-render_hook_state_screen(const HookStateScreenProps &props,
-                         ::ui::retained::UiElementFrame &frame) {
+static ::ui::UiElement
+render_hook_state_screen(const HookStateScreenProps &props) {
   int *value = use_state_int(0);
   if (props.observed) {
     *props.observed = *value;
   }
   *value += 1;
-  return frame.empty();
+  return ::ui::empty();
 }
 
 class HookStateScreen final : public UiScreen {
@@ -146,14 +144,13 @@ public:
 
   const char *debug_name() const override { return "HookState"; }
 
-  bool build_element(::ui::retained::UiElementFrame &frame,
-                     ::ui::retained::UiElement *out) override {
+  bool build_element(::ui::UiElementFrame &frame,
+                     ::ui::UiElement *out) override {
     if (!out)
       return false;
-    *out = frame.component("HookStateScreenView",
-                           HookStateScreenProps{.observed = observed_},
-                           render_hook_state_screen,
-                           screen_entry_key(frame, "hook-state", entry_id()));
+    *out = ::ui::component(
+        "HookStateScreenView", HookStateScreenProps{.observed = observed_},
+        render_hook_state_screen, screen_entry_key("hook-state", entry_id()));
     return true;
   }
 
@@ -172,8 +169,7 @@ static bool run_client_frame(ClientUi &client_ui,
   client_ui.build_visible_screens();
   CHECK(client_ui.retained_tree().end_frame());
   client_ui.end_layout(input);
-  ::ui::retained::FlexLayoutAdapter adapter =
-      ::ui::retained::make_yoga_flex_layout_adapter();
+  ::ui::FlexLayoutAdapter adapter = ::ui::make_yoga_flex_layout_adapter();
   CHECK(client_ui.update_retained_runtime(adapter, {640.0f, 480.0f}, {}));
   react_end_frame();
   if (drain_deferred_mutations) {
@@ -192,8 +188,7 @@ static bool run_client_frame_with_probe(ClientUi &client_ui,
   CHECK(client_ui.retained_tree().end_frame());
   client_ui.end_layout(input);
   bool ok = probe ? probe() : true;
-  ::ui::retained::FlexLayoutAdapter adapter =
-      ::ui::retained::make_yoga_flex_layout_adapter();
+  ::ui::FlexLayoutAdapter adapter = ::ui::make_yoga_flex_layout_adapter();
   CHECK(client_ui.update_retained_runtime(adapter, {640.0f, 480.0f}, {}));
   react_end_frame();
   return ok;
@@ -398,41 +393,36 @@ screen_local_hook_state_survives_rerender_and_resets_on_unmount(void) {
 static bool client_ui_owns_retained_runtime_outputs(void) {
   react_init_runtime();
   ClientUi client_ui;
-  ::ui::retained::UiElementFrame frame;
+  ::ui::UiElementFrame frame;
+  ::ui::UiElementFrameScope frame_scope(frame);
   int focus_count = 0;
 
-  ::ui::retained::UiElement root = ::ui::components::Button(
-      frame, {
-                 .key = "confirm",
-                 .id = "ConfirmRetainedButton",
-                 .on_focus =
-                     [&focus_count](const ::ui::retained::FocusEvent &) {
-                       focus_count += 1;
-                     },
-                 .label = "Confirm",
-             });
-  ::ui::retained::ReconcileResult result =
-      ::ui::retained::reconcile_retained_tree(client_ui.retained_tree(), frame,
-                                              root, 240.0f, 120.0f);
+  ::ui::UiElement root = ::ui::components::Button({
+      .key = "confirm",
+      .id = "ConfirmRetainedButton",
+      .on_focus =
+          [&focus_count](const ::ui::FocusEvent &) { focus_count += 1; },
+      .label = "Confirm",
+  });
+  ::ui::ReconcileResult result = ::ui::reconcile_retained_tree(
+      client_ui.retained_tree(), frame, root, 240.0f, 120.0f);
   CHECK(result.ok);
 
-  ::ui::retained::NodeId button_id = client_ui.retained_tree().child_at(
+  ::ui::NodeId button_id = client_ui.retained_tree().child_at(
       client_ui.retained_tree().root_id(), 0);
   CHECK(button_id != 0);
 
-  ::ui::retained::FlexLayoutAdapter adapter =
-      ::ui::retained::make_yoga_flex_layout_adapter();
+  ::ui::FlexLayoutAdapter adapter = ::ui::make_yoga_flex_layout_adapter();
   CHECK(client_ui.update_retained_runtime(adapter, {240.0f, 120.0f}, {}));
-  CHECK(::ui::retained::focus_focused_id(client_ui.retained_focus()) ==
-        button_id);
+  CHECK(::ui::focus_focused_id(client_ui.retained_focus()) == button_id);
   CHECK(focus_count == 1);
 
-  const ::ui::retained::DrawList &draw = client_ui.retained_draw_list();
+  const ::ui::DrawList &draw = client_ui.retained_draw_list();
   CHECK(draw.error_count == 0);
   CHECK(draw.count == 2);
-  CHECK(draw.commands[0].kind == ::ui::retained::DrawCommandKind::Rect);
+  CHECK(draw.commands[0].kind == ::ui::DrawCommandKind::Rect);
   CHECK(draw.commands[0].node_id == button_id);
-  CHECK(draw.commands[1].kind == ::ui::retained::DrawCommandKind::Text);
+  CHECK(draw.commands[1].kind == ::ui::DrawCommandKind::Text);
   CHECK(strcmp(draw.commands[1].text, "Confirm") == 0);
   return true;
 }

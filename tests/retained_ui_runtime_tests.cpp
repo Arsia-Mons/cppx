@@ -13,7 +13,7 @@
     }                                                                          \
   } while (0)
 
-using namespace ui::retained;
+using namespace ui;
 
 static bool snapshot(UiTree &tree, NodeId id, NodeSnapshot *out) {
   CHECK(tree.snapshot(id, out));

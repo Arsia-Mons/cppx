@@ -11,8 +11,8 @@ public:
   MainMenuScreen() = default;
 
   const char *debug_name() const override { return "MainMenu"; }
-  bool build_element(::ui::retained::UiElementFrame &frame,
-                     ::ui::retained::UiElement *out) override;
+  bool build_element(::ui::UiElementFrame &frame,
+                     ::ui::UiElement *out) override;
   void build_ui() override;
 };
 

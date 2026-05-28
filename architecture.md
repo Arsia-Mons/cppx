@@ -127,10 +127,12 @@ builders and normal C++ component functions. It must not introduce a JS runtime,
 DOM assumptions, or React imports.
 
 Current implementation: `tools/cppx_transpile.py` lowers `.cppx` / `.hx`
-JSX-like lines to returned `UiElement` construction over `UiElementFrame`.
-Children become owned frame data in `.children = frame.children({ ... })`
-props, text children lower to `frame.text(...)`, and `return <...>` lowers to a
-normal returned element expression. The CMake helper in
+JSX-like lines to returned `UiElement` construction over the hidden current
+`UiElementFrame`. Public components receive props/children only; `ClientUi`
+binds the frame before building screens, and the reconciler re-binds it while
+rendering component bodies. Children become owned frame data in
+`.children = children({ ... })` props, text children lower to `text(...)`, and
+`return <...>` lowers to a normal returned element expression. The CMake helper in
 `cmake/cppx_transpile.cmake` generates build-tree `.cpp` / `.h` outputs, and
 golden tests pin output plus diagnostics.
 Generated `.cppx` output is compiled against `src/ui/runtime/element.*` and

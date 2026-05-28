@@ -17,13 +17,11 @@
     }                                                                          \
   } while (0)
 
-using namespace ui::retained;
+using namespace ui;
 
 static int g_probe_values[1] = {};
 
-static UiElement render_stateful_probe(const StatefulProbeProps &props,
-                                       UiElementFrame &frame) {
-  (void)frame;
+static UiElement render_stateful_probe(const StatefulProbeProps &props) {
   int *value = use_state_int(10);
   if (props.write >= 0)
     *value = props.write;
@@ -32,9 +30,8 @@ static UiElement render_stateful_probe(const StatefulProbeProps &props,
   return {};
 }
 
-UiElement StatefulProbe(UiElementFrame &frame,
-                        const StatefulProbeProps &props) {
-  return frame.component("StatefulProbe", props, render_stateful_probe,
+UiElement StatefulProbe(const StatefulProbeProps &props) {
+  return ::ui::component("StatefulProbe", props, render_stateful_probe,
                          props.key);
 }
 
@@ -48,7 +45,11 @@ static bool generated_cppx_builds_retained_tree_and_hooks(void) {
   UiTree tree;
   UiElementFrame frame;
 
-  UiElement first = BuildGeneratedRetainedTree(frame, 77);
+  UiElement first = {};
+  {
+    UiElementFrameScope frame_scope(frame);
+    first = BuildGeneratedRetainedTree(77);
+  }
   ReconcileResult first_result =
       reconcile_retained_tree(tree, frame, first, 400.0f, 300.0f);
   CHECK(first_result.ok);
@@ -89,7 +90,11 @@ static bool generated_cppx_builds_retained_tree_and_hooks(void) {
   CHECK(button_text.layout.width == 56.0f);
 
   frame.reset();
-  UiElement second = BuildGeneratedRetainedTree(frame, -1);
+  UiElement second = {};
+  {
+    UiElementFrameScope frame_scope(frame);
+    second = BuildGeneratedRetainedTree(-1);
+  }
   ReconcileResult second_result =
       reconcile_retained_tree(tree, frame, second, 400.0f, 300.0f);
   CHECK(second_result.ok);

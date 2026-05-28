@@ -16,7 +16,7 @@
     }                                                                          \
   } while (0)
 
-using namespace ui::retained;
+using namespace ui;
 using namespace ui::components;
 
 static bool snapshot(UiTree &tree, NodeId id, NodeSnapshot *out) {
@@ -28,18 +28,17 @@ static bool button_element_returns_button_host(void) {
   react_init_runtime();
   UiTree tree;
   UiElementFrame frame;
+  UiElementFrameScope frame_scope(frame);
   int activates = 0;
 
-  UiElement root = Button(
-      frame, {
-                 .key = "start",
-                 .id = "StartButton",
-                 .id_offset = 3,
-                 .autofocus = true,
-                 .label = "Start",
-                 .on_activate =
-                     [&activates](const ActivationEvent &) { ++activates; },
-             });
+  UiElement root = Button({
+      .key = "start",
+      .id = "StartButton",
+      .id_offset = 3,
+      .autofocus = true,
+      .label = "Start",
+      .on_activate = [&activates](const ActivationEvent &) { ++activates; },
+  });
 
   ReconcileResult result =
       reconcile_retained_tree(tree, frame, root, 640.0f, 480.0f);
@@ -75,37 +74,32 @@ static bool box_text_and_dialog_elements_return_host_nodes(void) {
   react_init_runtime();
   UiTree tree;
   UiElementFrame frame;
+  UiElementFrameScope frame_scope(frame);
   int box_activates = 0;
 
-  UiElement root = Dialog(
-      frame,
-      {
-          .key = "dialog",
-          .style =
-              {
-                  .width = Length::points(200.0f),
-                  .height = Length::points(80.0f),
-              },
-          .children = frame.children({
-              Box(frame,
-                  {
-                      .key = "box-action",
-                      .id = "BoxAction",
-                      .focusable = true,
-                      .on_activate =
-                          [&box_activates](const ActivationEvent &) {
-                            ++box_activates;
-                          },
-                      .children = frame.children({
-                          Text(frame,
-                               {
-                                   .key = "title",
-                                   .value = "Title",
-                               }),
-                      }),
+  UiElement root = Dialog({
+      .key = "dialog",
+      .style =
+          {
+              .width = Length::points(200.0f),
+              .height = Length::points(80.0f),
+          },
+      .children = ::ui::children({
+          Box({
+              .key = "box-action",
+              .id = "BoxAction",
+              .focusable = true,
+              .on_activate = [&box_activates](
+                                 const ActivationEvent &) { ++box_activates; },
+              .children = ::ui::children({
+                  Text({
+                      .key = "title",
+                      .value = "Title",
                   }),
+              }),
           }),
-      });
+      }),
+  });
 
   ReconcileResult result =
       reconcile_retained_tree(tree, frame, root, 640.0f, 480.0f);
@@ -144,16 +138,16 @@ static bool checkbox_element_dispatches_changed_value(void) {
   react_init_runtime();
   UiTree tree;
   UiElementFrame frame;
+  UiElementFrameScope frame_scope(frame);
   bool observed = false;
 
-  UiElement root = Checkbox(
-      frame, {
-                 .key = "music",
-                 .id = "MusicCheckbox",
-                 .checked = false,
-                 .label = "Music",
-                 .on_change = [&observed](bool value) { observed = value; },
-             });
+  UiElement root = Checkbox({
+      .key = "music",
+      .id = "MusicCheckbox",
+      .checked = false,
+      .label = "Music",
+      .on_change = [&observed](bool value) { observed = value; },
+  });
 
   ReconcileResult result =
       reconcile_retained_tree(tree, frame, root, 640.0f, 480.0f);
@@ -180,18 +174,16 @@ static bool input_element_edits_controlled_text(void) {
   react_init_runtime();
   UiTree tree;
   UiElementFrame frame;
+  UiElementFrameScope frame_scope(frame);
   std::string value = "A";
 
-  UiElement root = Input(
-      frame, {
-                 .key = "name",
-                 .id = "NameInput",
-                 .autofocus = true,
-                 .value = value.c_str(),
-                 .on_change = [&value](const std::string &next) {
-                   value = next;
-                 },
-             });
+  UiElement root = Input({
+      .key = "name",
+      .id = "NameInput",
+      .autofocus = true,
+      .value = value.c_str(),
+      .on_change = [&value](const std::string &next) { value = next; },
+  });
   ReconcileResult result =
       reconcile_retained_tree(tree, frame, root, 640.0f, 480.0f);
   CHECK(result.ok);
@@ -211,16 +203,13 @@ static bool input_element_edits_controlled_text(void) {
   CHECK(value == "AB");
 
   frame.reset();
-  root = Input(frame, {
-                          .key = "name",
-                          .id = "NameInput",
-                          .autofocus = true,
-                          .value = value.c_str(),
-                          .on_change =
-                              [&value](const std::string &next) {
-                                value = next;
-                              },
-                      });
+  root = Input({
+      .key = "name",
+      .id = "NameInput",
+      .autofocus = true,
+      .value = value.c_str(),
+      .on_change = [&value](const std::string &next) { value = next; },
+  });
   result = reconcile_retained_tree(tree, frame, root, 640.0f, 480.0f);
   CHECK(result.ok);
 

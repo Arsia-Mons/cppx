@@ -6,7 +6,7 @@
 #include <functional>
 #include <stdint.h>
 
-namespace ui::retained {
+namespace ui {
 
 using NodeId = uint64_t;
 
@@ -503,4 +503,4 @@ private:
   int error_count_ = 0;
 };
 
-} // namespace ui::retained
+} // namespace ui

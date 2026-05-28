@@ -2,7 +2,7 @@
 
 #include <string.h>
 
-namespace ui::retained {
+namespace ui {
 
 namespace {
 
@@ -458,4 +458,4 @@ void UiTree::copy_value(char (&dest)[UI_RETAINED_VALUE_CAP],
 
 void UiTree::report_error() { ++error_count_; }
 
-} // namespace ui::retained
+} // namespace ui

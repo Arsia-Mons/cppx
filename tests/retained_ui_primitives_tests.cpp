@@ -15,7 +15,7 @@
     }                                                                          \
   } while (0)
 
-using namespace ui::retained;
+using namespace ui;
 using namespace ui::components;
 
 static bool same_text(const char *actual, const char *expected) {
@@ -40,60 +40,54 @@ static bool html_primitives_write_semantic_metadata_and_layout(void) {
   react_init_runtime();
   UiTree tree;
   UiElementFrame frame;
+  UiElementFrameScope frame_scope(frame);
 
-  UiElement root = Box(
-      frame,
-      {
-          .key = "root",
-          .style =
-              {
-                  .width = Length::points(360.0f),
-                  .height = Length::points(260.0f),
-                  .align_items = AlignItems::Start,
-                  .padding = {4.0f, 4.0f, 4.0f, 4.0f},
-                  .gap = 6.0f,
-              },
-          .children = frame.children({
-              Button(frame,
-                     {
-                         .key = "confirm",
-                         .id = "ConfirmButton",
-                         .label = "Confirm",
-                     }),
-              Checkbox(frame,
-                       {
-                           .key = "music",
-                           .id = "MusicCheckbox",
-                           .checked = true,
-                           .label = "Music",
-                       }),
-              Input(frame,
-                    {
-                        .key = "name",
-                        .id = "NameInput",
-                        .value = "Ace",
-                    }),
-              Box(frame,
-                  {
-                      .key = "card",
-                      .id = "ComposedCard",
-                      .focusable = true,
-                      .style =
-                          {
-                              .width = Length::points(120.0f),
-                              .height = Length::points(44.0f),
-                              .background = {20, 28, 32, 255},
-                          },
-                      .children = frame.children({
-                          Text(frame,
-                               {
-                                   .key = "label",
-                                   .value = "Card",
-                               }),
-                      }),
-                  }),
+  UiElement root = Box({
+      .key = "root",
+      .style =
+          {
+              .width = Length::points(360.0f),
+              .height = Length::points(260.0f),
+              .align_items = AlignItems::Start,
+              .padding = {4.0f, 4.0f, 4.0f, 4.0f},
+              .gap = 6.0f,
+          },
+      .children = ::ui::children({
+          Button({
+              .key = "confirm",
+              .id = "ConfirmButton",
+              .label = "Confirm",
           }),
-      });
+          Checkbox({
+              .key = "music",
+              .id = "MusicCheckbox",
+              .checked = true,
+              .label = "Music",
+          }),
+          Input({
+              .key = "name",
+              .id = "NameInput",
+              .value = "Ace",
+          }),
+          Box({
+              .key = "card",
+              .id = "ComposedCard",
+              .focusable = true,
+              .style =
+                  {
+                      .width = Length::points(120.0f),
+                      .height = Length::points(44.0f),
+                      .background = {20, 28, 32, 255},
+                  },
+              .children = ::ui::children({
+                  Text({
+                      .key = "label",
+                      .value = "Card",
+                  }),
+              }),
+          }),
+      }),
+  });
   CHECK(commit_root(tree, frame, root, 360.0f, 260.0f));
 
   FlexLayoutAdapter adapter = make_yoga_flex_layout_adapter();
@@ -158,17 +152,15 @@ static bool reused_nodes_clear_previous_control_metadata(void) {
 
   {
     UiElementFrame frame;
-    UiElement root = Button(
-        frame, {
-                   .key = "confirm",
-                   .id = "ConfirmButton",
-                   .disabled = true,
-                   .label = "Confirm",
-                   .on_activate =
-                       [&activate_count](const ActivationEvent &) {
-                         activate_count += 1;
-                       },
-               });
+    UiElementFrameScope frame_scope(frame);
+    UiElement root = Button({
+        .key = "confirm",
+        .id = "ConfirmButton",
+        .disabled = true,
+        .label = "Confirm",
+        .on_activate =
+            [&activate_count](const ActivationEvent &) { activate_count += 1; },
+    });
     CHECK(commit_root(tree, frame, root, 200.0f, 80.0f));
   }
 
@@ -182,10 +174,11 @@ static bool reused_nodes_clear_previous_control_metadata(void) {
 
   {
     UiElementFrame frame;
-    UiElement root = Button(frame, {
-                                       .key = "confirm",
-                                       .id = "ConfirmButton",
-                                   });
+    UiElementFrameScope frame_scope(frame);
+    UiElement root = Button({
+        .key = "confirm",
+        .id = "ConfirmButton",
+    });
     CHECK(commit_root(tree, frame, root, 200.0f, 80.0f));
   }
 
@@ -203,17 +196,16 @@ static bool checkbox_invokes_change_callback(void) {
   react_init_runtime();
   UiTree tree;
   UiElementFrame frame;
+  UiElementFrameScope frame_scope(frame);
   int observed = -1;
 
-  UiElement root = Checkbox(
-      frame, {
-                 .key = "music",
-                 .id = "MusicCheckbox",
-                 .checked = true,
-                 .label = "Music",
-                 .on_change =
-                     [&observed](bool checked) { observed = checked ? 1 : 0; },
-             });
+  UiElement root = Checkbox({
+      .key = "music",
+      .id = "MusicCheckbox",
+      .checked = true,
+      .label = "Music",
+      .on_change = [&observed](bool checked) { observed = checked ? 1 : 0; },
+  });
   CHECK(commit_root(tree, frame, root, 220.0f, 80.0f));
 
   NodeId checkbox_id = tree.child_at(tree.root_id(), 0);
@@ -229,15 +221,13 @@ static bool input_handles_typing_caret_delete_selection_and_composition(void) {
 
   {
     UiElementFrame frame;
-    UiElement root = Input(
-        frame, {
-                   .key = "name",
-                   .id = "NameInput",
-                   .value = value.c_str(),
-                   .on_change = [&value](const std::string &next) {
-                     value = next;
-                   },
-               });
+    UiElementFrameScope frame_scope(frame);
+    UiElement root = Input({
+        .key = "name",
+        .id = "NameInput",
+        .value = value.c_str(),
+        .on_change = [&value](const std::string &next) { value = next; },
+    });
     CHECK(commit_root(tree, frame, root, 240.0f, 80.0f));
   }
 
@@ -251,15 +241,13 @@ static bool input_handles_typing_caret_delete_selection_and_composition(void) {
 
   {
     UiElementFrame frame;
-    UiElement root = Input(
-        frame, {
-                   .key = "name",
-                   .id = "NameInput",
-                   .value = value.c_str(),
-                   .on_change = [&value](const std::string &next) {
-                     value = next;
-                   },
-               });
+    UiElementFrameScope frame_scope(frame);
+    UiElement root = Input({
+        .key = "name",
+        .id = "NameInput",
+        .value = value.c_str(),
+        .on_change = [&value](const std::string &next) { value = next; },
+    });
     CHECK(commit_root(tree, frame, root, 240.0f, 80.0f));
   }
 
@@ -280,15 +268,13 @@ static bool input_handles_typing_caret_delete_selection_and_composition(void) {
 
   {
     UiElementFrame frame;
-    UiElement root = Input(
-        frame, {
-                   .key = "name",
-                   .id = "NameInput",
-                   .value = value.c_str(),
-                   .on_change = [&value](const std::string &next) {
-                     value = next;
-                   },
-               });
+    UiElementFrameScope frame_scope(frame);
+    UiElement root = Input({
+        .key = "name",
+        .id = "NameInput",
+        .value = value.c_str(),
+        .on_change = [&value](const std::string &next) { value = next; },
+    });
     CHECK(commit_root(tree, frame, root, 240.0f, 80.0f));
   }
 
@@ -300,15 +286,13 @@ static bool input_handles_typing_caret_delete_selection_and_composition(void) {
 
   {
     UiElementFrame frame;
-    UiElement root = Input(
-        frame, {
-                   .key = "disabled",
-                   .disabled = true,
-                   .value = value.c_str(),
-                   .on_change = [&value](const std::string &next) {
-                     value = next;
-                   },
-               });
+    UiElementFrameScope frame_scope(frame);
+    UiElement root = Input({
+        .key = "disabled",
+        .disabled = true,
+        .value = value.c_str(),
+        .on_change = [&value](const std::string &next) { value = next; },
+    });
     CHECK(commit_root(tree, frame, root, 240.0f, 80.0f));
   }
   NodeId disabled_input = tree.child_at(tree.root_id(), 0);

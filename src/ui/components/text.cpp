@@ -3,9 +3,8 @@
 namespace ui::components {
 namespace {
 
-retained::UiElement render_text(const TextProps &props,
-                                retained::UiElementFrame &frame) {
-  return frame.host(retained::HostKind::Text,
+::ui::UiElement render_text(const TextProps &props) {
+  return ::ui::host(::ui::HostKind::Text,
                     {
                         .key = props.key,
                         .id = props.id,
@@ -14,17 +13,13 @@ retained::UiElement render_text(const TextProps &props,
                         .text = {.value = props.value},
                         .interaction = detail::interaction_from_props(props),
                         .accessibility = detail::accessibility_from_props(
-                            props, retained::SemanticRole::Auto),
+                            props, ::ui::SemanticRole::Auto),
                         .callbacks = detail::callbacks_from_props(props),
                     });
 }
 
 } // namespace
 
-retained::UiElement Text(retained::UiElementFrame &frame,
-                         const TextProps &props) {
-  return frame.component("Text", props, render_text,
-                         detail::component_key(props));
-}
+const ::ui::Component<TextProps> Text{"Text", render_text};
 
 } // namespace ui::components

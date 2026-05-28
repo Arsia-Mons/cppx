@@ -1,6 +1,6 @@
 #include "panel_components.h"
 
-UiElement BuildMultiline(UiElementFrame &frame, Actions &actions) {
+UiElement BuildMultiline(Actions &actions) {
   return <Panel
       key="pause"
       style={Style{

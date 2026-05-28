@@ -2,7 +2,7 @@
 
 #include "flex_layout.h"
 
-namespace ui::retained {
+namespace ui {
 
 enum class YogaErrata : uint32_t {
   None = 0,
@@ -28,7 +28,6 @@ struct YogaLayoutConfig {
 };
 
 FlexLayoutAdapter make_yoga_flex_layout_adapter();
-FlexLayoutAdapter
-make_yoga_flex_layout_adapter(const YogaLayoutConfig *config);
+FlexLayoutAdapter make_yoga_flex_layout_adapter(const YogaLayoutConfig *config);
 
-} // namespace ui::retained
+} // namespace ui

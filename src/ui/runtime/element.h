@@ -11,7 +11,7 @@
 #include <stdint.h>
 #include <type_traits>
 
-namespace ui::retained {
+namespace ui {
 
 constexpr int UI_RETAINED_MAX_ELEMENTS = 384;
 constexpr int UI_RETAINED_MAX_CHILD_ELEMENTS = 384;
@@ -135,6 +135,21 @@ public:
   UiElement component(const char *name, const Props &props,
                       UiElement (*render)(const Props &, UiElementFrame &),
                       const char *key = nullptr) {
+    ComponentFrameRecord<Props> record = {
+        .render = render,
+        .props = props,
+    };
+    const ComponentFrameRecord<Props> *stored = store(record);
+    if (!stored)
+      return empty();
+    return component_raw(name, key, stored,
+                         &render_component_frame_record<Props>);
+  }
+
+  template <typename Props>
+  UiElement component(const char *name, const Props &props,
+                      UiElement (*render)(const Props &),
+                      const char *key = nullptr) {
     ComponentRecord<Props> record = {
         .render = render,
         .props = props,
@@ -151,6 +166,11 @@ public:
 
 private:
   template <typename Props> struct ComponentRecord {
+    UiElement (*render)(const Props &);
+    Props props;
+  };
+
+  template <typename Props> struct ComponentFrameRecord {
     UiElement (*render)(const Props &, UiElementFrame &);
     Props props;
   };
@@ -169,6 +189,17 @@ private:
                                            UiElementFrame &frame) {
     const ComponentRecord<T> *record =
         static_cast<const ComponentRecord<T> *>(raw);
+    if (!record || !record->render)
+      return frame.empty();
+    (void)frame;
+    return record->render(record->props);
+  }
+
+  template <typename T>
+  static UiElement render_component_frame_record(const void *raw,
+                                                 UiElementFrame &frame) {
+    const ComponentFrameRecord<T> *record =
+        static_cast<const ComponentFrameRecord<T> *>(raw);
     if (!record || !record->render)
       return frame.empty();
     return record->render(record->props, frame);
@@ -215,6 +246,88 @@ private:
   int error_count_ = 0;
 };
 
+class UiElementFrameScope {
+public:
+  explicit UiElementFrameScope(UiElementFrame &frame);
+  ~UiElementFrameScope();
+
+  UiElementFrameScope(const UiElementFrameScope &) = delete;
+  UiElementFrameScope &operator=(const UiElementFrameScope &) = delete;
+
+private:
+  UiElementFrame *previous_ = nullptr;
+};
+
+UiElementFrame *current_element_frame();
+UiChildren children(std::initializer_list<UiElement> items);
+UiElement empty();
+UiElement fragment(UiChildren children);
+UiElement host(HostKind kind, const HostProps &props);
+UiElement box(const HostProps &props);
+UiElement text(const char *value, const char *key = nullptr,
+               const Style &style = {});
+UiElement provider(const char *name, ReactContext *context, void *value,
+                   UiChildren children, const char *key = nullptr);
+const char *copy_string(const char *value);
+
+template <typename T> const T *copy_value(const T &value) {
+  UiElementFrame *frame = current_element_frame();
+  if (!frame) {
+    react_report_error(
+        "ui/retained: missing current UiElementFrame for copy_value\n");
+    return nullptr;
+  }
+  return frame->copy_value(value);
+}
+
+template <typename Props>
+UiElement component(const char *name, const Props &props,
+                    UiElement (*render)(const Props &),
+                    const char *key = nullptr) {
+  UiElementFrame *frame = current_element_frame();
+  if (!frame) {
+    react_report_error(
+        "ui/retained: missing current UiElementFrame for component %s\n",
+        name ? name : "");
+    return {};
+  }
+  return frame->component(name, props, render, key);
+}
+
+namespace detail {
+
+template <typename Props>
+auto component_key_from_props(const Props &props, int)
+    -> decltype((void)props.key, static_cast<const char *>(nullptr)) {
+  return props.key && props.key[0] != '\0' ? props.key : nullptr;
+}
+
+template <typename Props>
+const char *component_key_from_props(const Props &, long) {
+  return nullptr;
+}
+
+} // namespace detail
+
+template <typename Props> class Component {
+public:
+  using RenderFn = UiElement (*)(const Props &);
+
+  constexpr Component(const char *name, RenderFn render)
+      : name_(name), render_(render) {}
+
+  UiElement operator()() const { return (*this)(Props{}); }
+
+  UiElement operator()(const Props &props) const {
+    return component(name_, props, render_,
+                     detail::component_key_from_props(props, 0));
+  }
+
+private:
+  const char *name_ = "";
+  RenderFn render_ = nullptr;
+};
+
 struct ReconcileResult {
   bool ok = false;
   int error_count = 0;
@@ -226,4 +339,4 @@ ReconcileResult reconcile_retained_tree(UiTree &tree, UiElementFrame &frame,
 ReconcileResult commit_retained_elements(UiTree &tree, UiElementFrame &frame,
                                          const UiElement &root);
 
-} // namespace ui::retained
+} // namespace ui

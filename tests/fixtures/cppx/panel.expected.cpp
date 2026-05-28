@@ -1,24 +1,24 @@
 #include "panel_components.h"
 
-UiElement BuildPauseMenu(UiElementFrame &frame, Actions &actions) {
+UiElement BuildPauseMenu(Actions &actions) {
 #line 4 "tests/fixtures/cppx/panel.cppx"
-  return Panel(frame, { .key = "pause", .style = Style{.width = Length::points(320)}, .modal = true, .children = frame.children({
+  return Panel({ .key = "pause", .style = Style{.width = Length::points(320)}, .modal = true, .children = children({
 #line 5 "tests/fixtures/cppx/panel.cppx"
-    Panel::Header(frame, { .children = frame.children({
+    Panel::Header({ .children = children({
 #line 6 "tests/fixtures/cppx/panel.cppx"
-      Text(frame, { .value = "Paused" }),
+      Text({ .value = "Paused" }),
 #line 7 "tests/fixtures/cppx/panel.cppx"
     }) }),
 #line 8 "tests/fixtures/cppx/panel.cppx"
-    Panel::Body(frame, { .children = frame.children({
+    Panel::Body({ .children = children({
 #line 9 "tests/fixtures/cppx/panel.cppx"
-      Button(frame, { .id = "ResumeButton", .on_activate = actions.resume, .children = frame.children({
+      Button({ .id = "ResumeButton", .on_activate = actions.resume, .children = children({
 #line 9 "tests/fixtures/cppx/panel.cppx"
-      frame.text("Resume"),
+      text("Resume"),
 #line 9 "tests/fixtures/cppx/panel.cppx"
       }) }),
 #line 10 "tests/fixtures/cppx/panel.cppx"
-      Button(frame, { .id = "OptionsButton", .on_activate = actions.options }),
+      Button({ .id = "OptionsButton", .on_activate = actions.options }),
 #line 11 "tests/fixtures/cppx/panel.cppx"
     }) }),
 #line 12 "tests/fixtures/cppx/panel.cppx"

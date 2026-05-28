@@ -4,6 +4,6 @@
 
 namespace shooter {
 
-::ui::retained::UiElement HudBand(::ui::retained::UiElementFrame &frame);
+::ui::UiElement HudBand();
 
 } // namespace shooter

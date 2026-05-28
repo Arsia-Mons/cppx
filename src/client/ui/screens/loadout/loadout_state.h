@@ -40,9 +40,8 @@ LoadoutContextValue use_loadout_context_value(bool *compare_enabled,
                                               LoadoutPendingAction *pending);
 void loadout_provider_push(const LoadoutContextValue *value);
 void loadout_provider_pop();
-::ui::retained::UiElement LoadoutProvider(::ui::retained::UiElementFrame &frame,
-                                          const LoadoutContextValue &value,
-                                          ::ui::retained::UiChildren children);
+::ui::UiElement LoadoutProvider(const LoadoutContextValue &value,
+                                ::ui::UiChildren children);
 
 // Hooks: read state.
 bool use_compare_enabled();

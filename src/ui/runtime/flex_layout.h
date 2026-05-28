@@ -2,7 +2,7 @@
 
 #include "tree.h"
 
-namespace ui::retained {
+namespace ui {
 
 struct LayoutViewport {
   float width = 0.0f;
@@ -21,4 +21,4 @@ struct FlexLayoutAdapter {
 bool compute_flex_layout(const FlexLayoutAdapter &adapter, UiTree &tree,
                          LayoutViewport viewport);
 
-} // namespace ui::retained
+} // namespace ui

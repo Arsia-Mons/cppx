@@ -14,24 +14,23 @@ struct InputProps {
   bool focusable = false;
   bool autofocus = false;
   AccessibilityProps accessibility = {};
-  std::function<void(const retained::FocusEvent &)> on_focus = {};
-  std::function<void(const retained::BlurEvent &)> on_blur = {};
-  std::function<void(const retained::ActivationEvent &)> on_activate = {};
-  std::function<void(const retained::KeyEvent &)> on_key = {};
-  std::function<void(const retained::TextInputEvent &)> on_text_input = {};
-  std::function<void(const retained::TextEditingEvent &)> on_text_editing = {};
+  std::function<void(const ::ui::FocusEvent &)> on_focus = {};
+  std::function<void(const ::ui::BlurEvent &)> on_blur = {};
+  std::function<void(const ::ui::ActivationEvent &)> on_activate = {};
+  std::function<void(const ::ui::KeyEvent &)> on_key = {};
+  std::function<void(const ::ui::TextInputEvent &)> on_text_input = {};
+  std::function<void(const ::ui::TextEditingEvent &)> on_text_editing = {};
   const char *value = "";
   std::function<void(const std::string &)> on_change = {};
-  retained::Style style = {
-      .width = retained::Length::points(220.0f),
-      .height = retained::Length::points(36.0f),
-      .align_items = retained::AlignItems::Stretch,
-      .justify_content = retained::JustifyContent::Center,
+  ::ui::Style style = {
+      .width = ::ui::Length::points(220.0f),
+      .height = ::ui::Length::points(36.0f),
+      .align_items = ::ui::AlignItems::Stretch,
+      .justify_content = ::ui::JustifyContent::Center,
       .padding = {8.0f, 8.0f, 8.0f, 8.0f},
   };
 };
 
-retained::UiElement Input(retained::UiElementFrame &frame,
-                          const InputProps &props);
+extern const ::ui::Component<InputProps> Input;
 
 } // namespace ui::components

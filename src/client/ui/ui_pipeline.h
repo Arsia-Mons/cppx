@@ -3,16 +3,16 @@
 #include <functional>
 #include <utility>
 
-#include "client_ui.h"
 #include "../../ui/input.h"
 #include "../../ui/runtime/flex_layout.h"
+#include "client_ui.h"
 
 namespace client::ui {
 
 struct UiPipelineFrame {
-    ::ui::UiInputFrame input   = {};
-    ::ui::retained::Size layout = {};
-    ::ui::retained::Point pointer = {};
+  ::ui::UiInputFrame input = {};
+  ::ui::Size layout = {};
+  ::ui::Point pointer = {};
 };
 
 using RenderFrame = std::function<void()>;
@@ -26,20 +26,22 @@ using FrameProvider = std::function<void(const std::function<void()> &build)>;
 
 class UiPipeline {
 public:
-    UiPipeline();
+  UiPipeline();
 
-    ClientUi       &client_ui()       { return client_ui_; }
-    const ClientUi &client_ui() const { return client_ui_; }
+  ClientUi &client_ui() { return client_ui_; }
+  const ClientUi &client_ui() const { return client_ui_; }
 
-    void set_frame_provider(FrameProvider provider) { frame_provider_ = std::move(provider); }
+  void set_frame_provider(FrameProvider provider) {
+    frame_provider_ = std::move(provider);
+  }
 
-    void render_client_ui_frame(const UiPipelineFrame &frame,
-                                const RenderFrame &render_frame);
+  void render_client_ui_frame(const UiPipelineFrame &frame,
+                              const RenderFrame &render_frame);
 
 private:
-    ClientUi                         client_ui_;
-    FrameProvider                    frame_provider_;
-    ::ui::retained::FlexLayoutAdapter retained_layout_ = {};
+  ClientUi client_ui_;
+  FrameProvider frame_provider_;
+  ::ui::FlexLayoutAdapter retained_layout_ = {};
 };
 
 const UiPipelineFrame *use_ui_pipeline_frame();

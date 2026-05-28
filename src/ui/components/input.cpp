@@ -102,7 +102,7 @@ void erase_forward(InputEditState &state, std::string &value) {
   value.erase(static_cast<size_t>(state.caret), 1);
 }
 
-bool key_has_modifier(const retained::KeyEvent &event,
+bool key_has_modifier(const ::ui::KeyEvent &event,
                       ::ui::UiKeyModifier modifier) {
   return (event.modifiers & modifier) != 0;
 }
@@ -113,8 +113,9 @@ void publish_change(const std::function<void(const std::string &)> &on_change,
     on_change(value);
 }
 
-retained::TextEditMetadata text_edit_metadata(const InputEditState &state) {
-  int start = state.selection_anchor >= 0 ? selection_start(state) : state.caret;
+::ui::TextEditMetadata text_edit_metadata(const InputEditState &state) {
+  int start =
+      state.selection_anchor >= 0 ? selection_start(state) : state.caret;
   int end = state.selection_anchor >= 0 ? selection_end(state) : state.caret;
   return {
       .caret = state.caret,
@@ -126,11 +127,10 @@ retained::TextEditMetadata text_edit_metadata(const InputEditState &state) {
   };
 }
 
-retained::UiElement render_input(const InputProps &props,
-                                 retained::UiElementFrame &frame) {
+::ui::UiElement render_input(const InputProps &props) {
   InputEditState *state = use_state<InputEditState>({});
   if (!state)
-    return frame.empty();
+    return ::ui::empty();
 
   std::string rendered_value = props.value ? props.value : "";
   if (!state->initialized) {
@@ -140,103 +140,95 @@ retained::UiElement render_input(const InputProps &props,
   }
   clamp_state(*state, value_length(rendered_value));
 
-  retained::HostCallbacks callbacks =
-      detail::callbacks_from_props(props);
-  callbacks.on_key = [state, value = rendered_value,
-                      on_change = props.on_change,
-                      original = callbacks.on_key](
-                         const retained::KeyEvent &event) mutable {
-    if (original)
-      original(event);
-    if (!state)
-      return;
-    std::string next = value;
-    clamp_state(*state, value_length(next));
-    bool extend = key_has_modifier(event, ::ui::UI_KEY_MOD_SHIFT);
-    switch (event.key) {
-    case ::ui::UiKey::Backspace:
-      erase_back(*state, next);
-      publish_change(on_change, next);
-      break;
-    case ::ui::UiKey::DeleteForward:
-      erase_forward(*state, next);
-      publish_change(on_change, next);
-      break;
-    case ::ui::UiKey::Left:
-      move_caret(*state, state->caret - 1, value_length(next), extend);
-      break;
-    case ::ui::UiKey::Right:
-      move_caret(*state, state->caret + 1, value_length(next), extend);
-      break;
-    case ::ui::UiKey::Home:
-      move_caret(*state, 0, value_length(next), extend);
-      break;
-    case ::ui::UiKey::End:
-      move_caret(*state, value_length(next), value_length(next), extend);
-      break;
-    case ::ui::UiKey::A:
-      if (key_has_modifier(event, ::ui::UI_KEY_MOD_CTRL) ||
-          key_has_modifier(event, ::ui::UI_KEY_MOD_SUPER)) {
-        state->selection_anchor = 0;
-        state->caret = value_length(next);
-      }
-      break;
-    case ::ui::UiKey::Enter:
-    case ::ui::UiKey::Tab:
-    case ::ui::UiKey::Unknown:
-      break;
-    }
-  };
-  callbacks.on_text_input =
+  ::ui::HostCallbacks callbacks = detail::callbacks_from_props(props);
+  callbacks.on_key =
       [state, value = rendered_value, on_change = props.on_change,
-       original = callbacks.on_text_input](
-          const retained::TextInputEvent &event) mutable {
+       original = callbacks.on_key](const ::ui::KeyEvent &event) mutable {
         if (original)
           original(event);
         if (!state)
           return;
         std::string next = value;
         clamp_state(*state, value_length(next));
-        replace_selection_or_insert(*state, next, event.text);
-        publish_change(on_change, next);
+        bool extend = key_has_modifier(event, ::ui::UI_KEY_MOD_SHIFT);
+        switch (event.key) {
+        case ::ui::UiKey::Backspace:
+          erase_back(*state, next);
+          publish_change(on_change, next);
+          break;
+        case ::ui::UiKey::DeleteForward:
+          erase_forward(*state, next);
+          publish_change(on_change, next);
+          break;
+        case ::ui::UiKey::Left:
+          move_caret(*state, state->caret - 1, value_length(next), extend);
+          break;
+        case ::ui::UiKey::Right:
+          move_caret(*state, state->caret + 1, value_length(next), extend);
+          break;
+        case ::ui::UiKey::Home:
+          move_caret(*state, 0, value_length(next), extend);
+          break;
+        case ::ui::UiKey::End:
+          move_caret(*state, value_length(next), value_length(next), extend);
+          break;
+        case ::ui::UiKey::A:
+          if (key_has_modifier(event, ::ui::UI_KEY_MOD_CTRL) ||
+              key_has_modifier(event, ::ui::UI_KEY_MOD_SUPER)) {
+            state->selection_anchor = 0;
+            state->caret = value_length(next);
+          }
+          break;
+        case ::ui::UiKey::Enter:
+        case ::ui::UiKey::Tab:
+        case ::ui::UiKey::Unknown:
+          break;
+        }
       };
-  callbacks.on_text_editing =
-      [state, original = callbacks.on_text_editing](
-          const retained::TextEditingEvent &event) {
-        if (original)
-          original(event);
-        if (!state)
-          return;
-        strncpy(state->composition, event.text ? event.text : "",
-                sizeof(state->composition) - 1);
-        state->composition[sizeof(state->composition) - 1] = '\0';
-        state->composition_start = event.start;
-        state->composition_length = event.length;
-      };
+  callbacks.on_text_input = [state, value = rendered_value,
+                             on_change = props.on_change,
+                             original = callbacks.on_text_input](
+                                const ::ui::TextInputEvent &event) mutable {
+    if (original)
+      original(event);
+    if (!state)
+      return;
+    std::string next = value;
+    clamp_state(*state, value_length(next));
+    replace_selection_or_insert(*state, next, event.text);
+    publish_change(on_change, next);
+  };
+  callbacks.on_text_editing = [state, original = callbacks.on_text_editing](
+                                  const ::ui::TextEditingEvent &event) {
+    if (original)
+      original(event);
+    if (!state)
+      return;
+    strncpy(state->composition, event.text ? event.text : "",
+            sizeof(state->composition) - 1);
+    state->composition[sizeof(state->composition) - 1] = '\0';
+    state->composition_start = event.start;
+    state->composition_length = event.length;
+  };
 
-  return frame.host(retained::HostKind::Input,
-                    {
-                        .key = props.key,
-                        .id = props.id,
-                        .id_offset = props.id_offset,
-                        .style =
-                            detail::control_style(props.disabled, props.style),
-                        .text = {.value = props.value},
-                        .interaction =
-                            detail::interaction_from_props(props, true),
-                        .text_edit = text_edit_metadata(*state),
-                        .accessibility = detail::accessibility_from_props(
-                            props, retained::SemanticRole::TextBox),
-                        .callbacks = callbacks,
-                    });
+  return ::ui::host(
+      ::ui::HostKind::Input,
+      {
+          .key = props.key,
+          .id = props.id,
+          .id_offset = props.id_offset,
+          .style = detail::control_style(props.disabled, props.style),
+          .text = {.value = props.value},
+          .interaction = detail::interaction_from_props(props, true),
+          .text_edit = text_edit_metadata(*state),
+          .accessibility = detail::accessibility_from_props(
+              props, ::ui::SemanticRole::TextBox),
+          .callbacks = callbacks,
+      });
 }
 
 } // namespace
 
-retained::UiElement Input(retained::UiElementFrame &frame,
-                          const InputProps &props) {
-  return frame.component("Input", props, render_input,
-                         detail::component_key(props));
-}
+const ::ui::Component<InputProps> Input{"Input", render_input};
 
 } // namespace ui::components

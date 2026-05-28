@@ -3,7 +3,7 @@
 #include <cmath>
 #include <float.h>
 
-namespace ui::retained {
+namespace ui {
 
 namespace {
 
@@ -375,4 +375,4 @@ int focus_error_count(const FocusRuntime &runtime) {
   return runtime.error_count;
 }
 
-} // namespace ui::retained
+} // namespace ui

@@ -2,9 +2,20 @@
 
 #include <string.h>
 
-namespace ui::retained {
+namespace ui {
 
 namespace {
+
+thread_local UiElementFrame *g_current_element_frame = nullptr;
+
+UiElementFrame *require_current_element_frame(const char *operation) {
+  UiElementFrame *frame = current_element_frame();
+  if (!frame) {
+    react_report_error("ui/retained: missing current UiElementFrame for %s\n",
+                       operation ? operation : "operation");
+  }
+  return frame;
+}
 
 const char *host_kind_name(HostKind kind) {
   switch (kind) {
@@ -181,6 +192,17 @@ UiElementFrame::UiElementFrame() = default;
 
 UiElementFrame::~UiElementFrame() { reset(); }
 
+UiElementFrameScope::UiElementFrameScope(UiElementFrame &frame)
+    : previous_(g_current_element_frame) {
+  g_current_element_frame = &frame;
+}
+
+UiElementFrameScope::~UiElementFrameScope() {
+  g_current_element_frame = previous_;
+}
+
+UiElementFrame *current_element_frame() { return g_current_element_frame; }
+
 void UiElementFrame::reset() {
   for (int i = destructor_count_ - 1; i >= 0; --i) {
     if (destructors_[i].destroy) {
@@ -340,6 +362,48 @@ HostProps UiElementFrame::copy_host_props(const HostProps &props) {
   return copied;
 }
 
+UiChildren children(std::initializer_list<UiElement> items) {
+  UiElementFrame *frame = require_current_element_frame("children");
+  return frame ? frame->children(items) : UiChildren{};
+}
+
+UiElement empty() {
+  UiElementFrame *frame = require_current_element_frame("empty");
+  return frame ? frame->empty() : UiElement{};
+}
+
+UiElement fragment(UiChildren children) {
+  UiElementFrame *frame = require_current_element_frame("fragment");
+  return frame ? frame->fragment(children) : UiElement{};
+}
+
+UiElement host(HostKind kind, const HostProps &props) {
+  UiElementFrame *frame = require_current_element_frame("host");
+  return frame ? frame->host(kind, props) : UiElement{};
+}
+
+UiElement box(const HostProps &props) {
+  UiElementFrame *frame = require_current_element_frame("box");
+  return frame ? frame->box(props) : UiElement{};
+}
+
+UiElement text(const char *value, const char *key, const Style &style) {
+  UiElementFrame *frame = require_current_element_frame("text");
+  return frame ? frame->text(value, key, style) : UiElement{};
+}
+
+UiElement provider(const char *name, ReactContext *context, void *value,
+                   UiChildren children, const char *key) {
+  UiElementFrame *frame = require_current_element_frame("provider");
+  return frame ? frame->provider(name, context, value, children, key)
+               : UiElement{};
+}
+
+const char *copy_string(const char *value) {
+  UiElementFrame *frame = require_current_element_frame("copy_string");
+  return frame ? frame->copy_string(value) : nullptr;
+}
+
 ReconcileResult reconcile_retained_tree(UiTree &tree, UiElementFrame &frame,
                                         const UiElement &root, float width,
                                         float height) {
@@ -360,6 +424,7 @@ ReconcileResult reconcile_retained_tree(UiTree &tree, UiElementFrame &frame,
 
 ReconcileResult commit_retained_elements(UiTree &tree, UiElementFrame &frame,
                                          const UiElement &root) {
+  UiElementFrameScope frame_scope(frame);
   Reconciler reconciler(tree, frame);
   bool ok = reconciler.commit(root);
   int errors = frame.error_count() + reconciler.error_count();
@@ -369,4 +434,4 @@ ReconcileResult commit_retained_elements(UiTree &tree, UiElementFrame &frame,
   };
 }
 
-} // namespace ui::retained
+} // namespace ui

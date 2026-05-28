@@ -11,8 +11,8 @@ public:
   PauseScreen() = default;
 
   const char *debug_name() const override { return "Pause"; }
-  bool build_element(::ui::retained::UiElementFrame &frame,
-                     ::ui::retained::UiElement *out) override;
+  bool build_element(::ui::UiElementFrame &frame,
+                     ::ui::UiElement *out) override;
   void build_ui() override;
 };
 

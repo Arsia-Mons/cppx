@@ -15,7 +15,7 @@
     }                                                                          \
   } while (0)
 
-using namespace ui::retained;
+using namespace ui;
 using namespace ui::components;
 
 static bool same_text(const char *actual, const char *expected) {
@@ -44,54 +44,49 @@ static bool retained_draw_list_uses_html_primitive_metadata_and_layout(void) {
   react_init_runtime();
   UiTree tree;
   UiElementFrame frame;
+  UiElementFrameScope frame_scope(frame);
 
-  UiElement root = Box(
-      frame,
-      {
-          .key = "root",
-          .style =
-              {
-                  .width = Length::points(320.0f),
-                  .height = Length::points(260.0f),
-                  .align_items = AlignItems::Start,
-                  .padding = {4.0f, 4.0f, 4.0f, 4.0f},
-                  .gap = 6.0f,
-                  .background = {18, 27, 32, 245},
-                  .border = {83, 108, 118, 255},
-                  .border_width = 1.0f,
-              },
-          .children = frame.children({
-              Text(frame,
-                   {
-                       .key = "title",
-                       .value = "Title",
-                       .style =
-                           {
-                               .text = {235, 246, 242, 255},
-                               .font_size = 24,
-                           },
-                   }),
-              Button(frame,
-                     {
-                         .key = "confirm",
-                         .id = "ConfirmButton",
-                         .label = "Confirm",
-                     }),
-              Checkbox(frame,
-                       {
-                           .key = "music",
-                           .id = "MusicCheckbox",
-                           .checked = true,
-                           .label = "Music",
-                       }),
-              Input(frame,
-                    {
-                        .key = "name",
-                        .id = "NameInput",
-                        .value = "abc",
-                    }),
+  UiElement root = Box({
+      .key = "root",
+      .style =
+          {
+              .width = Length::points(320.0f),
+              .height = Length::points(260.0f),
+              .align_items = AlignItems::Start,
+              .padding = {4.0f, 4.0f, 4.0f, 4.0f},
+              .gap = 6.0f,
+              .background = {18, 27, 32, 245},
+              .border = {83, 108, 118, 255},
+              .border_width = 1.0f,
+          },
+      .children = ::ui::children({
+          Text({
+              .key = "title",
+              .value = "Title",
+              .style =
+                  {
+                      .text = {235, 246, 242, 255},
+                      .font_size = 24,
+                  },
           }),
-      });
+          Button({
+              .key = "confirm",
+              .id = "ConfirmButton",
+              .label = "Confirm",
+          }),
+          Checkbox({
+              .key = "music",
+              .id = "MusicCheckbox",
+              .checked = true,
+              .label = "Music",
+          }),
+          Input({
+              .key = "name",
+              .id = "NameInput",
+              .value = "abc",
+          }),
+      }),
+  });
   ReconcileResult result =
       reconcile_retained_tree(tree, frame, root, 320.0f, 260.0f);
   CHECK(result.ok);
@@ -105,53 +100,47 @@ static bool retained_draw_list_uses_html_primitive_metadata_and_layout(void) {
   CHECK(tree.invoke_key(input, select_all));
 
   frame.reset();
-  root = Box(
-      frame,
-      {
-          .key = "root",
-          .style =
-              {
-                  .width = Length::points(320.0f),
-                  .height = Length::points(260.0f),
-                  .align_items = AlignItems::Start,
-                  .padding = {4.0f, 4.0f, 4.0f, 4.0f},
-                  .gap = 6.0f,
-                  .background = {18, 27, 32, 245},
-                  .border = {83, 108, 118, 255},
-                  .border_width = 1.0f,
-              },
-          .children = frame.children({
-              Text(frame,
-                   {
-                       .key = "title",
-                       .value = "Title",
-                       .style =
-                           {
-                               .text = {235, 246, 242, 255},
-                               .font_size = 24,
-                           },
-                   }),
-              Button(frame,
-                     {
-                         .key = "confirm",
-                         .id = "ConfirmButton",
-                         .label = "Confirm",
-                     }),
-              Checkbox(frame,
-                       {
-                           .key = "music",
-                           .id = "MusicCheckbox",
-                           .checked = true,
-                           .label = "Music",
-                       }),
-              Input(frame,
-                    {
-                        .key = "name",
-                        .id = "NameInput",
-                        .value = "abc",
-                    }),
+  root = Box({
+      .key = "root",
+      .style =
+          {
+              .width = Length::points(320.0f),
+              .height = Length::points(260.0f),
+              .align_items = AlignItems::Start,
+              .padding = {4.0f, 4.0f, 4.0f, 4.0f},
+              .gap = 6.0f,
+              .background = {18, 27, 32, 245},
+              .border = {83, 108, 118, 255},
+              .border_width = 1.0f,
+          },
+      .children = ::ui::children({
+          Text({
+              .key = "title",
+              .value = "Title",
+              .style =
+                  {
+                      .text = {235, 246, 242, 255},
+                      .font_size = 24,
+                  },
           }),
-      });
+          Button({
+              .key = "confirm",
+              .id = "ConfirmButton",
+              .label = "Confirm",
+          }),
+          Checkbox({
+              .key = "music",
+              .id = "MusicCheckbox",
+              .checked = true,
+              .label = "Music",
+          }),
+          Input({
+              .key = "name",
+              .id = "NameInput",
+              .value = "abc",
+          }),
+      }),
+  });
   result = reconcile_retained_tree(tree, frame, root, 320.0f, 260.0f);
   CHECK(result.ok);
 

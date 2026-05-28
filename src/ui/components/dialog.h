@@ -12,18 +12,17 @@ struct DialogProps {
   bool focusable = false;
   bool autofocus = false;
   AccessibilityProps accessibility = {};
-  std::function<void(const retained::FocusEvent &)> on_focus = {};
-  std::function<void(const retained::BlurEvent &)> on_blur = {};
-  std::function<void(const retained::ActivationEvent &)> on_activate = {};
-  std::function<void(const retained::KeyEvent &)> on_key = {};
-  std::function<void(const retained::TextInputEvent &)> on_text_input = {};
-  std::function<void(const retained::TextEditingEvent &)> on_text_editing = {};
+  std::function<void(const ::ui::FocusEvent &)> on_focus = {};
+  std::function<void(const ::ui::BlurEvent &)> on_blur = {};
+  std::function<void(const ::ui::ActivationEvent &)> on_activate = {};
+  std::function<void(const ::ui::KeyEvent &)> on_key = {};
+  std::function<void(const ::ui::TextInputEvent &)> on_text_input = {};
+  std::function<void(const ::ui::TextEditingEvent &)> on_text_editing = {};
   bool modal = true;
-  retained::Style style = {};
-  retained::UiChildren children = {};
+  ::ui::Style style = {};
+  ::ui::UiChildren children = {};
 };
 
-retained::UiElement Dialog(retained::UiElementFrame &frame,
-                           const DialogProps &props);
+extern const ::ui::Component<DialogProps> Dialog;
 
 } // namespace ui::components

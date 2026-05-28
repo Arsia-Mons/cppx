@@ -2,7 +2,7 @@
 
 #include <string.h>
 
-namespace ui::retained {
+namespace ui {
 
 namespace {
 
@@ -218,4 +218,4 @@ bool build_draw_list(const UiTree &tree, DrawList *out, NodeId focused_id) {
          out->error_count == 0;
 }
 
-} // namespace ui::retained
+} // namespace ui

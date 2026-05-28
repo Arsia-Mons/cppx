@@ -14,7 +14,6 @@ int first_weapon_for_tab(int tab);
 // Renders one weapon tile. Reads/writes the loadout's UI selection through
 // `LoadoutContext` — does NOT mutate game state. The Equip flow goes through
 // the confirm dialog, not through focus.
-::ui::retained::UiElement WeaponTile(::ui::retained::UiElementFrame &frame,
-                                     int index);
+::ui::UiElement WeaponTile(int index);
 
 } // namespace shooter

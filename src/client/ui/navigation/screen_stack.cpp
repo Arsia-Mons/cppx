@@ -2,8 +2,8 @@
 
 namespace client::ui {
 
-bool UiScreen::build_element(::ui::retained::UiElementFrame &frame,
-                             ::ui::retained::UiElement *out) {
+bool UiScreen::build_element(::ui::UiElementFrame &frame,
+                             ::ui::UiElement *out) {
   (void)frame;
   (void)out;
   return false;

@@ -12,7 +12,7 @@ struct ScreenContextValue {
 
 static ReactContext ScreenContext = {};
 
-ClientUi::ClientUi() { ::ui::retained::focus_init(&retained_focus_); }
+ClientUi::ClientUi() { ::ui::focus_init(&retained_focus_); }
 
 void ClientUi::begin_frame(const ::ui::UiInputFrame &input) {
   (void)input;
@@ -21,6 +21,7 @@ void ClientUi::begin_frame(const ::ui::UiInputFrame &input) {
 }
 
 void ClientUi::build_visible_screens() {
+  ::ui::UiElementFrameScope frame_scope(retained_element_frame_);
   ::ui::Span<UiScreen *> visible = screens_.visible_screens();
   for (int i = 0; i < visible.count; ++i) {
     UiScreen *screen = visible[i];
@@ -34,11 +35,10 @@ void ClientUi::build_visible_screens() {
       };
       REACT_PROVIDER_ENTER_KEY("ScreenProvider", screen->entry_id());
       PROVIDE(&ScreenContext, &context) {
-        ::ui::retained::UiElement root = {};
+        ::ui::UiElement root = {};
         if (screen->build_element(retained_element_frame_, &root)) {
-          ::ui::retained::ReconcileResult result =
-              ::ui::retained::commit_retained_elements(
-                  retained_tree_, retained_element_frame_, root);
+          ::ui::ReconcileResult result = ::ui::commit_retained_elements(
+              retained_tree_, retained_element_frame_, root);
           if (!result.ok) {
             react_report_error(
                 "client/ui: failed to commit returned screen %s\n",
@@ -69,32 +69,27 @@ void ClientUi::end_layout(const ::ui::UiInputFrame &input) {
   }
 }
 
-bool ClientUi::update_retained_runtime(
-    const ::ui::retained::FlexLayoutAdapter &layout,
-    ::ui::retained::LayoutViewport viewport,
-    const ::ui::retained::InputFrame &input) {
-  if (!::ui::retained::compute_flex_layout(layout, retained_tree_, viewport))
+bool ClientUi::update_retained_runtime(const ::ui::FlexLayoutAdapter &layout,
+                                       ::ui::LayoutViewport viewport,
+                                       const ::ui::InputFrame &input) {
+  if (!::ui::compute_flex_layout(layout, retained_tree_, viewport))
     return false;
-  if (!::ui::retained::focus_update(&retained_focus_, retained_tree_, input))
+  if (!::ui::focus_update(&retained_focus_, retained_tree_, input))
     return false;
-  ::ui::retained::NodeId blurred =
-      ::ui::retained::focus_blurred_id(retained_focus_);
+  ::ui::NodeId blurred = ::ui::focus_blurred_id(retained_focus_);
   if (blurred != 0) {
     retained_tree_.invoke_blur(blurred);
   }
-  ::ui::retained::NodeId focused =
-      ::ui::retained::focus_changed_id(retained_focus_);
+  ::ui::NodeId focused = ::ui::focus_changed_id(retained_focus_);
   if (focused != 0) {
     retained_tree_.invoke_focus(focused);
   }
-  ::ui::retained::NodeId confirmed =
-      ::ui::retained::focus_confirmed_id(retained_focus_);
+  ::ui::NodeId confirmed = ::ui::focus_confirmed_id(retained_focus_);
   if (confirmed != 0) {
     retained_tree_.invoke_activate(confirmed);
   }
 
-  ::ui::retained::NodeId active =
-      ::ui::retained::focus_focused_id(retained_focus_);
+  ::ui::NodeId active = ::ui::focus_focused_id(retained_focus_);
   for (int i = 0; i < input.key_event_count; ++i) {
     retained_tree_.invoke_key(active, input.key_events[i]);
   }
@@ -105,15 +100,14 @@ bool ClientUi::update_retained_runtime(
     retained_tree_.invoke_text_editing(active, input.editing_events[i]);
   }
 
-  ::ui::retained::NodeSnapshot active_snapshot = {};
+  ::ui::NodeSnapshot active_snapshot = {};
   wants_text_input_ =
       active != 0 && retained_tree_.snapshot(active, &active_snapshot) &&
       !active_snapshot.interaction.disabled &&
-      (active_snapshot.role == ::ui::retained::NodeRole::Input ||
-       active_snapshot.semantic_role == ::ui::retained::SemanticRole::TextBox);
+      (active_snapshot.role == ::ui::NodeRole::Input ||
+       active_snapshot.semantic_role == ::ui::SemanticRole::TextBox);
 
-  return ::ui::retained::build_draw_list(retained_tree_, &retained_draw_list_,
-                                         active);
+  return ::ui::build_draw_list(retained_tree_, &retained_draw_list_, active);
 }
 
 bool ClientUi::push_screen(std::unique_ptr<UiScreen> screen) {

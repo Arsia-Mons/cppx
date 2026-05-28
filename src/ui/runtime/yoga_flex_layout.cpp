@@ -2,7 +2,7 @@
 
 #include <yoga/Yoga.h>
 
-namespace ui::retained {
+namespace ui {
 
 namespace {
 
@@ -393,8 +393,8 @@ void apply_style(YGNodeRef yoga_node, const NodeSnapshot &snapshot,
   YGNodeStyleSetJustifyContent(yoga_node, map_justify(style.justify_content));
   YGNodeSetNodeType(yoga_node, map_node_type(style.node_type));
   YGNodeSetIsReferenceBaseline(yoga_node, style.is_reference_baseline);
-  YGNodeSetAlwaysFormsContainingBlock(
-      yoga_node, style.always_forms_containing_block);
+  YGNodeSetAlwaysFormsContainingBlock(yoga_node,
+                                      style.always_forms_containing_block);
   if (style.flex.is_defined())
     YGNodeStyleSetFlex(yoga_node, style.flex.value);
   set_edges(yoga_node, style.margin, YGNodeStyleSetMargin,
@@ -541,14 +541,13 @@ bool compute_yoga_layout_with_config(UiTree &tree, NodeId root_id,
 
   YGConfigSetUseWebDefaults(yoga_config, config->use_web_defaults);
   if (config->point_scale_factor.is_defined()) {
-    YGConfigSetPointScaleFactor(yoga_config,
-                                config->point_scale_factor.value);
+    YGConfigSetPointScaleFactor(yoga_config, config->point_scale_factor.value);
   }
   if (config->has_errata)
     YGConfigSetErrata(yoga_config, map_errata(config->errata));
-  YGConfigSetExperimentalFeatureEnabled(
-      yoga_config, YGExperimentalFeatureWebFlexBasis,
-      config->experimental_web_flex_basis);
+  YGConfigSetExperimentalFeatureEnabled(yoga_config,
+                                        YGExperimentalFeatureWebFlexBasis,
+                                        config->experimental_web_flex_basis);
 
   BuildContext context = {
       .config = yoga_config,
@@ -586,4 +585,4 @@ make_yoga_flex_layout_adapter(const YogaLayoutConfig *config) {
   };
 }
 
-} // namespace ui::retained
+} // namespace ui

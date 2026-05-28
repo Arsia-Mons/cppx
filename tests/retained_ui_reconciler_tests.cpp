@@ -14,7 +14,7 @@
     }                                                                          \
   } while (0)
 
-using namespace ui::retained;
+using namespace ui;
 
 static bool snapshot(UiTree &tree, NodeId id, NodeSnapshot *out) {
   CHECK(tree.snapshot(id, out));
@@ -25,6 +25,7 @@ static bool host_elements_commit_to_retained_tree(void) {
   react_init_runtime();
   UiTree tree;
   UiElementFrame frame;
+  UiElementFrameScope frame_scope(frame);
 
   UiElement root = frame.box({
       .key = "root",
@@ -46,8 +47,8 @@ static bool host_elements_commit_to_retained_tree(void) {
       .id = "RootBox",
       .id_offset = 4,
       .accessibility = {.role = SemanticRole::Dialog},
-      .children = frame.children({
-          frame.text("Ready", "label"),
+      .children = ::ui::children({
+          ::ui::text("Ready", "label"),
       }),
   });
 
@@ -89,11 +90,11 @@ struct CounterProps {
   const char *prefix = nullptr;
 };
 
-static UiElement Counter(const CounterProps &props, UiElementFrame &frame) {
+static UiElement Counter(const CounterProps &props) {
   int *count = use_state_int(0);
   if (count)
     *count += 1;
-  return frame.text(use_text_storage("%s:%d", props.prefix, count ? *count : 0),
+  return ::ui::text(use_text_storage("%s:%d", props.prefix, count ? *count : 0),
                     "value");
 }
 
@@ -101,13 +102,14 @@ static bool component_elements_own_hook_fiber_entry(void) {
   react_init_runtime();
   UiTree tree;
   UiElementFrame frame;
+  UiElementFrameScope frame_scope(frame);
 
   CounterProps props = {
       .key = "counter",
       .prefix = "seen",
   };
 
-  UiElement first = frame.component("Counter", props, Counter, props.key);
+  UiElement first = ::ui::component("Counter", props, Counter, props.key);
   ReconcileResult first_result =
       reconcile_retained_tree(tree, frame, first, 640.0f, 480.0f);
   CHECK(first_result.ok);
@@ -116,7 +118,7 @@ static bool component_elements_own_hook_fiber_entry(void) {
   CHECK(strcmp(first_text.value, "seen:1") == 0);
 
   frame.reset();
-  UiElement second = frame.component("Counter", props, Counter, props.key);
+  UiElement second = ::ui::component("Counter", props, Counter, props.key);
   ReconcileResult second_result =
       reconcile_retained_tree(tree, frame, second, 640.0f, 480.0f);
   CHECK(second_result.ok);
@@ -134,11 +136,10 @@ struct LabelProps {
   const char *key = nullptr;
 };
 
-static UiElement LabelFromContext(const LabelProps &props,
-                                  UiElementFrame &frame) {
+static UiElement LabelFromContext(const LabelProps &props) {
   (void)props;
   const char *value = static_cast<const char *>(use_context(&g_label_context));
-  return frame.text(value ? value : "missing", "label");
+  return ::ui::text(value ? value : "missing", "label");
 }
 
 static bool provider_elements_scope_context_for_children(void) {
@@ -146,12 +147,13 @@ static bool provider_elements_scope_context_for_children(void) {
   g_label_context = {};
   UiTree tree;
   UiElementFrame frame;
+  UiElementFrameScope frame_scope(frame);
   const char *value = "context-value";
 
-  UiElement root = frame.provider(
+  UiElement root = ::ui::provider(
       "LabelProvider", &g_label_context, const_cast<char *>(value),
-      frame.children({
-          frame.component("LabelFromContext", LabelProps{.key = "label"},
+      ::ui::children({
+          ::ui::component("LabelFromContext", LabelProps{.key = "label"},
                           LabelFromContext, "label"),
       }),
       "provider");

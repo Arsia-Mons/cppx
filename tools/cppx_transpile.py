@@ -11,13 +11,13 @@ The grammar is intentionally small and native-C++ shaped:
 
 lowers to returned element construction:
 
-  Panel(frame, { .key = "pause", .style = Style{.width = Length::points(320)}, .children = frame.children({
-    Panel::Header(frame, { .children = frame.children({
-      Text(frame, { .value = "Paused" }),
+  Panel({ .key = "pause", .style = Style{.width = Length::points(320)}, .children = children({
+    Panel::Header({ .children = children({
+      Text({ .value = "Paused" }),
     }) }),
   }) });
 
-Children are emitted as owned frame data. Text children lower to `frame.text`.
+Children are emitted as owned frame data. Text children lower to `text`.
 """
 
 from __future__ import annotations
@@ -102,7 +102,7 @@ def props_init(attrs: list[Attr]) -> str:
 
 def props_open_with_children(attrs: list[Attr]) -> str:
     parts = props_fields(attrs)
-    parts.append(".children = frame.children({")
+    parts.append(".children = children({")
     return "{ " + ", ".join(parts)
 
 
@@ -293,7 +293,7 @@ def transpile_jsx_line(
                     )
                 else:
                     out.append(
-                        f"{base_indent}{take_prefix()}frame.text({cpp_string(stripped)}){expression_end()}"
+                        f"{base_indent}{take_prefix()}text({cpp_string(stripped)}){expression_end()}"
                     )
             i = next_tag
             continue
@@ -324,12 +324,12 @@ def transpile_jsx_line(
             if self_closing:
                 props = props_init(attrs)
                 out.append(
-                    f"{base_indent}{take_prefix()}{name}(frame, {props}){expression_end()}"
+                    f"{base_indent}{take_prefix()}{name}({props}){expression_end()}"
                 )
             else:
                 stack.append(StackEntry(tag=tag, line=line_no, column=column))
                 props = props_open_with_children(attrs)
-                out.append(f"{base_indent}{take_prefix()}{name}(frame, {props}")
+                out.append(f"{base_indent}{take_prefix()}{name}({props}")
         i = end + 1
     return out
 
