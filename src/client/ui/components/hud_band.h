@@ -1,7 +1,9 @@
 #pragma once
 
+#include "../../../ui/retained/element.h"
+
 namespace shooter {
 
-void HudBand();
+::ui::retained::UiElement HudBand(::ui::retained::UiElementFrame &frame);
 
 } // namespace shooter

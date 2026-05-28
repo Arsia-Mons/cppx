@@ -1,6 +1,7 @@
 #include "main_menu_screen.h"
 
 #include <memory>
+#include <stdio.h>
 
 #include "../../../../react.h"
 #include "../../../../ui/retained/element_components.h"
@@ -25,6 +26,14 @@ std::function<void()> use_exit_to_main_menu() {
 struct MainMenuScreenProps {
   uint32_t unused = 0;
 };
+
+static const char *screen_entry_key(::ui::retained::UiElementFrame &frame,
+                                    const char *prefix,
+                                    client::ui::UiScreenEntryId entry_id) {
+  char key[64] = {};
+  snprintf(key, sizeof(key), "%s-%u", prefix, entry_id);
+  return frame.copy_string(key);
+}
 
 static ::ui::retained::UiElement
 render_main_menu_screen(const MainMenuScreenProps &props,
@@ -113,7 +122,8 @@ bool MainMenuScreen::build_element(::ui::retained::UiElementFrame &frame,
   if (!out)
     return false;
   *out = frame.component("MainMenuScreen", MainMenuScreenProps{},
-                         render_main_menu_screen);
+                         render_main_menu_screen,
+                         screen_entry_key(frame, "main-menu", entry_id()));
   return true;
 }
 

@@ -212,12 +212,11 @@ immediate component calls.
    - `UiScreen` now has an optional returned-element entrypoint, and `ClientUi`
      can commit returned screen roots inside the existing screen/provider frame
      boundary.
-   - main menu is migrated to a returned `UiElement` root through
-     `BoxElement`, `TextElement`, and `ButtonElement`; the old immediate
-     `build_ui()` override is empty for that screen.
-   - remaining: migrate options, pause, in-game HUD, loadout, and dialogs to
-     returned `UiElement` roots, then delete/guard the old immediate authoring
-     API.
+   - main menu, options, pause, and in-game HUD/action UI are migrated to
+     returned `UiElement` roots through `BoxElement`, `TextElement`,
+     `ButtonElement`, `ToggleElement`, and returned `HudBand`.
+   - remaining: migrate loadout and dialogs to returned `UiElement` roots,
+     then delete/guard the old immediate authoring API.
 
 ## Verification Gates
 
