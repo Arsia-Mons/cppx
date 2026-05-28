@@ -68,7 +68,7 @@ fiber and invokes `WeaponTile(props)`.
 - No automation id used as a replacement for `key`.
 - No button or scroll-container host kind. Button behavior and scrolling are
   props/component behavior over `Box`.
-- No retained/runtime abstraction that exists only because the old immediate API
+- No retained runtime abstraction that exists only because the old immediate API
   needed it. Every public concept must have explicit, load-bearing value in the
   returned-element reconciler model.
 
@@ -277,7 +277,7 @@ explicitly allowed backend tests and private reconciler internals:
 - draw, focus, or callback code that branches on accessibility/semantic role
 - a button host kind in the generic host model
 - a scroll host kind in the generic host model
-- public retained/runtime abstractions without explicit load-bearing value in the
+- public retained runtime abstractions without explicit load-bearing value in the
   returned-element reconciler model
 
 Low-level tests for `UiTree` itself may still call `begin_node` and `end_node`.

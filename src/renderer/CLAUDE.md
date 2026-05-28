@@ -9,5 +9,5 @@ Drawing backend: SDL3-based retained UI command rendering + font ownership. This
 
 ## Hard rules
 
-- `renderer/` can depend on SDL3, SDL3_ttf, and generic `ui/retained` draw-command types. It must not depend on `client/`, `game/`, or `app/`.
+- `renderer/` can depend on SDL3, SDL3_ttf, and generic `ui/runtime` draw-command types. It must not depend on `client/`, `game/`, or `app/`.
 - Fonts and render state are owned here. Other modules ask for measurements / rendered output; they don't reach into renderer internals.

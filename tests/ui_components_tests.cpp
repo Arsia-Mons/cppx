@@ -1,7 +1,7 @@
 #include "react.h"
 #include "ui/components/components.h"
-#include "ui/retained/element.h"
-#include "ui/retained/ui_tree.h"
+#include "ui/runtime/element.h"
+#include "ui/runtime/tree.h"
 
 #include <stdio.h>
 #include <string.h>

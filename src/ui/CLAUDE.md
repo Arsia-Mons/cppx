@@ -8,7 +8,7 @@ The generic UI toolkit. **This directory must not know which game is being built
 input.h      UI-shaped input frame shared by app/client/runtime code
 span.h       tiny non-owning span used by framework containers
 components/  generic element-returning UI components
-retained/    UiTree, UiElement/reconciler, flex layout, focus, draw commands
+runtime/     UiTree, UiElement/reconciler, flex layout, focus, draw commands
 ```
 
 The retained runtime is the app path. Add new subdirectories only when they
@@ -31,7 +31,7 @@ have multiple files, not preemptively.
 ## Composition
 
 The target authoring model is returned `UiElement` descriptions committed by
-the reconciler in `retained/element.*`. Generic UI components that return
+the reconciler in `runtime/element.*`. Generic UI components that return
 element descriptions live in `components/`, one component per file, with the
 umbrella include at `components/components.h`. New generic runtime work should
 move toward `UiElement` factories, provider elements, and reconciler-owned hook

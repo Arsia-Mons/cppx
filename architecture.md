@@ -56,7 +56,7 @@ callback.
 The retained UI target is:
 
 ```text
-src/ui/retained/
+src/ui/runtime/
   UiTree
     stable app-owned node identity
     keyed children and positional children
@@ -96,7 +96,7 @@ The selected migration direction is Yoga:
 - Stretch is Rust-first and older than Taffy/Yoga for this use case:
   https://github.com/vislyhq/stretch
 
-The retained tree talks to Yoga through `src/ui/retained/FlexLayoutAdapter`.
+The retained tree talks to Yoga through `src/ui/runtime/FlexLayoutAdapter`.
 That keeps app code independent from Yoga headers while letting tests cover
 tree reconciliation and actual flex layout behavior separately.
 
@@ -133,7 +133,7 @@ props, text children lower to `frame.text(...)`, and `return <...>` lowers to a
 normal returned element expression. The CMake helper in
 `cmake/cppx_transpile.cmake` generates build-tree `.cpp` / `.h` outputs, and
 golden tests pin output plus diagnostics.
-Generated `.cppx` output is compiled against `src/ui/retained/element.*` and
+Generated `.cppx` output is compiled against `src/ui/runtime/element.*` and
 `src/ui/components/*`, proving the authored syntax path can create returned
 descriptors, preserve hook identity through the reconciler, and commit
 `HostKind::Box` / `HostKind::Text` output into `UiTree`.
@@ -150,13 +150,13 @@ consume without querying external element data. Retained `Button` nodes can also
 store confirm callbacks; `ClientUi` invokes the confirmed node's callback after
 retained focus/event update and before render-command handoff, preserving the
 same deferred-mutation frame boundary used by other controls.
-`src/ui/retained/draw_list.*` is the renderer boundary: it walks
+`src/ui/runtime/draw_list.*` is the renderer boundary: it walks
 retained snapshots after flex layout and emits app-owned rect/text draw
 commands from retained metadata.
 Retained nodes now carry optional visual metadata for panel backgrounds,
 borders, text color, and text size; draw-list generation uses that metadata for
 styled panels and headings while preserving default control styles.
-`src/ui/retained/focus.*` is the retained focus/event boundary: it collects
+`src/ui/runtime/focus.*` is the retained focus/event boundary: it collects
 focusable retained nodes, uses computed `UiTree` layout boxes for spatial
 navigation and pointer hit testing, and treats modal retained nodes as active
 focus scopes. Focus changes and confirmed retained controls dispatch copied

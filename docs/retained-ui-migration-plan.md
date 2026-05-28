@@ -93,7 +93,7 @@ immediate component calls.
 ## Migration Slices
 
 1. Retained runtime skeleton: done.
-   - `src/ui/retained/UiTree` with stable IDs, keyed children, style storage,
+   - `src/ui/runtime/UiTree` with stable IDs, keyed children, style storage,
      layout storage, unmount cleanup, and frame reconciliation.
    - `FlexLayoutAdapter` boundary.
    - focused runtime tests.
@@ -120,8 +120,8 @@ immediate component calls.
      `react_init_runtime()`, and component macros.
    - preserve hooks, providers, effects, refs, callbacks, and unmount cleanup.
    - bind retained component entry to authored `.cppx` output and `UiTree` node
-     creation: done through `src/ui/retained/components.*` and
-     `retained_cppx_component_tests`.
+     creation: done through `src/ui/runtime/element.*`,
+     `src/ui/components/*`, and `retained_cppx_component_tests`.
    - backend-free runtime cleanup: done.
 
 5. Primitive port:
@@ -139,7 +139,7 @@ immediate component calls.
 
 6. Event and focus port:
    - hit testing from retained layout boxes: foundation done through
-     `src/ui/retained/focus.*`.
+     `src/ui/runtime/focus.*`.
    - focus scopes and navigation over retained node IDs: foundation done for
      root/modal retained scopes, spatial navigation, disabled controls, pointer
      confirm, and keyboard/gamepad/mouse source tracking.
@@ -170,7 +170,7 @@ immediate component calls.
 
 8. Renderer replacement:
    - retained draw command list: foundation done through
-     `src/ui/retained/draw_list.*`, which emits rect/text commands from retained
+     `src/ui/runtime/draw_list.*`, which emits rect/text commands from retained
      primitive metadata and computed layout boxes.
    - SDL renderer consumes retained commands: foundation done through
      `renderer/sdl_retained_renderer.*`, wired as the app frame's only UI
@@ -188,7 +188,7 @@ immediate component calls.
      dependencies from re-entering source and CMake paths.
 
 10. Returned-element reconciler:
-   - foundation started through `src/ui/retained/element.*`.
+   - foundation started through `src/ui/runtime/element.*`.
    - `UiElement` now covers empty, fragment, host, component, and provider
      descriptions.
    - `UiElementFrame` owns bounded frame storage for element descriptors,

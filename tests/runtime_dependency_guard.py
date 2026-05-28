@@ -9,16 +9,16 @@ SCAN_DIRS = [ROOT / "src"]
 SOURCE_SUFFIXES = {".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp"}
 BLOCKED = ("clay", "ui/focus", "ui/primitives")
 SOURCE_BLOCKED = (
-    "ui/retained/components.h",
-    "retained/components.h",
+    "ui/runtime/components.h",
+    "runtime/components.h",
     "react_retained_component_begin",
     "retainednodescope",
     "begin_retained_frame",
     "begin_retained_tree_frame",
 )
 DELETED_RUNTIME_FILES = (
-    ROOT / "src/ui/retained/components.h",
-    ROOT / "src/ui/retained/components.cpp",
+    ROOT / "src/ui/runtime/components.h",
+    ROOT / "src/ui/runtime/components.cpp",
 )
 
 
@@ -57,7 +57,7 @@ def main() -> int:
                     break
 
     cmake_text = (ROOT / "CMakeLists.txt").read_text(encoding="utf-8").lower()
-    if "src/ui/retained/components.cpp" in cmake_text:
+    if "src/ui/runtime/components.cpp" in cmake_text:
         failures.append(
             "CMakeLists.txt: old immediate retained components.cpp is still linked"
         )

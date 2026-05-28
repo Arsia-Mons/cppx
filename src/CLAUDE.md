@@ -24,7 +24,8 @@ Allowed dependency direction: `client/ui/screens → client/ui → game → ui �
 - **Cross-screen UI hook** → `client/ui/hooks/`.
 - **Cross-screen UI component** → `client/ui/components/`.
 - **Cross-screen UI provider** → `client/ui/providers/`.
-- **Generic widget** (no game vocabulary) → `ui/retained/`.
+- **Generic widget** (no game vocabulary) → `ui/components/`.
+- **Generic runtime primitive** → `ui/runtime/`.
 - **OS/SDL-specific glue** → `platform/sdl/`.
 - **Rendering backend code** → `renderer/`.
 - **Per-frame loop / app lifecycle** → `app/`.

@@ -125,13 +125,13 @@ add_executable(hello
   src/game/inventory.cpp
   src/game/economy.cpp
   src/game/shooter_game.cpp
-  src/ui/retained/draw_list.cpp
-  src/ui/retained/element.cpp
+  src/ui/runtime/draw_list.cpp
+  src/ui/runtime/element.cpp
   ${UI_COMPONENT_SOURCES}
-  src/ui/retained/flex_layout.cpp
-  src/ui/retained/focus.cpp
-  src/ui/retained/ui_tree.cpp
-  src/ui/retained/yoga_flex_layout.cpp
+  src/ui/runtime/flex_layout.cpp
+  src/ui/runtime/focus.cpp
+  src/ui/runtime/tree.cpp
+  src/ui/runtime/yoga_flex_layout.cpp
   third_party/stb_image_impl.cpp
 )
 
@@ -178,8 +178,8 @@ add_test(NAME react_runtime_tests COMMAND react_runtime_tests)
 
 add_executable(retained_ui_runtime_tests
   tests/retained_ui_runtime_tests.cpp
-  src/ui/retained/ui_tree.cpp
-  src/ui/retained/flex_layout.cpp
+  src/ui/runtime/tree.cpp
+  src/ui/runtime/flex_layout.cpp
 )
 
 target_include_directories(retained_ui_runtime_tests PRIVATE
@@ -194,9 +194,9 @@ add_test(NAME retained_ui_runtime_tests COMMAND retained_ui_runtime_tests)
 
 add_executable(retained_ui_yoga_tests
   tests/retained_ui_yoga_tests.cpp
-  src/ui/retained/ui_tree.cpp
-  src/ui/retained/flex_layout.cpp
-  src/ui/retained/yoga_flex_layout.cpp
+  src/ui/runtime/tree.cpp
+  src/ui/runtime/flex_layout.cpp
+  src/ui/runtime/yoga_flex_layout.cpp
 )
 
 target_include_directories(retained_ui_yoga_tests PRIVATE
@@ -216,8 +216,8 @@ add_test(NAME retained_ui_yoga_tests COMMAND retained_ui_yoga_tests)
 add_executable(retained_ui_reconciler_tests
   tests/retained_ui_reconciler_tests.cpp
   src/react.cpp
-  src/ui/retained/element.cpp
-  src/ui/retained/ui_tree.cpp
+  src/ui/runtime/element.cpp
+  src/ui/runtime/tree.cpp
 )
 
 target_include_directories(retained_ui_reconciler_tests PRIVATE
@@ -233,9 +233,9 @@ add_test(NAME retained_ui_reconciler_tests COMMAND retained_ui_reconciler_tests)
 add_executable(ui_components_tests
   tests/ui_components_tests.cpp
   src/react.cpp
-  src/ui/retained/element.cpp
+  src/ui/runtime/element.cpp
   ${UI_COMPONENT_SOURCES}
-  src/ui/retained/ui_tree.cpp
+  src/ui/runtime/tree.cpp
 )
 
 target_include_directories(ui_components_tests PRIVATE
@@ -252,11 +252,11 @@ add_executable(retained_cppx_component_tests
   tests/retained_cppx_component_tests.cpp
   ${CPPX_RETAINED_COMPONENT_GENERATED}
   src/react.cpp
-  src/ui/retained/element.cpp
+  src/ui/runtime/element.cpp
   ${UI_COMPONENT_SOURCES}
-  src/ui/retained/ui_tree.cpp
-  src/ui/retained/flex_layout.cpp
-  src/ui/retained/yoga_flex_layout.cpp
+  src/ui/runtime/tree.cpp
+  src/ui/runtime/flex_layout.cpp
+  src/ui/runtime/yoga_flex_layout.cpp
 )
 
 target_include_directories(retained_cppx_component_tests PRIVATE
@@ -278,11 +278,11 @@ add_test(NAME retained_cppx_component_tests COMMAND retained_cppx_component_test
 add_executable(retained_ui_primitives_tests
   tests/retained_ui_primitives_tests.cpp
   src/react.cpp
-  src/ui/retained/element.cpp
+  src/ui/runtime/element.cpp
   ${UI_COMPONENT_SOURCES}
-  src/ui/retained/ui_tree.cpp
-  src/ui/retained/flex_layout.cpp
-  src/ui/retained/yoga_flex_layout.cpp
+  src/ui/runtime/tree.cpp
+  src/ui/runtime/flex_layout.cpp
+  src/ui/runtime/yoga_flex_layout.cpp
 )
 
 target_include_directories(retained_ui_primitives_tests PRIVATE
@@ -303,12 +303,12 @@ add_test(NAME retained_ui_primitives_tests COMMAND retained_ui_primitives_tests)
 add_executable(retained_ui_draw_list_tests
   tests/retained_ui_draw_list_tests.cpp
   src/react.cpp
-  src/ui/retained/draw_list.cpp
-  src/ui/retained/element.cpp
+  src/ui/runtime/draw_list.cpp
+  src/ui/runtime/element.cpp
   ${UI_COMPONENT_SOURCES}
-  src/ui/retained/ui_tree.cpp
-  src/ui/retained/flex_layout.cpp
-  src/ui/retained/yoga_flex_layout.cpp
+  src/ui/runtime/tree.cpp
+  src/ui/runtime/flex_layout.cpp
+  src/ui/runtime/yoga_flex_layout.cpp
 )
 
 target_include_directories(retained_ui_draw_list_tests PRIVATE
@@ -329,12 +329,12 @@ add_test(NAME retained_ui_draw_list_tests COMMAND retained_ui_draw_list_tests)
 add_executable(retained_ui_focus_tests
   tests/retained_ui_focus_tests.cpp
   src/react.cpp
-  src/ui/retained/element.cpp
+  src/ui/runtime/element.cpp
   ${UI_COMPONENT_SOURCES}
-  src/ui/retained/focus.cpp
-  src/ui/retained/ui_tree.cpp
-  src/ui/retained/flex_layout.cpp
-  src/ui/retained/yoga_flex_layout.cpp
+  src/ui/runtime/focus.cpp
+  src/ui/runtime/tree.cpp
+  src/ui/runtime/flex_layout.cpp
+  src/ui/runtime/yoga_flex_layout.cpp
 )
 
 target_include_directories(retained_ui_focus_tests PRIVATE
@@ -357,13 +357,13 @@ add_executable(client_ui_tests
   src/react.cpp
   src/client/ui/client_ui.cpp
   src/client/ui/navigation/screen_stack.cpp
-  src/ui/retained/draw_list.cpp
-  src/ui/retained/element.cpp
+  src/ui/runtime/draw_list.cpp
+  src/ui/runtime/element.cpp
   ${UI_COMPONENT_SOURCES}
-  src/ui/retained/flex_layout.cpp
-  src/ui/retained/focus.cpp
-  src/ui/retained/ui_tree.cpp
-  src/ui/retained/yoga_flex_layout.cpp
+  src/ui/runtime/flex_layout.cpp
+  src/ui/runtime/focus.cpp
+  src/ui/runtime/tree.cpp
+  src/ui/runtime/yoga_flex_layout.cpp
 )
 
 target_include_directories(client_ui_tests PRIVATE
@@ -387,13 +387,13 @@ add_executable(ui_pipeline_tests
   src/client/ui/client_ui.cpp
   src/client/ui/navigation/screen_stack.cpp
   src/client/ui/ui_pipeline.cpp
-  src/ui/retained/draw_list.cpp
-  src/ui/retained/element.cpp
+  src/ui/runtime/draw_list.cpp
+  src/ui/runtime/element.cpp
   ${UI_COMPONENT_SOURCES}
-  src/ui/retained/flex_layout.cpp
-  src/ui/retained/focus.cpp
-  src/ui/retained/ui_tree.cpp
-  src/ui/retained/yoga_flex_layout.cpp
+  src/ui/runtime/flex_layout.cpp
+  src/ui/runtime/focus.cpp
+  src/ui/runtime/tree.cpp
+  src/ui/runtime/yoga_flex_layout.cpp
 )
 
 target_include_directories(ui_pipeline_tests PRIVATE
@@ -434,13 +434,13 @@ add_executable(shooter_ui_tests
   src/game/inventory.cpp
   src/game/economy.cpp
   src/game/shooter_game.cpp
-  src/ui/retained/draw_list.cpp
-  src/ui/retained/element.cpp
+  src/ui/runtime/draw_list.cpp
+  src/ui/runtime/element.cpp
   ${UI_COMPONENT_SOURCES}
-  src/ui/retained/flex_layout.cpp
-  src/ui/retained/focus.cpp
-  src/ui/retained/ui_tree.cpp
-  src/ui/retained/yoga_flex_layout.cpp
+  src/ui/runtime/flex_layout.cpp
+  src/ui/runtime/focus.cpp
+  src/ui/runtime/tree.cpp
+  src/ui/runtime/yoga_flex_layout.cpp
 )
 
 target_include_directories(shooter_ui_tests PRIVATE
