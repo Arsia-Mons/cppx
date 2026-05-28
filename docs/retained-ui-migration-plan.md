@@ -212,11 +212,12 @@ immediate component calls.
    - `UiScreen` now has an optional returned-element entrypoint, and `ClientUi`
      can commit returned screen roots inside the existing screen/provider frame
      boundary.
-   - main menu, options, pause, and in-game HUD/action UI are migrated to
-     returned `UiElement` roots through `BoxElement`, `TextElement`,
-     `ButtonElement`, `ToggleElement`, and returned `HudBand`.
-   - remaining: migrate loadout and dialogs to returned `UiElement` roots,
-     then delete/guard the old immediate authoring API.
+   - main menu, options, pause, in-game HUD/action UI, loadout, and loadout
+     confirm dialog are migrated to returned `UiElement` roots/components
+     through `BoxElement`, `TextElement`, `ButtonElement`, `ToggleElement`,
+     `SelectableElement`, and frame-owned provider values.
+   - remaining: delete or make private the old immediate authoring API and add
+     guards that keep it out of app/client code.
 
 ## Verification Gates
 

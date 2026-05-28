@@ -121,6 +121,10 @@ public:
   UiElement provider(const char *name, ReactContext *context, void *value,
                      UiChildren children, const char *key = nullptr);
 
+  template <typename T> const T *copy_value(const T &value) {
+    return store(value);
+  }
+
   template <typename Props>
   UiElement component(const char *name, const Props &props,
                       UiElement (*render)(const Props &, UiElementFrame &),
