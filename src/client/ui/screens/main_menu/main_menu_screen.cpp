@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 #include "../../../../react.h"
-#include "../../../../ui/retained/element_components.h"
+#include "../../../../ui/components/components.h"
 #include "../../callback_deps.h"
 #include "../../client_ui.h"
 #include "../../providers/app_shell.h"
@@ -43,8 +43,9 @@ render_main_menu_screen(const MainMenuScreenProps &props,
   std::function<void()> open_options = use_push_options_screen();
   std::function<void()> request_quit = client::ui::use_request_quit();
   namespace retained = ::ui::retained;
+  namespace components = ::ui::components;
 
-  return retained::BoxElement(
+  return components::Box(
       frame,
       {
           .key = "root",
@@ -56,7 +57,7 @@ render_main_menu_screen(const MainMenuScreenProps &props,
           .padding = {36.0f, 36.0f, 36.0f, 36.0f},
           .background = {8, 14, 18, 255},
           .children = frame.children({
-              retained::BoxElement(
+              components::Box(
                   frame,
                   {
                       .key = "panel",
@@ -69,7 +70,7 @@ render_main_menu_screen(const MainMenuScreenProps &props,
                       .border = {83, 108, 118, 255},
                       .border_width = 1.0f,
                       .children = frame.children({
-                          retained::TextElement(
+                          components::Text(
                               frame,
                               {
                                   .key = "title",
@@ -78,7 +79,7 @@ render_main_menu_screen(const MainMenuScreenProps &props,
                                   .text_color = {235, 246, 242, 255},
                                   .font_size = 30,
                               }),
-                          retained::TextElement(
+                          components::Text(
                               frame,
                               {
                                   .key = "subtitle",
@@ -87,14 +88,14 @@ render_main_menu_screen(const MainMenuScreenProps &props,
                                   .text_color = {154, 177, 184, 255},
                                   .font_size = 16,
                               }),
-                          retained::ButtonElement(frame,
-                                                  {
-                                                      .key = "start",
-                                                      .id = "StartMatchButton",
-                                                      .label = "Start Match",
-                                                      .on_confirm = start_match,
-                                                  }),
-                          retained::ButtonElement(
+                          components::Button(frame,
+                                             {
+                                                 .key = "start",
+                                                 .id = "StartMatchButton",
+                                                 .label = "Start Match",
+                                                 .on_confirm = start_match,
+                                             }),
+                          components::Button(
                               frame,
                               {
                                   .key = "options",
@@ -102,15 +103,14 @@ render_main_menu_screen(const MainMenuScreenProps &props,
                                   .label = "Options",
                                   .on_confirm = open_options,
                               }),
-                          retained::ButtonElement(
-                              frame,
-                              {
-                                  .key = "quit",
-                                  .id = "QuitButton",
-                                  .label = "Quit",
-                                  .disabled = !request_quit,
-                                  .on_confirm = request_quit,
-                              }),
+                          components::Button(frame,
+                                             {
+                                                 .key = "quit",
+                                                 .id = "QuitButton",
+                                                 .label = "Quit",
+                                                 .disabled = !request_quit,
+                                                 .on_confirm = request_quit,
+                                             }),
                       }),
                   }),
           }),

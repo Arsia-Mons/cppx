@@ -198,24 +198,22 @@ immediate component calls.
      commits `HostKind::Box` / `HostKind::Text` nodes into `UiTree`.
    - `retained_ui_reconciler_tests` verifies host commit metadata, component
      hook identity across frames, and provider context scoping.
-   - retained control factory foundation started through
-     `src/ui/retained/element_components.*`: button, toggle, selectable,
-     focusable, and scroll-container components now return `UiElement`
-     descriptors over `HostKind::Box` / `HostKind::Text` instead of mutating
-     `UiTree` directly.
-   - `retained_ui_element_components_tests` verifies element button metadata
-     and callbacks, toggle change dispatch, and selectable owned children.
+   - generic UI components now live under `src/ui/components/`, one component
+     per file: box, text, button, toggle, selectable, focusable, and
+     scroll-container components return `UiElement` descriptors over
+     `HostKind::Box` / `HostKind::Text` instead of mutating `UiTree` directly.
+   - `ui_components_tests` verifies button metadata and callbacks, toggle
+     change dispatch, and selectable owned children.
    - `.cppx` / `.hx` output now emits returned element construction with
      `children` props; `retained_cppx_component_tests` compiles that output
-     against `BoxElement`, `TextElement`, `ButtonElement`, and a stateful
-     component descriptor.
+     against `Box`, `Text`, `Button`, and a stateful component descriptor.
    - `UiScreen` now has an optional returned-element entrypoint, and `ClientUi`
      can commit returned screen roots inside the existing screen/provider frame
      boundary.
    - main menu, options, pause, in-game HUD/action UI, loadout, and loadout
      confirm dialog are migrated to returned `UiElement` roots/components
-     through `BoxElement`, `TextElement`, `ButtonElement`, `ToggleElement`,
-     `SelectableElement`, and frame-owned provider values.
+     through `Box`, `Text`, `Button`, `Toggle`, `Selectable`, and frame-owned
+     provider values.
    - old immediate retained authoring API (`components.*` and
      `REACT_RETAINED_COMPONENT_*`) deleted.
    - `runtime_dependency_guard` now blocks the old immediate retained helper

@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 #include "../../../../react.h"
-#include "../../../../ui/retained/element_components.h"
+#include "../../../../ui/components/components.h"
 #include "../../callback_deps.h"
 #include "../../client_ui.h"
 #include "../../components/hud_band.h"
@@ -55,11 +55,12 @@ render_shooter_game_screen(const ShooterGameScreenProps &props,
   std::function<void()> open_pause = use_push_pause_screen();
   std::function<void()> open_loadout = use_push_loadout_screen();
   namespace retained = ::ui::retained;
+  namespace components = ::ui::components;
 
   if (!is_top)
     return frame.empty();
 
-  return retained::BoxElement(
+  return components::Box(
       frame,
       {
           .key = "root",
@@ -71,7 +72,7 @@ render_shooter_game_screen(const ShooterGameScreenProps &props,
           .background = {10, 16, 18, 255},
           .children = frame.children({
               HudBand(frame),
-              retained::BoxElement(
+              components::Box(
                   frame,
                   {
                       .key = "actions",
@@ -79,21 +80,20 @@ render_shooter_game_screen(const ShooterGameScreenProps &props,
                       .align_items = retained::AlignItems::Start,
                       .gap = 12.0f,
                       .children = frame.children({
-                          retained::ButtonElement(frame,
-                                                  {
-                                                      .key = "pause",
-                                                      .id = "OpenPauseButton",
-                                                      .label = "Pause",
-                                                      .on_confirm = open_pause,
-                                                  }),
-                          retained::ButtonElement(
-                              frame,
-                              {
-                                  .key = "loadout",
-                                  .id = "OpenLoadoutButton",
-                                  .label = "Loadout",
-                                  .on_confirm = open_loadout,
-                              }),
+                          components::Button(frame,
+                                             {
+                                                 .key = "pause",
+                                                 .id = "OpenPauseButton",
+                                                 .label = "Pause",
+                                                 .on_confirm = open_pause,
+                                             }),
+                          components::Button(frame,
+                                             {
+                                                 .key = "loadout",
+                                                 .id = "OpenLoadoutButton",
+                                                 .label = "Loadout",
+                                                 .on_confirm = open_loadout,
+                                             }),
                       }),
                   }),
           }),

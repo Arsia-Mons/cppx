@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #include "../../../../../react.h"
-#include "../../../../../ui/retained/element_components.h"
+#include "../../../../../ui/components/components.h"
 #include "../../../hooks/shooter_weapons.h"
 #include "../../../providers/shooter_provider.h"
 #include "../loadout_state.h"
@@ -46,13 +46,14 @@ render_weapon_tile(const WeaponTileProps &props,
   bool selected = selected_index == index;
   bool disabled = weapon.disabled;
   namespace retained = ::ui::retained;
+  namespace components = ::ui::components;
 
   const char *detail =
       use_text_storage("%s  DMG %d  %s", weapon.role, weapon.damage,
                        weapon.owned ? (weapon.equipped ? "equipped" : "owned")
                                     : (disabled ? "locked" : "available"));
 
-  return retained::SelectableElement(
+  return components::Selectable(
       frame,
       {
           .key = weapon_tile_key(index),
@@ -73,16 +74,15 @@ render_weapon_tile(const WeaponTileProps &props,
                              : retained::Color{102, 142, 150, 255},
           .border_width = selected ? 2.0f : 1.0f,
           .children = frame.children({
-              retained::TextElement(
-                  frame,
-                  {
-                      .key = "name",
-                      .value = weapon.name,
-                      .height = retained::Length::points(18.0f),
-                      .text_color = {238, 246, 244, 255},
-                      .font_size = 16,
-                  }),
-              retained::TextElement(
+              components::Text(frame,
+                               {
+                                   .key = "name",
+                                   .value = weapon.name,
+                                   .height = retained::Length::points(18.0f),
+                                   .text_color = {238, 246, 244, 255},
+                                   .font_size = 16,
+                               }),
+              components::Text(
                   frame,
                   {
                       .key = "detail",

@@ -1,4 +1,4 @@
-#include "ui/retained/element_components.h"
+#include "ui/components/components.h"
 #include "ui/retained/flex_layout.h"
 #include "ui/retained/focus.h"
 #include "ui/retained/yoga_flex_layout.h"
@@ -15,6 +15,7 @@
   } while (0)
 
 using namespace ui::retained;
+using namespace ui::components;
 
 struct FocusTree {
   UiTree tree;
@@ -43,59 +44,56 @@ static bool layout_tree(FocusTree *out, bool show_modal = false) {
   out->modal_confirm = 0;
 
   UiElementFrame frame;
-  UiElement modal =
-      show_modal
-          ? BoxElement(frame,
-                       {
-                           .key = "modal",
-                           .width = Length::points(180.0f),
-                           .height = Length::points(80.0f),
-                           .align_items = AlignItems::Start,
-                           .padding = {8.0f, 8.0f, 8.0f, 8.0f},
-                           .modal = true,
-                           .children = frame.children({
-                               ButtonElement(frame,
+  UiElement modal = show_modal
+                        ? Box(frame,
+                              {
+                                  .key = "modal",
+                                  .width = Length::points(180.0f),
+                                  .height = Length::points(80.0f),
+                                  .align_items = AlignItems::Start,
+                                  .padding = {8.0f, 8.0f, 8.0f, 8.0f},
+                                  .modal = true,
+                                  .children = frame.children({
+                                      Button(frame,
                                              {
                                                  .key = "confirm",
                                                  .id = "ConfirmModalButton",
                                                  .label = "Confirm",
                                              }),
-                           }),
-                       })
-          : frame.empty();
+                                  }),
+                              })
+                        : frame.empty();
 
-  UiElement root = BoxElement(
-      frame,
-      {
-          .key = "root",
-          .width = Length::points(320.0f),
-          .height = Length::points(240.0f),
-          .align_items = AlignItems::Start,
-          .padding = {4.0f, 4.0f, 4.0f, 4.0f},
-          .gap = 8.0f,
-          .children = frame.children({
-              ButtonElement(frame,
-                            {
-                                .key = "start",
-                                .id = "StartButton",
-                                .label = "Start",
-                            }),
-              ButtonElement(frame,
-                            {
-                                .key = "disabled",
-                                .id = "DisabledButton",
-                                .label = "Disabled",
-                                .disabled = true,
-                            }),
-              ButtonElement(frame,
-                            {
-                                .key = "options",
-                                .id = "OptionsButton",
-                                .label = "Options",
-                            }),
-              modal,
-          }),
-      });
+  UiElement root = Box(frame, {
+                                  .key = "root",
+                                  .width = Length::points(320.0f),
+                                  .height = Length::points(240.0f),
+                                  .align_items = AlignItems::Start,
+                                  .padding = {4.0f, 4.0f, 4.0f, 4.0f},
+                                  .gap = 8.0f,
+                                  .children = frame.children({
+                                      Button(frame,
+                                             {
+                                                 .key = "start",
+                                                 .id = "StartButton",
+                                                 .label = "Start",
+                                             }),
+                                      Button(frame,
+                                             {
+                                                 .key = "disabled",
+                                                 .id = "DisabledButton",
+                                                 .label = "Disabled",
+                                                 .disabled = true,
+                                             }),
+                                      Button(frame,
+                                             {
+                                                 .key = "options",
+                                                 .id = "OptionsButton",
+                                                 .label = "Options",
+                                             }),
+                                      modal,
+                                  }),
+                              });
 
   ReconcileResult result =
       reconcile_retained_tree(out->tree, frame, root, 320.0f, 240.0f);

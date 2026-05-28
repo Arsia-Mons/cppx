@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 #include "../../../../../react.h"
-#include "../../../../../ui/retained/element_components.h"
+#include "../../../../../ui/components/components.h"
 #include "../../../hooks/shooter_weapons.h"
 #include "../../../providers/shooter_provider.h"
 #include "../loadout_state.h"
@@ -32,6 +32,7 @@ render_loadout_confirm_dialog_body(const LoadoutPendingAction &pending,
     return frame.empty();
 
   namespace retained = ::ui::retained;
+  namespace components = ::ui::components;
   const char *title = use_text_storage(
       "%s",
       pending.action == LOADOUT_ACTION_BUY ? "Confirm Buy" : "Confirm Equip");
@@ -41,7 +42,7 @@ render_loadout_confirm_dialog_body(const LoadoutPendingAction &pending,
           : use_text_storage("Equip %s as active weapon?", weapon.name);
   int action = pending.action;
 
-  return retained::BoxElement(
+  return components::Box(
       frame,
       {
           .key = "scrim",
@@ -52,7 +53,7 @@ render_loadout_confirm_dialog_body(const LoadoutPendingAction &pending,
           .modal = true,
           .background = {0, 0, 0, 160},
           .children = frame.children({
-              retained::BoxElement(
+              components::Box(
                   frame,
                   {
                       .key = "panel",
@@ -63,7 +64,7 @@ render_loadout_confirm_dialog_body(const LoadoutPendingAction &pending,
                       .border = {92, 116, 126, 255},
                       .border_width = 1.0f,
                       .children = frame.children({
-                          retained::TextElement(
+                          components::Text(
                               frame,
                               {
                                   .key = "title",
@@ -72,7 +73,7 @@ render_loadout_confirm_dialog_body(const LoadoutPendingAction &pending,
                                   .text_color = {240, 248, 244, 255},
                                   .font_size = 22,
                               }),
-                          retained::TextElement(
+                          components::Text(
                               frame,
                               {
                                   .key = "message",
@@ -81,14 +82,14 @@ render_loadout_confirm_dialog_body(const LoadoutPendingAction &pending,
                                   .text_color = {202, 218, 216, 255},
                                   .font_size = 15,
                               }),
-                          retained::BoxElement(
+                          components::Box(
                               frame,
                               {
                                   .key = "actions",
                                   .direction = retained::FlexDirection::Row,
                                   .gap = 10.0f,
                                   .children = frame.children({
-                                      retained::ButtonElement(
+                                      components::Button(
                                           frame,
                                           {
                                               .key = "confirm",
@@ -112,7 +113,7 @@ render_loadout_confirm_dialog_body(const LoadoutPendingAction &pending,
                                                       close();
                                                   },
                                           }),
-                                      retained::ButtonElement(
+                                      components::Button(
                                           frame,
                                           {
                                               .key = "cancel",

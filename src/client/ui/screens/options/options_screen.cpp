@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 #include "../../../../react.h"
-#include "../../../../ui/retained/element_components.h"
+#include "../../../../ui/components/components.h"
 #include "../../callback_deps.h"
 #include "../../client_ui.h"
 
@@ -41,11 +41,12 @@ render_options_screen(const OptionsScreenProps &props,
   int *large_hud = use_state_int(0);
   int *reduced_motion = use_state_int(1);
   namespace retained = ::ui::retained;
+  namespace components = ::ui::components;
 
   if (!is_top)
     return frame.empty();
 
-  return retained::BoxElement(
+  return components::Box(
       frame,
       {
           .key = "root",
@@ -57,51 +58,48 @@ render_options_screen(const OptionsScreenProps &props,
           .gap = 12.0f,
           .modal = true,
           .background = {14, 22, 28, 245},
-          .children =
-              frame.children({
-                  retained::TextElement(
-                      frame,
-                      {
-                          .key = "title",
-                          .value = "Options",
-                          .height = retained::Length::points(32.0f),
-                          .text_color = {236, 246, 242, 255},
-                          .font_size = 26,
-                      }),
-                  retained::ToggleElement(
-                      frame,
-                      {
-                          .key = "large-hud",
-                          .id = "LargeHudToggle",
-                          .label = "Large HUD",
-                          .checked = large_hud && *large_hud != 0,
-                          .on_change =
-                              [large_hud](bool enabled) {
-                                if (large_hud)
-                                  *large_hud = enabled ? 1 : 0;
-                              },
-                      }),
-                  retained::ToggleElement(
-                      frame,
-                      {
-                          .key = "reduced-motion",
-                          .id = "ReducedMotionToggle",
-                          .label = "Reduce Motion",
-                          .checked = reduced_motion && *reduced_motion != 0,
-                          .on_change =
-                              [reduced_motion](bool enabled) {
-                                if (reduced_motion)
-                                  *reduced_motion = enabled ? 1 : 0;
-                              },
-                      }),
-                  retained::ButtonElement(frame,
-                                          {
-                                              .key = "back",
-                                              .id = "BackFromOptionsButton",
-                                              .label = "Back",
-                                              .on_confirm = nav.pop_current,
-                                          }),
-              }),
+          .children = frame.children({
+              components::Text(frame,
+                               {
+                                   .key = "title",
+                                   .value = "Options",
+                                   .height = retained::Length::points(32.0f),
+                                   .text_color = {236, 246, 242, 255},
+                                   .font_size = 26,
+                               }),
+              components::Toggle(frame,
+                                 {
+                                     .key = "large-hud",
+                                     .id = "LargeHudToggle",
+                                     .label = "Large HUD",
+                                     .checked = large_hud && *large_hud != 0,
+                                     .on_change =
+                                         [large_hud](bool enabled) {
+                                           if (large_hud)
+                                             *large_hud = enabled ? 1 : 0;
+                                         },
+                                 }),
+              components::Toggle(
+                  frame,
+                  {
+                      .key = "reduced-motion",
+                      .id = "ReducedMotionToggle",
+                      .label = "Reduce Motion",
+                      .checked = reduced_motion && *reduced_motion != 0,
+                      .on_change =
+                          [reduced_motion](bool enabled) {
+                            if (reduced_motion)
+                              *reduced_motion = enabled ? 1 : 0;
+                          },
+                  }),
+              components::Button(frame,
+                                 {
+                                     .key = "back",
+                                     .id = "BackFromOptionsButton",
+                                     .label = "Back",
+                                     .on_confirm = nav.pop_current,
+                                 }),
+          }),
       });
 }
 

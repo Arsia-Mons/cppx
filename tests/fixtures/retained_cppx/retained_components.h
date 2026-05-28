@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ui/retained/element_components.h"
+#include "ui/components/components.h"
 
 struct StatefulProbeProps {
     const char *key = nullptr;

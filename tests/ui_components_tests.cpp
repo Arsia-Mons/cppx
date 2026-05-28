@@ -1,6 +1,6 @@
 #include "react.h"
+#include "ui/components/components.h"
 #include "ui/retained/element.h"
-#include "ui/retained/element_components.h"
 #include "ui/retained/ui_tree.h"
 
 #include <stdio.h>
@@ -16,6 +16,7 @@
   } while (0)
 
 using namespace ui::retained;
+using namespace ui::components;
 
 static bool snapshot(UiTree &tree, NodeId id, NodeSnapshot *out) {
   CHECK(tree.snapshot(id, out));
@@ -28,15 +29,14 @@ static bool button_element_returns_focusable_box_host(void) {
   UiElementFrame frame;
   int confirms = 0;
 
-  UiElement root =
-      ButtonElement(frame, {
-                               .key = "start",
-                               .id = "StartButton",
-                               .offset = 3,
-                               .label = "Start",
-                               .initial_focus = true,
-                               .on_confirm = [&confirms] { ++confirms; },
-                           });
+  UiElement root = Button(frame, {
+                                     .key = "start",
+                                     .id = "StartButton",
+                                     .offset = 3,
+                                     .label = "Start",
+                                     .initial_focus = true,
+                                     .on_confirm = [&confirms] { ++confirms; },
+                                 });
 
   ReconcileResult result =
       reconcile_retained_tree(tree, frame, root, 640.0f, 480.0f);
@@ -74,19 +74,19 @@ static bool box_and_text_elements_return_host_nodes(void) {
   UiTree tree;
   UiElementFrame frame;
 
-  UiElement root = BoxElement(frame, {
-                                         .key = "panel",
-                                         .width = Length::points(200.0f),
-                                         .height = Length::points(80.0f),
-                                         .modal = true,
-                                         .children = frame.children({
-                                             TextElement(frame,
-                                                         {
-                                                             .key = "title",
-                                                             .value = "Title",
-                                                         }),
-                                         }),
-                                     });
+  UiElement root = Box(frame, {
+                                  .key = "panel",
+                                  .width = Length::points(200.0f),
+                                  .height = Length::points(80.0f),
+                                  .modal = true,
+                                  .children = frame.children({
+                                      Text(frame,
+                                           {
+                                               .key = "title",
+                                               .value = "Title",
+                                           }),
+                                  }),
+                              });
 
   ReconcileResult result =
       reconcile_retained_tree(tree, frame, root, 640.0f, 480.0f);
@@ -115,7 +115,7 @@ static bool toggle_element_dispatches_changed_value(void) {
   UiElementFrame frame;
   bool observed = false;
 
-  UiElement root = ToggleElement(
+  UiElement root = Toggle(
       frame, {
                  .key = "music",
                  .id = "MusicToggle",
@@ -150,15 +150,15 @@ static bool selectable_element_accepts_owned_children(void) {
   UiElementFrame frame;
 
   UiElement root =
-      SelectableElement(frame, {
-                                   .key = "weapon",
-                                   .id = "WeaponTile",
-                                   .label = "Fallback",
-                                   .selected = true,
-                                   .children = frame.children({
-                                       frame.text("Custom", "custom-label"),
-                                   }),
-                               });
+      Selectable(frame, {
+                            .key = "weapon",
+                            .id = "WeaponTile",
+                            .label = "Fallback",
+                            .selected = true,
+                            .children = frame.children({
+                                frame.text("Custom", "custom-label"),
+                            }),
+                        });
 
   ReconcileResult result =
       reconcile_retained_tree(tree, frame, root, 640.0f, 480.0f);

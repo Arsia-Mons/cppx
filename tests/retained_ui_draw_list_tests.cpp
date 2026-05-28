@@ -1,5 +1,5 @@
+#include "ui/components/components.h"
 #include "ui/retained/draw_list.h"
-#include "ui/retained/element_components.h"
 #include "ui/retained/flex_layout.h"
 #include "ui/retained/yoga_flex_layout.h"
 
@@ -16,6 +16,7 @@
   } while (0)
 
 using namespace ui::retained;
+using namespace ui::components;
 
 static bool same_text(const char *actual, const char *expected) {
   return strcmp(actual ? actual : "", expected ? expected : "") == 0;
@@ -42,49 +43,48 @@ static bool retained_draw_list_uses_primitive_metadata_and_layout(void) {
   UiTree tree;
   UiElementFrame frame;
 
-  UiElement root = BoxElement(
-      frame,
-      {
-          .key = "root",
-          .width = Length::points(320.0f),
-          .height = Length::points(220.0f),
-          .align_items = AlignItems::Start,
-          .padding = {4.0f, 4.0f, 4.0f, 4.0f},
-          .gap = 6.0f,
-          .background = {18, 27, 32, 245},
-          .border = {83, 108, 118, 255},
-          .border_width = 1.0f,
-          .children = frame.children({
-              TextElement(frame,
-                          {
-                              .key = "title",
-                              .value = "Title",
-                              .text_color = {235, 246, 242, 255},
-                              .font_size = 24,
-                          }),
-              ButtonElement(frame,
-                            {
-                                .key = "confirm",
-                                .id = "ConfirmButton",
-                                .label = "Confirm",
-                            }),
-              ToggleElement(frame,
-                            {
-                                .key = "music",
-                                .id = "MusicToggle",
-                                .label = "Music",
-                                .checked = true,
-                            }),
-              SelectableElement(frame,
-                                {
-                                    .key = "primary",
-                                    .id = "PrimarySlot",
-                                    .label = "Rifle",
-                                    .selected = true,
-                                    .disabled = true,
-                                }),
-          }),
-      });
+  UiElement root = Box(frame,
+                       {
+                           .key = "root",
+                           .width = Length::points(320.0f),
+                           .height = Length::points(220.0f),
+                           .align_items = AlignItems::Start,
+                           .padding = {4.0f, 4.0f, 4.0f, 4.0f},
+                           .gap = 6.0f,
+                           .background = {18, 27, 32, 245},
+                           .border = {83, 108, 118, 255},
+                           .border_width = 1.0f,
+                           .children = frame.children({
+                               Text(frame,
+                                    {
+                                        .key = "title",
+                                        .value = "Title",
+                                        .text_color = {235, 246, 242, 255},
+                                        .font_size = 24,
+                                    }),
+                               Button(frame,
+                                      {
+                                          .key = "confirm",
+                                          .id = "ConfirmButton",
+                                          .label = "Confirm",
+                                      }),
+                               Toggle(frame,
+                                      {
+                                          .key = "music",
+                                          .id = "MusicToggle",
+                                          .label = "Music",
+                                          .checked = true,
+                                      }),
+                               Selectable(frame,
+                                          {
+                                              .key = "primary",
+                                              .id = "PrimarySlot",
+                                              .label = "Rifle",
+                                              .selected = true,
+                                              .disabled = true,
+                                          }),
+                           }),
+                       });
   ReconcileResult result =
       reconcile_retained_tree(tree, frame, root, 320.0f, 220.0f);
   CHECK(result.ok);

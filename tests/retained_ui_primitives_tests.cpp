@@ -1,4 +1,4 @@
-#include "ui/retained/element_components.h"
+#include "ui/components/components.h"
 #include "ui/retained/flex_layout.h"
 #include "ui/retained/yoga_flex_layout.h"
 
@@ -15,6 +15,7 @@
   } while (0)
 
 using namespace ui::retained;
+using namespace ui::components;
 
 static bool same_text(const char *actual, const char *expected) {
   return strcmp(actual ? actual : "", expected ? expected : "") == 0;
@@ -39,39 +40,37 @@ static bool retained_primitives_write_semantic_metadata_and_layout(void) {
   UiTree tree;
   UiElementFrame frame;
 
-  UiElement root = BoxElement(
-      frame,
-      {
-          .key = "root",
-          .width = Length::points(320.0f),
-          .height = Length::points(220.0f),
-          .align_items = AlignItems::Start,
-          .padding = {4.0f, 4.0f, 4.0f, 4.0f},
-          .gap = 6.0f,
-          .children = frame.children({
-              ButtonElement(frame,
-                            {
-                                .key = "confirm",
-                                .id = "ConfirmButton",
-                                .label = "Confirm",
-                            }),
-              ToggleElement(frame,
-                            {
-                                .key = "music",
-                                .id = "MusicToggle",
-                                .label = "Music",
-                                .checked = true,
-                            }),
-              SelectableElement(frame,
-                                {
-                                    .key = "primary",
-                                    .id = "PrimarySlot",
-                                    .label = "Rifle",
-                                    .selected = true,
-                                    .disabled = true,
-                                }),
-          }),
-      });
+  UiElement root = Box(frame, {
+                                  .key = "root",
+                                  .width = Length::points(320.0f),
+                                  .height = Length::points(220.0f),
+                                  .align_items = AlignItems::Start,
+                                  .padding = {4.0f, 4.0f, 4.0f, 4.0f},
+                                  .gap = 6.0f,
+                                  .children = frame.children({
+                                      Button(frame,
+                                             {
+                                                 .key = "confirm",
+                                                 .id = "ConfirmButton",
+                                                 .label = "Confirm",
+                                             }),
+                                      Toggle(frame,
+                                             {
+                                                 .key = "music",
+                                                 .id = "MusicToggle",
+                                                 .label = "Music",
+                                                 .checked = true,
+                                             }),
+                                      Selectable(frame,
+                                                 {
+                                                     .key = "primary",
+                                                     .id = "PrimarySlot",
+                                                     .label = "Rifle",
+                                                     .selected = true,
+                                                     .disabled = true,
+                                                 }),
+                                  }),
+                              });
   CHECK(commit_root(tree, frame, root, 320.0f, 220.0f));
 
   FlexLayoutAdapter adapter = make_yoga_flex_layout_adapter();
@@ -147,15 +146,14 @@ static bool reused_nodes_clear_previous_primitive_metadata(void) {
 
   {
     UiElementFrame frame;
-    UiElement root = ButtonElement(
-        frame,
-        {
-            .key = "confirm",
-            .id = "ConfirmButton",
-            .label = "Confirm",
-            .disabled = true,
-            .on_confirm = [&confirm_count] { confirm_count += 1; },
-        });
+    UiElement root = Button(
+        frame, {
+                   .key = "confirm",
+                   .id = "ConfirmButton",
+                   .label = "Confirm",
+                   .disabled = true,
+                   .on_confirm = [&confirm_count] { confirm_count += 1; },
+               });
     CHECK(commit_root(tree, frame, root, 200.0f, 80.0f));
   }
 
@@ -169,8 +167,7 @@ static bool reused_nodes_clear_previous_primitive_metadata(void) {
 
   {
     UiElementFrame frame;
-    UiElement root = ButtonElement(frame,
-                                   {
+    UiElement root = Button(frame, {
                                        .key = "confirm",
                                        .id = "ConfirmButton",
                                    });
@@ -193,14 +190,13 @@ static bool retained_button_invokes_confirm_callback(void) {
   UiElementFrame frame;
   int confirm_count = 0;
 
-  UiElement root = ButtonElement(
-      frame,
-      {
-          .key = "confirm",
-          .id = "ConfirmButton",
-          .label = "Confirm",
-          .on_confirm = [&confirm_count] { confirm_count += 1; },
-      });
+  UiElement root =
+      Button(frame, {
+                        .key = "confirm",
+                        .id = "ConfirmButton",
+                        .label = "Confirm",
+                        .on_confirm = [&confirm_count] { confirm_count += 1; },
+                    });
   CHECK(commit_root(tree, frame, root, 200.0f, 80.0f));
 
   NodeId button_id = tree.child_at(tree.root_id(), 0);
@@ -217,18 +213,15 @@ static bool retained_toggle_invokes_change_callback(void) {
   UiElementFrame frame;
   int observed = -1;
 
-  UiElement root =
-      ToggleElement(frame,
-                    {
-                        .key = "music",
-                        .id = "MusicToggle",
-                        .label = "Music",
-                        .checked = true,
-                        .on_change =
-                            [&observed](bool checked) {
-                              observed = checked ? 1 : 0;
-                            },
-                    });
+  UiElement root = Toggle(
+      frame, {
+                 .key = "music",
+                 .id = "MusicToggle",
+                 .label = "Music",
+                 .checked = true,
+                 .on_change =
+                     [&observed](bool checked) { observed = checked ? 1 : 0; },
+             });
   CHECK(commit_root(tree, frame, root, 220.0f, 80.0f));
 
   NodeId toggle_id = tree.child_at(tree.root_id(), 0);
@@ -244,15 +237,14 @@ static bool retained_selectable_invokes_focus_and_confirm_callbacks(void) {
   int focus_count = 0;
   int confirm_count = 0;
 
-  UiElement root = SelectableElement(
-      frame,
-      {
-          .key = "slot",
-          .id = "PrimarySlot",
-          .label = "Primary",
-          .on_focus = [&focus_count] { focus_count += 1; },
-          .on_confirm = [&confirm_count] { confirm_count += 1; },
-      });
+  UiElement root = Selectable(
+      frame, {
+                 .key = "slot",
+                 .id = "PrimarySlot",
+                 .label = "Primary",
+                 .on_focus = [&focus_count] { focus_count += 1; },
+                 .on_confirm = [&confirm_count] { confirm_count += 1; },
+             });
   CHECK(commit_root(tree, frame, root, 220.0f, 80.0f));
 
   NodeId selectable_id = tree.child_at(tree.root_id(), 0);
@@ -270,7 +262,7 @@ static bool retained_container_primitives_write_metadata_and_layout(void) {
   int focus_count = 0;
   int confirm_count = 0;
 
-  UiElement root = BoxElement(
+  UiElement root = Box(
       frame,
       {
           .key = "root",
@@ -278,7 +270,7 @@ static bool retained_container_primitives_write_metadata_and_layout(void) {
           .height = Length::points(180.0f),
           .gap = 4.0f,
           .children = frame.children({
-              FocusableElement(
+              Focusable(
                   frame,
                   {
                       .key = "focusable",
@@ -288,32 +280,31 @@ static bool retained_container_primitives_write_metadata_and_layout(void) {
                       .initial_focus = true,
                       .background = {20, 28, 32, 255},
                       .children = frame.children({
-                          TextElement(frame,
-                                      {
-                                          .key = "label",
-                                          .value = "Focusable",
-                                      }),
+                          Text(frame,
+                               {
+                                   .key = "label",
+                                   .value = "Focusable",
+                               }),
                       }),
                       .on_focus = [&focus_count] { focus_count += 1; },
                       .on_confirm = [&confirm_count] { confirm_count += 1; },
                   }),
-              ScrollContainerElement(
-                  frame,
-                  {
-                      .key = "scroll",
-                      .id = "ScrollArea",
-                      .width = Length::points(200.0f),
-                      .height = Length::points(80.0f),
-                      .gap = 2.0f,
-                      .background = {8, 10, 12, 255},
-                      .children = frame.children({
-                          TextElement(frame,
-                                      {
-                                          .key = "row",
-                                          .value = "Scrollable row",
-                                      }),
-                      }),
-                  }),
+              ScrollContainer(frame,
+                              {
+                                  .key = "scroll",
+                                  .id = "ScrollArea",
+                                  .width = Length::points(200.0f),
+                                  .height = Length::points(80.0f),
+                                  .gap = 2.0f,
+                                  .background = {8, 10, 12, 255},
+                                  .children = frame.children({
+                                      Text(frame,
+                                           {
+                                               .key = "row",
+                                               .value = "Scrollable row",
+                                           }),
+                                  }),
+                              }),
           }),
       });
   CHECK(commit_root(tree, frame, root, 260.0f, 180.0f));

@@ -1,6 +1,6 @@
 #include "client/ui/client_ui.h"
 #include "react.h"
-#include "ui/retained/element_components.h"
+#include "ui/components/components.h"
 #include "ui/retained/yoga_flex_layout.h"
 
 #include <functional>
@@ -8,426 +8,452 @@
 #include <stdio.h>
 #include <string.h>
 
-#define CHECK(expr)                                                              \
-    do {                                                                         \
-        if (!(expr)) {                                                           \
-            fprintf(stderr, "CHECK failed at %s:%d: %s\n", __FILE__, __LINE__,  \
-                    #expr);                                                      \
-            return false;                                                        \
-        }                                                                        \
-    } while (0)
+#define CHECK(expr)                                                            \
+  do {                                                                         \
+    if (!(expr)) {                                                             \
+      fprintf(stderr, "CHECK failed at %s:%d: %s\n", __FILE__, __LINE__,       \
+              #expr);                                                          \
+      return false;                                                            \
+    }                                                                          \
+  } while (0)
 
 using namespace client::ui;
 
 class RecordingScreen final : public UiScreen {
 public:
-    RecordingScreen(const char *name, bool overlay, int *build_count)
-        : UiScreen(overlay ? ScreenKind::Overlay : ScreenKind::Normal),
-          name_(name), build_count_(build_count) {}
+  RecordingScreen(const char *name, bool overlay, int *build_count)
+      : UiScreen(overlay ? ScreenKind::Overlay : ScreenKind::Normal),
+        name_(name), build_count_(build_count) {}
 
-    const char *debug_name() const override { return name_; }
+  const char *debug_name() const override { return name_; }
 
-    void build_ui() override {
-        if (build_count_) {
-            *build_count_ += 1;
-        }
+  void build_ui() override {
+    if (build_count_) {
+      *build_count_ += 1;
     }
+  }
 
 private:
-    const char *name_;
-    int *build_count_;
+  const char *name_;
+  int *build_count_;
 };
 
 class PopSelfScreen final : public OverlayScreen {
 public:
-    explicit PopSelfScreen(int *build_count) : build_count_(build_count) {}
+  explicit PopSelfScreen(int *build_count) : build_count_(build_count) {}
 
-    const char *debug_name() const override { return "PopSelf"; }
+  const char *debug_name() const override { return "PopSelf"; }
 
-    void build_ui() override {
-        if (build_count_) {
-            *build_count_ += 1;
-        }
-        ScreenNavigator nav = use_screen_navigator();
-        nav.pop_current();
+  void build_ui() override {
+    if (build_count_) {
+      *build_count_ += 1;
     }
+    ScreenNavigator nav = use_screen_navigator();
+    nav.pop_current();
+  }
 
 private:
-    int *build_count_;
+  int *build_count_;
 };
 
 class PushScreen final : public UiScreen {
 public:
-    explicit PushScreen(int *build_count) : build_count_(build_count) {}
+  explicit PushScreen(int *build_count) : build_count_(build_count) {}
 
-    const char *debug_name() const override { return "PushScreen"; }
+  const char *debug_name() const override { return "PushScreen"; }
 
-    void build_ui() override {
-        if (build_count_) {
-            *build_count_ += 1;
-        }
-        ScreenNavigator nav = use_screen_navigator();
-        nav.push(std::make_unique<RecordingScreen>("Pushed", false, nullptr));
+  void build_ui() override {
+    if (build_count_) {
+      *build_count_ += 1;
     }
+    ScreenNavigator nav = use_screen_navigator();
+    nav.push(std::make_unique<RecordingScreen>("Pushed", false, nullptr));
+  }
 
 private:
-    int *build_count_;
+  int *build_count_;
 };
 
 class ResetToScreen final : public OverlayScreen {
 public:
-    ResetToScreen(int *build_count, int *destroy_count)
-        : build_count_(build_count), destroy_count_(destroy_count) {}
-    ~ResetToScreen() override {
-        if (destroy_count_) {
-            *destroy_count_ += 1;
-        }
+  ResetToScreen(int *build_count, int *destroy_count)
+      : build_count_(build_count), destroy_count_(destroy_count) {}
+  ~ResetToScreen() override {
+    if (destroy_count_) {
+      *destroy_count_ += 1;
     }
+  }
 
-    const char *debug_name() const override { return "ResetToScreen"; }
+  const char *debug_name() const override { return "ResetToScreen"; }
 
-    void build_ui() override {
-        if (build_count_) {
-            *build_count_ += 1;
-        }
-        ScreenNavigator nav = use_screen_navigator();
-        nav.reset_to(std::make_unique<RecordingScreen>("ResetRoot", false, nullptr));
+  void build_ui() override {
+    if (build_count_) {
+      *build_count_ += 1;
     }
+    ScreenNavigator nav = use_screen_navigator();
+    nav.reset_to(
+        std::make_unique<RecordingScreen>("ResetRoot", false, nullptr));
+  }
 
 private:
-    int *build_count_;
-    int *destroy_count_;
+  int *build_count_;
+  int *destroy_count_;
 };
 
 class DestroyCountingScreen final : public UiScreen {
 public:
-    explicit DestroyCountingScreen(int *destroy_count) : destroy_count_(destroy_count) {}
-    ~DestroyCountingScreen() override {
-        if (destroy_count_) {
-            *destroy_count_ += 1;
-        }
+  explicit DestroyCountingScreen(int *destroy_count)
+      : destroy_count_(destroy_count) {}
+  ~DestroyCountingScreen() override {
+    if (destroy_count_) {
+      *destroy_count_ += 1;
     }
+  }
 
-    const char *debug_name() const override { return "DestroyCounting"; }
-    void build_ui() override {}
+  const char *debug_name() const override { return "DestroyCounting"; }
+  void build_ui() override {}
 
 private:
-    int *destroy_count_;
+  int *destroy_count_;
 };
 
 struct HookStateScreenProps {
-    int *observed = nullptr;
+  int *observed = nullptr;
 };
 
 static const char *screen_entry_key(::ui::retained::UiElementFrame &frame,
                                     const char *prefix,
                                     UiScreenEntryId entry_id) {
-    char key[64] = {};
-    snprintf(key, sizeof(key), "%s-%u", prefix, entry_id);
-    return frame.copy_string(key);
+  char key[64] = {};
+  snprintf(key, sizeof(key), "%s-%u", prefix, entry_id);
+  return frame.copy_string(key);
 }
 
 static ::ui::retained::UiElement
 render_hook_state_screen(const HookStateScreenProps &props,
                          ::ui::retained::UiElementFrame &frame) {
-    int *value = use_state_int(0);
-    if (props.observed) {
-        *props.observed = *value;
-    }
-    *value += 1;
-    return frame.empty();
+  int *value = use_state_int(0);
+  if (props.observed) {
+    *props.observed = *value;
+  }
+  *value += 1;
+  return frame.empty();
 }
 
 class HookStateScreen final : public UiScreen {
 public:
-    explicit HookStateScreen(int *observed) : observed_(observed) {}
+  explicit HookStateScreen(int *observed) : observed_(observed) {}
 
-    const char *debug_name() const override { return "HookState"; }
+  const char *debug_name() const override { return "HookState"; }
 
-    bool build_element(::ui::retained::UiElementFrame &frame,
-                       ::ui::retained::UiElement *out) override {
-        if (!out) return false;
-        *out = frame.component("HookStateScreenView",
-                               HookStateScreenProps{.observed = observed_},
-                               render_hook_state_screen,
-                               screen_entry_key(frame, "hook-state", entry_id()));
-        return true;
-    }
+  bool build_element(::ui::retained::UiElementFrame &frame,
+                     ::ui::retained::UiElement *out) override {
+    if (!out)
+      return false;
+    *out = frame.component("HookStateScreenView",
+                           HookStateScreenProps{.observed = observed_},
+                           render_hook_state_screen,
+                           screen_entry_key(frame, "hook-state", entry_id()));
+    return true;
+  }
 
-    void build_ui() override {}
+  void build_ui() override {}
 
 private:
-    int *observed_;
+  int *observed_;
 };
 
 static bool run_client_frame(ClientUi &client_ui,
                              const ::ui::UiInputFrame &input = {},
                              bool drain_deferred_mutations = true) {
-    client_ui.begin_frame(input);
-    react_begin_frame();
-    client_ui.retained_tree().begin_frame(640.0f, 480.0f);
-    client_ui.build_visible_screens();
-    CHECK(client_ui.retained_tree().end_frame());
-    client_ui.end_layout(input);
-    ::ui::retained::FlexLayoutAdapter adapter =
-        ::ui::retained::make_yoga_flex_layout_adapter();
-    CHECK(client_ui.update_retained_runtime(adapter, {640.0f, 480.0f}, {}));
-    react_end_frame();
-    if (drain_deferred_mutations) {
-        client_ui.drain_deferred_mutations();
-    }
-    return true;
+  client_ui.begin_frame(input);
+  react_begin_frame();
+  client_ui.retained_tree().begin_frame(640.0f, 480.0f);
+  client_ui.build_visible_screens();
+  CHECK(client_ui.retained_tree().end_frame());
+  client_ui.end_layout(input);
+  ::ui::retained::FlexLayoutAdapter adapter =
+      ::ui::retained::make_yoga_flex_layout_adapter();
+  CHECK(client_ui.update_retained_runtime(adapter, {640.0f, 480.0f}, {}));
+  react_end_frame();
+  if (drain_deferred_mutations) {
+    client_ui.drain_deferred_mutations();
+  }
+  return true;
 }
 
-static bool run_client_frame_with_probe(
-    ClientUi &client_ui,
-    const std::function<bool()> &probe,
-    const ::ui::UiInputFrame &input = {}) {
-    client_ui.begin_frame(input);
-    react_begin_frame();
-    client_ui.retained_tree().begin_frame(640.0f, 480.0f);
-    client_ui.build_visible_screens();
-    CHECK(client_ui.retained_tree().end_frame());
-    client_ui.end_layout(input);
-    bool ok = probe ? probe() : true;
-    ::ui::retained::FlexLayoutAdapter adapter =
-        ::ui::retained::make_yoga_flex_layout_adapter();
-    CHECK(client_ui.update_retained_runtime(adapter, {640.0f, 480.0f}, {}));
-    react_end_frame();
-    return ok;
+static bool run_client_frame_with_probe(ClientUi &client_ui,
+                                        const std::function<bool()> &probe,
+                                        const ::ui::UiInputFrame &input = {}) {
+  client_ui.begin_frame(input);
+  react_begin_frame();
+  client_ui.retained_tree().begin_frame(640.0f, 480.0f);
+  client_ui.build_visible_screens();
+  CHECK(client_ui.retained_tree().end_frame());
+  client_ui.end_layout(input);
+  bool ok = probe ? probe() : true;
+  ::ui::retained::FlexLayoutAdapter adapter =
+      ::ui::retained::make_yoga_flex_layout_adapter();
+  CHECK(client_ui.update_retained_runtime(adapter, {640.0f, 480.0f}, {}));
+  react_end_frame();
+  return ok;
 }
 
 static bool screen_stack_push_pop_replace_and_visible_ordering(void) {
-    ScreenStack stack;
-    CHECK(stack.push(std::make_unique<RecordingScreen>("Base", false, nullptr)));
-    CHECK(stack.push(std::make_unique<RecordingScreen>("Overlay", true, nullptr)));
-    CHECK(stack.count() == 2);
+  ScreenStack stack;
+  CHECK(stack.push(std::make_unique<RecordingScreen>("Base", false, nullptr)));
+  CHECK(
+      stack.push(std::make_unique<RecordingScreen>("Overlay", true, nullptr)));
+  CHECK(stack.count() == 2);
 
-    ::ui::Span<UiScreen *> visible = stack.visible_screens();
-    CHECK(visible.count == 2);
-    CHECK(strcmp(visible[0]->debug_name(), "Base") == 0);
-    CHECK(strcmp(visible[1]->debug_name(), "Overlay") == 0);
+  ::ui::Span<UiScreen *> visible = stack.visible_screens();
+  CHECK(visible.count == 2);
+  CHECK(strcmp(visible[0]->debug_name(), "Base") == 0);
+  CHECK(strcmp(visible[1]->debug_name(), "Overlay") == 0);
 
-    CHECK(stack.push(std::make_unique<RecordingScreen>("Opaque", false, nullptr)));
-    visible = stack.visible_screens();
-    CHECK(visible.count == 1);
-    CHECK(strcmp(visible[0]->debug_name(), "Opaque") == 0);
+  CHECK(
+      stack.push(std::make_unique<RecordingScreen>("Opaque", false, nullptr)));
+  visible = stack.visible_screens();
+  CHECK(visible.count == 1);
+  CHECK(strcmp(visible[0]->debug_name(), "Opaque") == 0);
 
-    CHECK(stack.replace_top(std::make_unique<RecordingScreen>("Replacement", false, nullptr)));
-    CHECK(strcmp(stack.top()->debug_name(), "Replacement") == 0);
-    CHECK(stack.pop_top());
-    CHECK(stack.count() == 2);
-    CHECK(stack.pop_entry(stack.top()->entry_id()));
-    CHECK(stack.count() == 1);
-    CHECK(stack.reset_to(std::make_unique<RecordingScreen>("Root", false, nullptr)));
-    CHECK(stack.count() == 1);
-    CHECK(strcmp(stack.top()->debug_name(), "Root") == 0);
-    return true;
+  CHECK(stack.replace_top(
+      std::make_unique<RecordingScreen>("Replacement", false, nullptr)));
+  CHECK(strcmp(stack.top()->debug_name(), "Replacement") == 0);
+  CHECK(stack.pop_top());
+  CHECK(stack.count() == 2);
+  CHECK(stack.pop_entry(stack.top()->entry_id()));
+  CHECK(stack.count() == 1);
+  CHECK(stack.reset_to(
+      std::make_unique<RecordingScreen>("Root", false, nullptr)));
+  CHECK(stack.count() == 1);
+  CHECK(strcmp(stack.top()->debug_name(), "Root") == 0);
+  return true;
 }
 
 static bool client_ui_builds_visible_screens_in_order(void) {
-    react_init_runtime();
-    ClientUi client_ui;
-    int base_builds = 0;
-    int overlay_builds = 0;
-    int hidden_builds = 0;
+  react_init_runtime();
+  ClientUi client_ui;
+  int base_builds = 0;
+  int overlay_builds = 0;
+  int hidden_builds = 0;
 
-    CHECK(client_ui.push_screen(std::make_unique<RecordingScreen>("Base", false, &base_builds)));
-    CHECK(client_ui.push_screen(std::make_unique<RecordingScreen>("Overlay", true, &overlay_builds)));
-    CHECK(run_client_frame(client_ui));
+  CHECK(client_ui.push_screen(
+      std::make_unique<RecordingScreen>("Base", false, &base_builds)));
+  CHECK(client_ui.push_screen(
+      std::make_unique<RecordingScreen>("Overlay", true, &overlay_builds)));
+  CHECK(run_client_frame(client_ui));
 
-    CHECK(base_builds == 1);
-    CHECK(overlay_builds == 1);
+  CHECK(base_builds == 1);
+  CHECK(overlay_builds == 1);
 
-    CHECK(client_ui.push_screen(std::make_unique<RecordingScreen>("HiddenBase", false, &hidden_builds)));
-    CHECK(run_client_frame(client_ui));
+  CHECK(client_ui.push_screen(
+      std::make_unique<RecordingScreen>("HiddenBase", false, &hidden_builds)));
+  CHECK(run_client_frame(client_ui));
 
-    CHECK(base_builds == 1);
-    CHECK(overlay_builds == 1);
-    CHECK(hidden_builds == 1);
-    return true;
+  CHECK(base_builds == 1);
+  CHECK(overlay_builds == 1);
+  CHECK(hidden_builds == 1);
+  return true;
 }
 
 static bool screen_navigator_pop_current_drains_after_layout(void) {
-    react_init_runtime();
-    ClientUi client_ui;
-    int base_builds = 0;
-    int overlay_builds = 0;
+  react_init_runtime();
+  ClientUi client_ui;
+  int base_builds = 0;
+  int overlay_builds = 0;
 
-    CHECK(client_ui.push_screen(std::make_unique<RecordingScreen>("Base", false, &base_builds)));
-    CHECK(client_ui.push_screen(std::make_unique<PopSelfScreen>(&overlay_builds)));
+  CHECK(client_ui.push_screen(
+      std::make_unique<RecordingScreen>("Base", false, &base_builds)));
+  CHECK(
+      client_ui.push_screen(std::make_unique<PopSelfScreen>(&overlay_builds)));
 
-    CHECK(run_client_frame_with_probe(client_ui, [&] {
-        CHECK(client_ui.screens().count() == 2);
-        CHECK(client_ui.pending_mutation_count() == 1);
-        return true;
-    }));
-
+  CHECK(run_client_frame_with_probe(client_ui, [&] {
     CHECK(client_ui.screens().count() == 2);
-    client_ui.drain_deferred_mutations();
-    CHECK(client_ui.screens().count() == 1);
-    CHECK(strcmp(client_ui.screens().top()->debug_name(), "Base") == 0);
-    CHECK(base_builds == 1);
-    CHECK(overlay_builds == 1);
+    CHECK(client_ui.pending_mutation_count() == 1);
     return true;
+  }));
+
+  CHECK(client_ui.screens().count() == 2);
+  client_ui.drain_deferred_mutations();
+  CHECK(client_ui.screens().count() == 1);
+  CHECK(strcmp(client_ui.screens().top()->debug_name(), "Base") == 0);
+  CHECK(base_builds == 1);
+  CHECK(overlay_builds == 1);
+  return true;
 }
 
 static bool screen_navigator_push_drains_after_layout(void) {
-    react_init_runtime();
-    ClientUi client_ui;
-    int build_count = 0;
+  react_init_runtime();
+  ClientUi client_ui;
+  int build_count = 0;
 
-    CHECK(client_ui.push_screen(std::make_unique<PushScreen>(&build_count)));
+  CHECK(client_ui.push_screen(std::make_unique<PushScreen>(&build_count)));
 
-    CHECK(run_client_frame_with_probe(client_ui, [&] {
-        CHECK(client_ui.screens().count() == 1);
-        CHECK(client_ui.pending_mutation_count() == 1);
-        return true;
-    }));
-
+  CHECK(run_client_frame_with_probe(client_ui, [&] {
     CHECK(client_ui.screens().count() == 1);
-    client_ui.drain_deferred_mutations();
-    CHECK(client_ui.screens().count() == 2);
-    CHECK(strcmp(client_ui.screens().top()->debug_name(), "Pushed") == 0);
-    CHECK(build_count == 1);
+    CHECK(client_ui.pending_mutation_count() == 1);
     return true;
+  }));
+
+  CHECK(client_ui.screens().count() == 1);
+  client_ui.drain_deferred_mutations();
+  CHECK(client_ui.screens().count() == 2);
+  CHECK(strcmp(client_ui.screens().top()->debug_name(), "Pushed") == 0);
+  CHECK(build_count == 1);
+  return true;
 }
 
 static bool screen_navigator_reset_to_drains_after_layout(void) {
-    react_init_runtime();
-    ClientUi client_ui;
-    int base_destroy_count = 0;
-    int reset_build_count = 0;
-    int reset_destroy_count = 0;
+  react_init_runtime();
+  ClientUi client_ui;
+  int base_destroy_count = 0;
+  int reset_build_count = 0;
+  int reset_destroy_count = 0;
 
-    CHECK(client_ui.push_screen(std::make_unique<DestroyCountingScreen>(&base_destroy_count)));
-    CHECK(client_ui.push_screen(
-        std::make_unique<ResetToScreen>(&reset_build_count, &reset_destroy_count)));
-    UiScreenEntryId old_top_id = client_ui.screens().top()->entry_id();
+  CHECK(client_ui.push_screen(
+      std::make_unique<DestroyCountingScreen>(&base_destroy_count)));
+  CHECK(client_ui.push_screen(std::make_unique<ResetToScreen>(
+      &reset_build_count, &reset_destroy_count)));
+  UiScreenEntryId old_top_id = client_ui.screens().top()->entry_id();
 
-    CHECK(run_client_frame_with_probe(client_ui, [&] {
-        CHECK(client_ui.screens().count() == 2);
-        CHECK(client_ui.pending_mutation_count() == 1);
-        return true;
-    }));
-
+  CHECK(run_client_frame_with_probe(client_ui, [&] {
     CHECK(client_ui.screens().count() == 2);
-    client_ui.drain_deferred_mutations();
-    CHECK(client_ui.screens().count() == 1);
-    CHECK(strcmp(client_ui.screens().top()->debug_name(), "ResetRoot") == 0);
-    CHECK(client_ui.screens().top()->entry_id() > old_top_id);
-    CHECK(base_destroy_count == 1);
-    CHECK(reset_destroy_count == 1);
-    CHECK(reset_build_count == 1);
+    CHECK(client_ui.pending_mutation_count() == 1);
     return true;
+  }));
+
+  CHECK(client_ui.screens().count() == 2);
+  client_ui.drain_deferred_mutations();
+  CHECK(client_ui.screens().count() == 1);
+  CHECK(strcmp(client_ui.screens().top()->debug_name(), "ResetRoot") == 0);
+  CHECK(client_ui.screens().top()->entry_id() > old_top_id);
+  CHECK(base_destroy_count == 1);
+  CHECK(reset_destroy_count == 1);
+  CHECK(reset_build_count == 1);
+  return true;
 }
 
 static bool cancel_pops_top_overlay_after_layout(void) {
-    react_init_runtime();
-    ClientUi client_ui;
-    int base_builds = 0;
-    int overlay_builds = 0;
+  react_init_runtime();
+  ClientUi client_ui;
+  int base_builds = 0;
+  int overlay_builds = 0;
 
-    CHECK(client_ui.push_screen(std::make_unique<RecordingScreen>("Base", false, &base_builds)));
-    CHECK(client_ui.push_screen(
-        std::make_unique<RecordingScreen>("Overlay", true, &overlay_builds)));
+  CHECK(client_ui.push_screen(
+      std::make_unique<RecordingScreen>("Base", false, &base_builds)));
+  CHECK(client_ui.push_screen(
+      std::make_unique<RecordingScreen>("Overlay", true, &overlay_builds)));
 
-    ::ui::UiInputFrame cancel = {
-        .cancel_pressed = true,
-        .cancel_down = true,
-        .source = ::ui::UiFocusSource::Keyboard,
-    };
-    CHECK(run_client_frame(client_ui, cancel));
+  ::ui::UiInputFrame cancel = {
+      .cancel_pressed = true,
+      .cancel_down = true,
+      .source = ::ui::UiFocusSource::Keyboard,
+  };
+  CHECK(run_client_frame(client_ui, cancel));
 
-    CHECK(client_ui.screens().count() == 1);
-    CHECK(strcmp(client_ui.screens().top()->debug_name(), "Base") == 0);
-    CHECK(base_builds == 1);
-    CHECK(overlay_builds == 1);
-    return true;
+  CHECK(client_ui.screens().count() == 1);
+  CHECK(strcmp(client_ui.screens().top()->debug_name(), "Base") == 0);
+  CHECK(base_builds == 1);
+  CHECK(overlay_builds == 1);
+  return true;
 }
 
 static bool queued_push_screen_releases_if_frame_resets_before_drain(void) {
-    react_init_runtime();
-    ClientUi client_ui;
-    int destroy_count = 0;
+  react_init_runtime();
+  ClientUi client_ui;
+  int destroy_count = 0;
 
-    CHECK(client_ui.queue_push_screen(std::make_unique<DestroyCountingScreen>(&destroy_count)));
-    CHECK(client_ui.pending_mutation_count() == 1);
-    CHECK(destroy_count == 0);
+  CHECK(client_ui.queue_push_screen(
+      std::make_unique<DestroyCountingScreen>(&destroy_count)));
+  CHECK(client_ui.pending_mutation_count() == 1);
+  CHECK(destroy_count == 0);
 
-    client_ui.begin_frame({});
-    CHECK(client_ui.pending_mutation_count() == 0);
-    CHECK(destroy_count == 1);
-    return true;
+  client_ui.begin_frame({});
+  CHECK(client_ui.pending_mutation_count() == 0);
+  CHECK(destroy_count == 1);
+  return true;
 }
 
-static bool screen_local_hook_state_survives_rerender_and_resets_on_unmount(void) {
-    react_init_runtime();
-    ClientUi client_ui;
-    int observed = -1;
+static bool
+screen_local_hook_state_survives_rerender_and_resets_on_unmount(void) {
+  react_init_runtime();
+  ClientUi client_ui;
+  int observed = -1;
 
-    CHECK(client_ui.push_screen(std::make_unique<HookStateScreen>(&observed)));
-    CHECK(run_client_frame(client_ui));
-    CHECK(observed == 0);
+  CHECK(client_ui.push_screen(std::make_unique<HookStateScreen>(&observed)));
+  CHECK(run_client_frame(client_ui));
+  CHECK(observed == 0);
 
-    CHECK(run_client_frame(client_ui));
-    CHECK(observed == 1);
+  CHECK(run_client_frame(client_ui));
+  CHECK(observed == 1);
 
-    CHECK(client_ui.screens().pop_top());
-    CHECK(client_ui.push_screen(std::make_unique<HookStateScreen>(&observed)));
-    CHECK(run_client_frame(client_ui));
-    CHECK(observed == 0);
-    return true;
+  CHECK(client_ui.screens().pop_top());
+  CHECK(client_ui.push_screen(std::make_unique<HookStateScreen>(&observed)));
+  CHECK(run_client_frame(client_ui));
+  CHECK(observed == 0);
+  return true;
 }
 
 static bool client_ui_owns_retained_runtime_outputs(void) {
-    react_init_runtime();
-    ClientUi client_ui;
-    ::ui::retained::UiElementFrame frame;
-    int focus_count = 0;
+  react_init_runtime();
+  ClientUi client_ui;
+  ::ui::retained::UiElementFrame frame;
+  int focus_count = 0;
 
-    ::ui::retained::UiElement root = ::ui::retained::ButtonElement(
-        frame,
-        {
-            .key = "confirm",
-            .id = "ConfirmRetainedButton",
-            .label = "Confirm",
-            .on_focus = [&focus_count] { focus_count += 1; },
-        });
-    ::ui::retained::ReconcileResult result =
-        ::ui::retained::reconcile_retained_tree(client_ui.retained_tree(), frame,
-                                                root, 240.0f, 120.0f);
-    CHECK(result.ok);
+  ::ui::retained::UiElement root = ::ui::components::Button(
+      frame, {
+                 .key = "confirm",
+                 .id = "ConfirmRetainedButton",
+                 .label = "Confirm",
+                 .on_focus = [&focus_count] { focus_count += 1; },
+             });
+  ::ui::retained::ReconcileResult result =
+      ::ui::retained::reconcile_retained_tree(client_ui.retained_tree(), frame,
+                                              root, 240.0f, 120.0f);
+  CHECK(result.ok);
 
-    ::ui::retained::NodeId button_id = client_ui.retained_tree().child_at(client_ui.retained_tree().root_id(), 0);
-    CHECK(button_id != 0);
+  ::ui::retained::NodeId button_id = client_ui.retained_tree().child_at(
+      client_ui.retained_tree().root_id(), 0);
+  CHECK(button_id != 0);
 
-    ::ui::retained::FlexLayoutAdapter adapter = ::ui::retained::make_yoga_flex_layout_adapter();
-    CHECK(client_ui.update_retained_runtime(adapter, { 240.0f, 120.0f }, {}));
-    CHECK(::ui::retained::focus_focused_id(client_ui.retained_focus()) == button_id);
-    CHECK(focus_count == 1);
+  ::ui::retained::FlexLayoutAdapter adapter =
+      ::ui::retained::make_yoga_flex_layout_adapter();
+  CHECK(client_ui.update_retained_runtime(adapter, {240.0f, 120.0f}, {}));
+  CHECK(::ui::retained::focus_focused_id(client_ui.retained_focus()) ==
+        button_id);
+  CHECK(focus_count == 1);
 
-    const ::ui::retained::DrawList &draw = client_ui.retained_draw_list();
-    CHECK(draw.error_count == 0);
-    CHECK(draw.count == 2);
-    CHECK(draw.commands[0].kind == ::ui::retained::DrawCommandKind::Rect);
-    CHECK(draw.commands[0].node_id == button_id);
-    CHECK(draw.commands[1].kind == ::ui::retained::DrawCommandKind::Text);
-    CHECK(strcmp(draw.commands[1].text, "Confirm") == 0);
-    return true;
+  const ::ui::retained::DrawList &draw = client_ui.retained_draw_list();
+  CHECK(draw.error_count == 0);
+  CHECK(draw.count == 2);
+  CHECK(draw.commands[0].kind == ::ui::retained::DrawCommandKind::Rect);
+  CHECK(draw.commands[0].node_id == button_id);
+  CHECK(draw.commands[1].kind == ::ui::retained::DrawCommandKind::Text);
+  CHECK(strcmp(draw.commands[1].text, "Confirm") == 0);
+  return true;
 }
 
 int main(void) {
-    if (!screen_stack_push_pop_replace_and_visible_ordering()) return 1;
-    if (!client_ui_builds_visible_screens_in_order()) return 1;
-    if (!screen_navigator_pop_current_drains_after_layout()) return 1;
-    if (!screen_navigator_push_drains_after_layout()) return 1;
-    if (!screen_navigator_reset_to_drains_after_layout()) return 1;
-    if (!cancel_pops_top_overlay_after_layout()) return 1;
-    if (!queued_push_screen_releases_if_frame_resets_before_drain()) return 1;
-    if (!screen_local_hook_state_survives_rerender_and_resets_on_unmount()) return 1;
-    if (!client_ui_owns_retained_runtime_outputs()) return 1;
+  if (!screen_stack_push_pop_replace_and_visible_ordering())
+    return 1;
+  if (!client_ui_builds_visible_screens_in_order())
+    return 1;
+  if (!screen_navigator_pop_current_drains_after_layout())
+    return 1;
+  if (!screen_navigator_push_drains_after_layout())
+    return 1;
+  if (!screen_navigator_reset_to_drains_after_layout())
+    return 1;
+  if (!cancel_pops_top_overlay_after_layout())
+    return 1;
+  if (!queued_push_screen_releases_if_frame_resets_before_drain())
+    return 1;
+  if (!screen_local_hook_state_survives_rerender_and_resets_on_unmount())
+    return 1;
+  if (!client_ui_owns_retained_runtime_outputs())
+    return 1;
 
-    react_shutdown();
-    return 0;
+  react_shutdown();
+  return 0;
 }

@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 #include "../../../../react.h"
-#include "../../../../ui/retained/element_components.h"
+#include "../../../../ui/components/components.h"
 #include "../../callback_deps.h"
 #include "../../client_ui.h"
 #include "../loadout/loadout_screen.h"
@@ -45,11 +45,12 @@ render_pause_screen(const PauseScreenProps &props,
   std::function<void()> open_loadout = use_push_loadout_screen();
   std::function<void()> exit_to_main_menu = use_exit_to_main_menu();
   namespace retained = ::ui::retained;
+  namespace components = ::ui::components;
 
   if (!is_top)
     return frame.empty();
 
-  return retained::BoxElement(
+  return components::Box(
       frame,
       {
           .key = "root",
@@ -60,7 +61,7 @@ render_pause_screen(const PauseScreenProps &props,
           .justify_content = retained::JustifyContent::Center,
           .modal = true,
           .children = frame.children({
-              retained::BoxElement(
+              components::Box(
                   frame,
                   {
                       .key = "panel",
@@ -73,7 +74,7 @@ render_pause_screen(const PauseScreenProps &props,
                       .border = {78, 96, 108, 255},
                       .border_width = 1.0f,
                       .children = frame.children({
-                          retained::TextElement(
+                          components::Text(
                               frame,
                               {
                                   .key = "title",
@@ -82,15 +83,14 @@ render_pause_screen(const PauseScreenProps &props,
                                   .text_color = {236, 246, 242, 255},
                                   .font_size = 28,
                               }),
-                          retained::ButtonElement(
-                              frame,
-                              {
-                                  .key = "resume",
-                                  .id = "ResumeButton",
-                                  .label = "Resume",
-                                  .on_confirm = nav.pop_current,
-                              }),
-                          retained::ButtonElement(
+                          components::Button(frame,
+                                             {
+                                                 .key = "resume",
+                                                 .id = "ResumeButton",
+                                                 .label = "Resume",
+                                                 .on_confirm = nav.pop_current,
+                                             }),
+                          components::Button(
                               frame,
                               {
                                   .key = "options",
@@ -98,7 +98,7 @@ render_pause_screen(const PauseScreenProps &props,
                                   .label = "Options",
                                   .on_confirm = open_options,
                               }),
-                          retained::ButtonElement(
+                          components::Button(
                               frame,
                               {
                                   .key = "loadout",
@@ -106,7 +106,7 @@ render_pause_screen(const PauseScreenProps &props,
                                   .label = "Loadout",
                                   .on_confirm = open_loadout,
                               }),
-                          retained::ButtonElement(
+                          components::Button(
                               frame,
                               {
                                   .key = "exit-to-menu",

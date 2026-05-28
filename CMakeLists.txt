@@ -55,6 +55,16 @@ FetchContent_MakeAvailable(yoga)
 
 enable_testing()
 
+set(UI_COMPONENT_SOURCES
+  src/ui/components/box.cpp
+  src/ui/components/button.cpp
+  src/ui/components/focusable.cpp
+  src/ui/components/scroll_container.cpp
+  src/ui/components/selectable.cpp
+  src/ui/components/text.cpp
+  src/ui/components/toggle.cpp
+)
+
 cppx_transpile(CPPX_FIXTURE_GENERATED
   tests/fixtures/cppx/panel.cppx
   tests/fixtures/cppx/components.hx
@@ -117,7 +127,7 @@ add_executable(hello
   src/game/shooter_game.cpp
   src/ui/retained/draw_list.cpp
   src/ui/retained/element.cpp
-  src/ui/retained/element_components.cpp
+  ${UI_COMPONENT_SOURCES}
   src/ui/retained/flex_layout.cpp
   src/ui/retained/focus.cpp
   src/ui/retained/ui_tree.cpp
@@ -220,30 +230,30 @@ target_compile_options(retained_ui_reconciler_tests PRIVATE
 
 add_test(NAME retained_ui_reconciler_tests COMMAND retained_ui_reconciler_tests)
 
-add_executable(retained_ui_element_components_tests
-  tests/retained_ui_element_components_tests.cpp
+add_executable(ui_components_tests
+  tests/ui_components_tests.cpp
   src/react.cpp
   src/ui/retained/element.cpp
-  src/ui/retained/element_components.cpp
+  ${UI_COMPONENT_SOURCES}
   src/ui/retained/ui_tree.cpp
 )
 
-target_include_directories(retained_ui_element_components_tests PRIVATE
+target_include_directories(ui_components_tests PRIVATE
   src
 )
 
-target_compile_options(retained_ui_element_components_tests PRIVATE
+target_compile_options(ui_components_tests PRIVATE
   $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall -Wextra -Wno-missing-field-initializers -Wno-c99-designator -Wno-unused-parameter>
 )
 
-add_test(NAME retained_ui_element_components_tests COMMAND retained_ui_element_components_tests)
+add_test(NAME ui_components_tests COMMAND ui_components_tests)
 
 add_executable(retained_cppx_component_tests
   tests/retained_cppx_component_tests.cpp
   ${CPPX_RETAINED_COMPONENT_GENERATED}
   src/react.cpp
   src/ui/retained/element.cpp
-  src/ui/retained/element_components.cpp
+  ${UI_COMPONENT_SOURCES}
   src/ui/retained/ui_tree.cpp
   src/ui/retained/flex_layout.cpp
   src/ui/retained/yoga_flex_layout.cpp
@@ -269,7 +279,7 @@ add_executable(retained_ui_primitives_tests
   tests/retained_ui_primitives_tests.cpp
   src/react.cpp
   src/ui/retained/element.cpp
-  src/ui/retained/element_components.cpp
+  ${UI_COMPONENT_SOURCES}
   src/ui/retained/ui_tree.cpp
   src/ui/retained/flex_layout.cpp
   src/ui/retained/yoga_flex_layout.cpp
@@ -295,7 +305,7 @@ add_executable(retained_ui_draw_list_tests
   src/react.cpp
   src/ui/retained/draw_list.cpp
   src/ui/retained/element.cpp
-  src/ui/retained/element_components.cpp
+  ${UI_COMPONENT_SOURCES}
   src/ui/retained/ui_tree.cpp
   src/ui/retained/flex_layout.cpp
   src/ui/retained/yoga_flex_layout.cpp
@@ -320,7 +330,7 @@ add_executable(retained_ui_focus_tests
   tests/retained_ui_focus_tests.cpp
   src/react.cpp
   src/ui/retained/element.cpp
-  src/ui/retained/element_components.cpp
+  ${UI_COMPONENT_SOURCES}
   src/ui/retained/focus.cpp
   src/ui/retained/ui_tree.cpp
   src/ui/retained/flex_layout.cpp
@@ -349,7 +359,7 @@ add_executable(client_ui_tests
   src/client/ui/navigation/screen_stack.cpp
   src/ui/retained/draw_list.cpp
   src/ui/retained/element.cpp
-  src/ui/retained/element_components.cpp
+  ${UI_COMPONENT_SOURCES}
   src/ui/retained/flex_layout.cpp
   src/ui/retained/focus.cpp
   src/ui/retained/ui_tree.cpp
@@ -379,7 +389,7 @@ add_executable(ui_pipeline_tests
   src/client/ui/ui_pipeline.cpp
   src/ui/retained/draw_list.cpp
   src/ui/retained/element.cpp
-  src/ui/retained/element_components.cpp
+  ${UI_COMPONENT_SOURCES}
   src/ui/retained/flex_layout.cpp
   src/ui/retained/focus.cpp
   src/ui/retained/ui_tree.cpp
@@ -426,7 +436,7 @@ add_executable(shooter_ui_tests
   src/game/shooter_game.cpp
   src/ui/retained/draw_list.cpp
   src/ui/retained/element.cpp
-  src/ui/retained/element_components.cpp
+  ${UI_COMPONENT_SOURCES}
   src/ui/retained/flex_layout.cpp
   src/ui/retained/focus.cpp
   src/ui/retained/ui_tree.cpp

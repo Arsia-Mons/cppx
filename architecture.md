@@ -134,9 +134,9 @@ normal returned element expression. The CMake helper in
 `cmake/cppx_transpile.cmake` generates build-tree `.cpp` / `.h` outputs, and
 golden tests pin output plus diagnostics.
 Generated `.cppx` output is compiled against `src/ui/retained/element.*` and
-`src/ui/retained/element_components.*`, proving the authored syntax path can
-create returned descriptors, preserve hook identity through the reconciler, and
-commit `HostKind::Box` / `HostKind::Text` output into `UiTree`.
+`src/ui/components/*`, proving the authored syntax path can create returned
+descriptors, preserve hook identity through the reconciler, and commit
+`HostKind::Box` / `HostKind::Text` output into `UiTree`.
 `UiScreen` supports returned-element roots during the app/client migration, and
 `ClientUi` commits those roots inside the existing screen/provider frame
 boundary. Main menu, options, pause, in-game HUD/action UI, loadout, and

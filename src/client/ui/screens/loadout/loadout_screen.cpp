@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 #include "../../../../react.h"
-#include "../../../../ui/retained/element_components.h"
+#include "../../../../ui/components/components.h"
 #include "../../callback_deps.h"
 #include "../../client_ui.h"
 #include "../../hooks/shooter_weapons.h"
@@ -47,43 +47,44 @@ const char *screen_entry_key(::ui::retained::UiElementFrame &frame,
 ::ui::retained::UiChildren
 weapon_grid_children(::ui::retained::UiElementFrame &frame, int active_tab) {
   namespace retained = ::ui::retained;
+  namespace components = ::ui::components;
   if (active_tab == LOADOUT_TAB_GEAR) {
     return frame.children({
-        retained::BoxElement(frame,
-                             {
-                                 .key = "gear-row",
-                                 .direction = retained::FlexDirection::Row,
-                                 .align_items = retained::AlignItems::Start,
-                                 .gap = 10.0f,
-                                 .children = frame.children({
-                                     WeaponTile(frame, 3),
-                                 }),
-                             }),
+        components::Box(frame,
+                        {
+                            .key = "gear-row",
+                            .direction = retained::FlexDirection::Row,
+                            .align_items = retained::AlignItems::Start,
+                            .gap = 10.0f,
+                            .children = frame.children({
+                                WeaponTile(frame, 3),
+                            }),
+                        }),
     });
   }
 
   return frame.children({
-      retained::BoxElement(frame,
-                           {
-                               .key = "weapon-row-0",
-                               .direction = retained::FlexDirection::Row,
-                               .align_items = retained::AlignItems::Start,
-                               .gap = 10.0f,
-                               .children = frame.children({
-                                   WeaponTile(frame, 0),
-                                   WeaponTile(frame, 1),
-                               }),
-                           }),
-      retained::BoxElement(frame,
-                           {
-                               .key = "weapon-row-1",
-                               .direction = retained::FlexDirection::Row,
-                               .align_items = retained::AlignItems::Start,
-                               .gap = 10.0f,
-                               .children = frame.children({
-                                   WeaponTile(frame, 2),
-                               }),
-                           }),
+      components::Box(frame,
+                      {
+                          .key = "weapon-row-0",
+                          .direction = retained::FlexDirection::Row,
+                          .align_items = retained::AlignItems::Start,
+                          .gap = 10.0f,
+                          .children = frame.children({
+                              WeaponTile(frame, 0),
+                              WeaponTile(frame, 1),
+                          }),
+                      }),
+      components::Box(frame,
+                      {
+                          .key = "weapon-row-1",
+                          .direction = retained::FlexDirection::Row,
+                          .align_items = retained::AlignItems::Start,
+                          .gap = 10.0f,
+                          .children = frame.children({
+                              WeaponTile(frame, 2),
+                          }),
+                      }),
   });
 }
 
@@ -123,6 +124,7 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props,
   bool compare_enabled = use_compare_enabled();
   std::function<void(bool)> set_compare_enabled = use_set_compare_enabled();
   namespace retained = ::ui::retained;
+  namespace components = ::ui::components;
 
   if (!is_top || !selected.valid)
     return frame.empty();
@@ -130,7 +132,7 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props,
   bool confirm_open = pending.action != LOADOUT_ACTION_NONE;
   return frame.fragment(frame.children({
       LoadoutConfirmDialog(frame),
-      retained::BoxElement(
+      components::Box(
           frame,
           {
               .key = "root",
@@ -141,7 +143,7 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props,
               .modal = !confirm_open,
               .background = {12, 20, 24, 245},
               .children = frame.children({
-                  retained::TextElement(
+                  components::Text(
                       frame,
                       {
                           .key = "title",
@@ -150,7 +152,7 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props,
                           .text_color = {236, 246, 242, 255},
                           .font_size = 26,
                       }),
-                  retained::BoxElement(
+                  components::Box(
                       frame,
                       {
                           .key = "tabs",
@@ -158,7 +160,7 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props,
                           .align_items = retained::AlignItems::Start,
                           .gap = 10.0f,
                           .children = frame.children({
-                              retained::SelectableElement(
+                              components::Selectable(
                                   frame,
                                   {
                                       .key = "weapons",
@@ -179,7 +181,7 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props,
                                               select_weapons_tab_weapon();
                                           },
                                   }),
-                              retained::SelectableElement(
+                              components::Selectable(
                                   frame,
                                   {
                                       .key = "gear",
@@ -202,7 +204,7 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props,
                                   }),
                           }),
                       }),
-                  retained::BoxElement(
+                  components::Box(
                       frame,
                       {
                           .key = "body",
@@ -210,7 +212,7 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props,
                           .align_items = retained::AlignItems::Start,
                           .gap = 18.0f,
                           .children = frame.children({
-                              retained::BoxElement(
+                              components::Box(
                                   frame,
                                   {
                                       .key = "weapon-grid",
@@ -219,7 +221,7 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props,
                                       .children = weapon_grid_children(
                                           frame, *active_tab),
                                   }),
-                              retained::BoxElement(
+                              components::Box(
                                   frame,
                                   {
                                       .key = "details",
@@ -228,7 +230,7 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props,
                                       .gap = 10.0f,
                                       .background = {22, 30, 36, 255},
                                       .children = frame.children({
-                                          retained::TextElement(
+                                          components::Text(
                                               frame,
                                               {
                                                   .key = "summary",
@@ -240,7 +242,7 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props,
                                                                  255},
                                                   .font_size = 14,
                                               }),
-                                          retained::ToggleElement(
+                                          components::Toggle(
                                               frame,
                                               {
                                                   .key = "compare",
@@ -250,7 +252,7 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props,
                                                   .on_change =
                                                       set_compare_enabled,
                                               }),
-                                          retained::ButtonElement(
+                                          components::Button(
                                               frame,
                                               {
                                                   .key = "buy",
@@ -274,7 +276,7 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props,
                                                         }
                                                       },
                                               }),
-                                          retained::ButtonElement(
+                                          components::Button(
                                               frame,
                                               {
                                                   .key = "equip",
@@ -298,7 +300,7 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props,
                                                         }
                                                       },
                                               }),
-                                          retained::ButtonElement(
+                                          components::Button(
                                               frame,
                                               {
                                                   .key = "back",
@@ -306,7 +308,7 @@ render_loadout_screen_body(const LoadoutScreenBodyProps &props,
                                                   .label = "Back",
                                                   .on_confirm = nav.pop_current,
                                               }),
-                                          retained::TextElement(
+                                          components::Text(
                                               frame,
                                               {
                                                   .key = "slots-title",
