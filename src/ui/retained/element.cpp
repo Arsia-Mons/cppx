@@ -311,16 +311,25 @@ ReconcileResult reconcile_retained_tree(UiTree &tree, UiElementFrame &frame,
   tree.begin_frame(width, height);
   react_begin_frame();
 
-  Reconciler reconciler(tree, frame);
-  bool ok = reconciler.commit(root);
+  ReconcileResult commit = commit_retained_elements(tree, frame, root);
 
   bool tree_ok = tree.end_frame();
   react_end_frame();
 
-  int errors = frame.error_count() + reconciler.error_count() +
-               tree.error_count() + react_error_count();
+  int errors = commit.error_count + tree.error_count() + react_error_count();
   return {
-      .ok = ok && tree_ok && errors == 0,
+      .ok = commit.ok && tree_ok && errors == 0,
+      .error_count = errors,
+  };
+}
+
+ReconcileResult commit_retained_elements(UiTree &tree, UiElementFrame &frame,
+                                         const UiElement &root) {
+  Reconciler reconciler(tree, frame);
+  bool ok = reconciler.commit(root);
+  int errors = frame.error_count() + reconciler.error_count();
+  return {
+      .ok = ok && errors == 0,
       .error_count = errors,
   };
 }

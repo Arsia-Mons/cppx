@@ -8,10 +8,12 @@ namespace shooter {
 
 class MainMenuScreen final : public client::ui::UiScreen {
 public:
-    MainMenuScreen() = default;
+  MainMenuScreen() = default;
 
-    const char *debug_name() const override { return "MainMenu"; }
-    void build_ui() override;
+  const char *debug_name() const override { return "MainMenu"; }
+  bool build_element(::ui::retained::UiElementFrame &frame,
+                     ::ui::retained::UiElement *out) override;
+  void build_ui() override;
 };
 
 std::function<void()> use_exit_to_main_menu();

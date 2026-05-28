@@ -7,6 +7,7 @@
 #include "../../react.h"
 #include "../../ui/input.h"
 #include "../../ui/retained/draw_list.h"
+#include "../../ui/retained/element.h"
 #include "../../ui/retained/flex_layout.h"
 #include "../../ui/retained/focus.h"
 #include "../../ui/retained/ui_tree.h"
@@ -19,71 +20,70 @@ constexpr int CLIENT_UI_MAX_QUEUED_MUTATIONS = 128;
 using DeferredUiMutation = std::function<void()>;
 
 struct ScreenNavigator {
-    UiScreenEntryId current_entry_id = 0;
-    std::function<void(std::unique_ptr<UiScreen>)> push = {};
-    std::function<void(std::unique_ptr<UiScreen>)> reset_to = {};
-    std::function<void()> pop_current = {};
-    std::function<void()> pop_top = {};
+  UiScreenEntryId current_entry_id = 0;
+  std::function<void(std::unique_ptr<UiScreen>)> push = {};
+  std::function<void(std::unique_ptr<UiScreen>)> reset_to = {};
+  std::function<void()> pop_current = {};
+  std::function<void()> pop_top = {};
 };
 
 class ClientUi {
 public:
-    ClientUi();
+  ClientUi();
 
-    ScreenStack &screens() { return screens_; }
-    const ScreenStack &screens() const { return screens_; }
+  ScreenStack &screens() { return screens_; }
+  const ScreenStack &screens() const { return screens_; }
 
-    ::ui::retained::UiTree &retained_tree() { return retained_tree_; }
-    const ::ui::retained::UiTree &retained_tree() const {
-        return retained_tree_;
-    }
-    ::ui::retained::FocusRuntime &retained_focus() { return retained_focus_; }
-    const ::ui::retained::DrawList &retained_draw_list() const {
-        return retained_draw_list_;
-    }
+  ::ui::retained::UiTree &retained_tree() { return retained_tree_; }
+  const ::ui::retained::UiTree &retained_tree() const { return retained_tree_; }
+  ::ui::retained::FocusRuntime &retained_focus() { return retained_focus_; }
+  const ::ui::retained::DrawList &retained_draw_list() const {
+    return retained_draw_list_;
+  }
 
-    void begin_frame(const ::ui::UiInputFrame &input);
-    void build_visible_screens();
-    void end_layout(const ::ui::UiInputFrame &input);
-    bool update_retained_runtime(const ::ui::retained::FlexLayoutAdapter &layout,
-                                 ::ui::retained::LayoutViewport viewport,
-                                 const ::ui::retained::InputFrame &input);
+  void begin_frame(const ::ui::UiInputFrame &input);
+  void build_visible_screens();
+  void end_layout(const ::ui::UiInputFrame &input);
+  bool update_retained_runtime(const ::ui::retained::FlexLayoutAdapter &layout,
+                               ::ui::retained::LayoutViewport viewport,
+                               const ::ui::retained::InputFrame &input);
 
-    bool push_screen(std::unique_ptr<UiScreen> screen);
-    bool replace_top(std::unique_ptr<UiScreen> screen);
-    bool queue_push_screen(std::unique_ptr<UiScreen> screen);
-    bool queue_reset_to_screen(std::unique_ptr<UiScreen> screen);
-    bool queue_pop_current(UiScreenEntryId entry_id);
-    bool queue_pop_top();
-    bool queue_deferred_mutation(DeferredUiMutation mutation);
-    int pending_mutation_count() const { return mutation_count_; }
-    void drain_deferred_mutations();
+  bool push_screen(std::unique_ptr<UiScreen> screen);
+  bool replace_top(std::unique_ptr<UiScreen> screen);
+  bool queue_push_screen(std::unique_ptr<UiScreen> screen);
+  bool queue_reset_to_screen(std::unique_ptr<UiScreen> screen);
+  bool queue_pop_current(UiScreenEntryId entry_id);
+  bool queue_pop_top();
+  bool queue_deferred_mutation(DeferredUiMutation mutation);
+  int pending_mutation_count() const { return mutation_count_; }
+  void drain_deferred_mutations();
 
 private:
-    enum class MutationKind {
-        Push,
-        ResetTo,
-        PopCurrent,
-        PopTop,
-        Deferred,
-    };
+  enum class MutationKind {
+    Push,
+    ResetTo,
+    PopCurrent,
+    PopTop,
+    Deferred,
+  };
 
-    struct QueuedMutation {
-        MutationKind kind = MutationKind::PopTop;
-        UiScreenEntryId entry_id = 0;
-        std::unique_ptr<UiScreen> screen = nullptr;
-        DeferredUiMutation deferred = {};
-    };
+  struct QueuedMutation {
+    MutationKind kind = MutationKind::PopTop;
+    UiScreenEntryId entry_id = 0;
+    std::unique_ptr<UiScreen> screen = nullptr;
+    DeferredUiMutation deferred = {};
+  };
 
-    bool queue_mutation(QueuedMutation mutation);
-    void clear_mutations();
+  bool queue_mutation(QueuedMutation mutation);
+  void clear_mutations();
 
-    ScreenStack screens_;
-    ::ui::retained::UiTree retained_tree_ = {};
-    ::ui::retained::FocusRuntime retained_focus_ = {};
-    ::ui::retained::DrawList retained_draw_list_ = {};
-    std::array<QueuedMutation, CLIENT_UI_MAX_QUEUED_MUTATIONS> mutations_ = {};
-    int mutation_count_ = 0;
+  ScreenStack screens_;
+  ::ui::retained::UiElementFrame retained_element_frame_ = {};
+  ::ui::retained::UiTree retained_tree_ = {};
+  ::ui::retained::FocusRuntime retained_focus_ = {};
+  ::ui::retained::DrawList retained_draw_list_ = {};
+  std::array<QueuedMutation, CLIENT_UI_MAX_QUEUED_MUTATIONS> mutations_ = {};
+  int mutation_count_ = 0;
 };
 
 ScreenNavigator use_screen_navigator();

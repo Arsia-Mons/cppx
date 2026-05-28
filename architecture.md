@@ -137,6 +137,10 @@ Generated `.cppx` output is compiled against `src/ui/retained/element.*` and
 `src/ui/retained/element_components.*`, proving the authored syntax path can
 create returned descriptors, preserve hook identity through the reconciler, and
 commit `HostKind::Box` / `HostKind::Text` output into `UiTree`.
+`UiScreen` supports returned-element roots during the app/client migration, and
+`ClientUi` commits those roots inside the existing screen/provider frame
+boundary. Main menu is the first migrated screen; older screens still use the
+transitional immediate retained helper path until they are converted.
 The retained component surface now also writes copied node metadata for role,
 control id, label/value, and interaction state, so retained `Button`, `Toggle`,
 and `Selectable` primitives have semantic data that focus and renderer code can

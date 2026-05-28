@@ -213,5 +213,7 @@ struct ReconcileResult {
 ReconcileResult reconcile_retained_tree(UiTree &tree, UiElementFrame &frame,
                                         const UiElement &root, float width,
                                         float height);
+ReconcileResult commit_retained_elements(UiTree &tree, UiElementFrame &frame,
+                                         const UiElement &root);
 
 } // namespace ui::retained

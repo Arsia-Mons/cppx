@@ -378,6 +378,8 @@ add_executable(ui_pipeline_tests
   src/client/ui/ui_pipeline.cpp
   src/ui/retained/components.cpp
   src/ui/retained/draw_list.cpp
+  src/ui/retained/element.cpp
+  src/ui/retained/element_components.cpp
   src/ui/retained/flex_layout.cpp
   src/ui/retained/focus.cpp
   src/ui/retained/ui_tree.cpp
@@ -424,6 +426,8 @@ add_executable(shooter_ui_tests
   src/game/shooter_game.cpp
   src/ui/retained/components.cpp
   src/ui/retained/draw_list.cpp
+  src/ui/retained/element.cpp
+  src/ui/retained/element_components.cpp
   src/ui/retained/flex_layout.cpp
   src/ui/retained/focus.cpp
   src/ui/retained/ui_tree.cpp

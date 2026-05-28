@@ -209,8 +209,15 @@ immediate component calls.
      `children` props; `retained_cppx_component_tests` compiles that output
      against `BoxElement`, `TextElement`, `ButtonElement`, and a stateful
      component descriptor.
-   - remaining: migrate every app/client screen to returned `UiElement` roots,
-     and delete/guard the old immediate authoring API.
+   - `UiScreen` now has an optional returned-element entrypoint, and `ClientUi`
+     can commit returned screen roots inside the existing screen/provider frame
+     boundary.
+   - main menu is migrated to a returned `UiElement` root through
+     `BoxElement`, `TextElement`, and `ButtonElement`; the old immediate
+     `build_ui()` override is empty for that screen.
+   - remaining: migrate options, pause, in-game HUD, loadout, and dialogs to
+     returned `UiElement` roots, then delete/guard the old immediate authoring
+     API.
 
 ## Verification Gates
 
