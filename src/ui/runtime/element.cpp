@@ -117,6 +117,8 @@ private:
     NodeMetadata metadata = {
         .role = node_role_for_host_kind(host.kind),
         .semantic_role = props.accessibility.role,
+        .visual = props.visual,
+        .fiber_id = react_current_fiber_id(),
         .control_id = props.id,
         .control_offset = props.id_offset,
         .accessibility_label = props.accessibility.label,

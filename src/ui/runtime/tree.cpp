@@ -157,6 +157,8 @@ bool UiTree::set_metadata(NodeId id, const NodeMetadata &metadata) {
     return false;
   node->role = metadata.role;
   node->semantic_role = metadata.semantic_role;
+  node->visual = metadata.visual;
+  node->fiber_id = metadata.fiber_id;
   node->interaction = metadata.interaction;
   node->text_edit = metadata.text_edit;
   copy_value(node->composition, metadata.text_edit.composition);
@@ -282,6 +284,8 @@ bool UiTree::snapshot(NodeId id, NodeSnapshot *out) const {
   *out = {
       .id = node->id,
       .parent_id = node->parent_id,
+      .visual = node->visual,
+      .fiber_id = node->fiber_id,
       .type = node->type,
       .key = node->key,
       .control_id = node->control_id,

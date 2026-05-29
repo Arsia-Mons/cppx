@@ -10,6 +10,7 @@
 #include "../../ui/runtime/element.h"
 #include "../../ui/runtime/flex_layout.h"
 #include "../../ui/runtime/focus.h"
+#include "../../ui/runtime/interaction_hooks.h"
 #include "../../ui/runtime/tree.h"
 #include "navigation/screen_stack.h"
 
@@ -84,6 +85,10 @@ private:
   ::ui::UiTree retained_tree_ = {};
   ::ui::FocusRuntime retained_focus_ = {};
   ::ui::DrawList retained_draw_list_ = {};
+  // Interaction state from the PREVIOUS frame's focus pass, published to the
+  // component tree during the next build so use_focused()/use_hovered()/etc.
+  // resolve (one-frame lag, by design — styling design §7).
+  ::ui::InteractionSnapshot interaction_snapshot_ = {};
   std::array<QueuedMutation, CLIENT_UI_MAX_QUEUED_MUTATIONS> mutations_ = {};
   int mutation_count_ = 0;
   bool wants_text_input_ = false;

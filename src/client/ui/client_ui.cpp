@@ -68,6 +68,12 @@ void ClientUi::build_visible_screens(const UiElementWrapper &wrap_root) {
             "ScreenProvider", &ScreenContext,
             const_cast<ScreenContextValue *>(stored_context),
             ::ui::children({root}), screen_provider_key(screen->entry_id()));
+        // Publish last frame's interaction (one-frame lag, by design) as a
+        // declarative provider so components resolve focus/hover/press.
+        provider = ::ui::provider(
+            "InteractionProvider", &::ui::InteractionContext,
+            const_cast<::ui::InteractionSnapshot *>(&interaction_snapshot_),
+            ::ui::children({provider}));
         if (wrap_root) {
           provider = wrap_root(provider);
         }
@@ -135,6 +141,18 @@ bool ClientUi::update_retained_runtime(const ::ui::FlexLayoutAdapter &layout,
       !active_snapshot.interaction.disabled &&
       (active_snapshot.role == ::ui::NodeRole::Input ||
        active_snapshot.semantic_role == ::ui::SemanticRole::TextBox);
+
+  // Capture this frame's interaction, keyed by fiber, for next frame's build.
+  auto fiber_of = [&](::ui::NodeId id) -> uint64_t {
+    ::ui::NodeSnapshot s = {};
+    return (id != 0 && retained_tree_.snapshot(id, &s)) ? s.fiber_id : 0;
+  };
+  interaction_snapshot_ = ::ui::InteractionSnapshot{
+      .focused_fiber = fiber_of(::ui::focus_focused_id(retained_focus_)),
+      .hovered_fiber = fiber_of(::ui::focus_hovered_id(retained_focus_)),
+      .pressed_fiber = fiber_of(::ui::focus_pressed_id(retained_focus_)),
+      .source = ::ui::focus_source(retained_focus_),
+  };
 
   return ::ui::build_draw_list(retained_tree_, &retained_draw_list_, active);
 }

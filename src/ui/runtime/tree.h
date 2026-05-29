@@ -353,6 +353,8 @@ struct TextEditingEvent {
 struct NodeMetadata {
   NodeRole role = NodeRole::Generic;
   SemanticRole semantic_role = SemanticRole::Auto;
+  VisualStyle visual = {};   // resolved paint, committed onto the node (dual-path)
+  uint64_t fiber_id = 0;     // react fiber that produced this node (interaction keying)
   const char *control_id = "";
   int control_offset = 0;
   const char *accessibility_label = "";
@@ -375,6 +377,8 @@ using BaselineFn = float (*)(BaselineInput input, void *user);
 struct NodeSnapshot {
   NodeId id = 0;
   NodeId parent_id = 0;
+  VisualStyle visual = {};
+  uint64_t fiber_id = 0;
   const char *type = "";
   const char *key = "";
   const char *control_id = "";
@@ -443,6 +447,8 @@ private:
   struct Node {
     NodeId id = 0;
     NodeId parent_id = 0;
+    VisualStyle visual = {};
+    uint64_t fiber_id = 0;
     uint32_t generation = 0;
     uint32_t next_child_index = 0;
     int child_count = 0;

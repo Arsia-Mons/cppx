@@ -69,6 +69,7 @@ struct HostProps {
   const char *id = nullptr;
   int id_offset = 0;
   Style style = {};
+  VisualStyle visual = {}; // dense resolved paint (dual-path; see styling design)
   HostTextProps text = {};
   NodeInteraction interaction = {};
   TextEditMetadata text_edit = {};

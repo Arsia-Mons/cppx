@@ -20,6 +20,7 @@ struct HostProps {
   const char *id = nullptr;
   int id_offset = 0;
   ::ui::Style style = {};
+  ::ui::VisualStyle visual = {};
   ::ui::HostTextProps text = {};
   ::ui::NodeInteraction interaction = {};
   ::ui::TextEditMetadata text_edit = {};
@@ -34,6 +35,7 @@ inline ::ui::UiElement Host(const HostProps &props) {
                                     .id = props.id,
                                     .id_offset = props.id_offset,
                                     .style = props.style,
+                                    .visual = props.visual,
                                     .text = props.text,
                                     .interaction = props.interaction,
                                     .text_edit = props.text_edit,
