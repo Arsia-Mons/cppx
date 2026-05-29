@@ -437,6 +437,22 @@ target_compile_options(ui_interaction_hooks_tests PRIVATE
 
 add_test(NAME ui_interaction_hooks_tests COMMAND ui_interaction_hooks_tests)
 
+add_executable(ui_draw_command_tests
+  tests/ui_draw_command_tests.cpp
+  src/ui/runtime/draw_command.cpp
+)
+
+target_include_directories(ui_draw_command_tests PRIVATE
+  src
+  third_party
+)
+
+target_compile_options(ui_draw_command_tests PRIVATE
+  $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall -Wextra -Wno-missing-field-initializers -Wno-c99-designator -Wno-unused-parameter>
+)
+
+add_test(NAME ui_draw_command_tests COMMAND ui_draw_command_tests)
+
 add_executable(retained_ui_focus_tests
   tests/retained_ui_focus_tests.cpp
   src/react.cpp

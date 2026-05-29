@@ -29,6 +29,13 @@ struct Vec2 {
   float y = 0.f;
 };
 
+// IR-local paint rectangle (deliberately lighter than the layout Rect in
+// tree.h, which drags edge metrics). Shared by the DrawCommand IR and the
+// SDL-free geometry/tessellation module.
+struct DrawRect {
+  float x = 0.f, y = 0.f, w = 0.f, h = 0.f;
+};
+
 struct SideWidths {
   float top = 0.f;
   float right = 0.f;
