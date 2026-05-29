@@ -69,6 +69,7 @@ struct FocusRuntime {
   NodeId focused_id = 0;
   NodeId blurred_id = 0;
   NodeId focus_changed_id = 0;
+  NodeId hovered_id = 0; // top-most enabled focusable under the pointer this frame
   NodeId pointer_press_origin = 0;
   NodeId confirmed_id = 0;
   FocusSource source = FocusSource::None;
@@ -83,7 +84,16 @@ NodeId focus_focused_id(const FocusRuntime &runtime);
 NodeId focus_blurred_id(const FocusRuntime &runtime);
 NodeId focus_changed_id(const FocusRuntime &runtime);
 NodeId focus_confirmed_id(const FocusRuntime &runtime);
+NodeId focus_hovered_id(const FocusRuntime &runtime);
+NodeId focus_pressed_id(const FocusRuntime &runtime);
 FocusSource focus_source(const FocusRuntime &runtime);
 int focus_error_count(const FocusRuntime &runtime);
+
+// Focus is "visible" (gets a focus ring) only when it arrived via a non-pointer
+// source. Used to derive focus_visible for the interaction snapshot.
+inline bool focus_source_is_visible(FocusSource s) {
+  return s == FocusSource::Keyboard || s == FocusSource::Gamepad ||
+         s == FocusSource::Programmatic;
+}
 
 } // namespace ui

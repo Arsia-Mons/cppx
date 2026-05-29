@@ -267,6 +267,10 @@ uint32_t react_next_child_index(void) {
     return G.current->next_child_index++;
 }
 
+ReactFiberId react_current_fiber_id(void) {
+    return G.current ? G.current->id : 0;
+}
+
 static ReactFiberId hash_bytes(ReactFiberId hash, const char *text) {
     const unsigned char *cursor =
         reinterpret_cast<const unsigned char *>(text ? text : "");

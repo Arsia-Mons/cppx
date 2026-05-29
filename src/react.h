@@ -60,6 +60,9 @@ void react_report_error(const char *fmt, ...);
 // index.
 void react_enter(ReactFiberId fiber_id);
 void react_leave(void);
+// Id of the fiber currently rendering (0 if none). Lets a hook identify "which
+// component am I" so per-component interaction state can be keyed by fiber.
+ReactFiberId react_current_fiber_id(void);
 uint32_t react_next_child_index(void);
 ReactFiberId react_make_instance_fiber_id(const char *name, uint32_t index,
                                           bool keyed);
