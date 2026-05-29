@@ -36,16 +36,16 @@ void SdlRetainedRenderer::clear(::ui::Color background) {
   SDL_RenderClear(renderer_);
 }
 
-void SdlRetainedRenderer::render(const ::ui::DrawList &draw_list) {
+void SdlRetainedRenderer::render(const ::ui::legacy::DrawList &draw_list) {
   if (!renderer_)
     return;
   for (int i = 0; i < draw_list.count; ++i) {
-    const ::ui::DrawCommand &command = draw_list.commands[i];
+    const ::ui::legacy::DrawCommand &command = draw_list.commands[i];
     switch (command.kind) {
-    case ::ui::DrawCommandKind::Rect:
+    case ::ui::legacy::DrawCommandKind::Rect:
       render_rect(command);
       break;
-    case ::ui::DrawCommandKind::Text:
+    case ::ui::legacy::DrawCommandKind::Text:
       render_text(command);
       break;
     }
@@ -58,7 +58,7 @@ void SdlRetainedRenderer::present() {
   }
 }
 
-void SdlRetainedRenderer::render_rect(const ::ui::DrawCommand &command) {
+void SdlRetainedRenderer::render_rect(const ::ui::legacy::DrawCommand &command) {
   SDL_FRect rect = to_sdl_rect(command.rect);
   if (command.fill.a > 0) {
     set_draw_color(renderer_, command.fill);
@@ -85,7 +85,7 @@ void SdlRetainedRenderer::render_rect(const ::ui::DrawCommand &command) {
   }
 }
 
-void SdlRetainedRenderer::render_text(const ::ui::DrawCommand &command) {
+void SdlRetainedRenderer::render_text(const ::ui::legacy::DrawCommand &command) {
   if (!fonts_ || !fonts_->default_font() || command.text[0] == '\0')
     return;
 

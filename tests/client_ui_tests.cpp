@@ -417,12 +417,12 @@ static bool client_ui_owns_retained_runtime_outputs(void) {
   CHECK(::ui::focus_focused_id(client_ui.retained_focus()) == button_id);
   CHECK(focus_count == 1);
 
-  const ::ui::DrawList &draw = client_ui.retained_draw_list();
+  const ::ui::legacy::DrawList &draw = client_ui.retained_draw_list();
   CHECK(draw.error_count == 0);
   CHECK(draw.count == 2);
-  CHECK(draw.commands[0].kind == ::ui::DrawCommandKind::Rect);
+  CHECK(draw.commands[0].kind == ::ui::legacy::DrawCommandKind::Rect);
   CHECK(draw.commands[0].node_id == button_id);
-  CHECK(draw.commands[1].kind == ::ui::DrawCommandKind::Text);
+  CHECK(draw.commands[1].kind == ::ui::legacy::DrawCommandKind::Text);
   CHECK(strcmp(draw.commands[1].text, "Confirm") == 0);
   return true;
 }

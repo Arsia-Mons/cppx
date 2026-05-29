@@ -180,10 +180,14 @@ add_executable(hello
   src/platform/sdl/window.cpp
   src/renderer/font_registry.cpp
   src/renderer/sdl_retained_renderer.cpp
+  src/renderer/draw_executor.cpp
   src/game/inventory.cpp
   src/game/economy.cpp
   src/game/shooter_game.cpp
   src/ui/runtime/draw_list.cpp
+  src/ui/runtime/draw_command.cpp
+  src/ui/runtime/draw_command_builder.cpp
+  src/ui/runtime/geometry.cpp
   src/ui/runtime/element.cpp
   ${UI_COMPONENT_SOURCES}
   src/ui/runtime/flex_layout.cpp
@@ -558,6 +562,8 @@ add_executable(client_ui_tests
   src/client/ui/client_ui.cpp
   src/client/ui/navigation/screen_stack.cpp
   src/ui/runtime/draw_list.cpp
+  src/ui/runtime/draw_command.cpp
+  src/ui/runtime/draw_command_builder.cpp
   src/ui/runtime/element.cpp
   ${UI_COMPONENT_SOURCES}
   src/ui/runtime/flex_layout.cpp
@@ -588,6 +594,8 @@ add_executable(ui_pipeline_tests
   src/client/ui/navigation/screen_stack.cpp
   src/client/ui/ui_pipeline.cpp
   src/ui/runtime/draw_list.cpp
+  src/ui/runtime/draw_command.cpp
+  src/ui/runtime/draw_command_builder.cpp
   src/ui/runtime/element.cpp
   ${UI_COMPONENT_SOURCES}
   src/ui/runtime/flex_layout.cpp
@@ -632,6 +640,8 @@ add_executable(shooter_ui_tests
   src/game/economy.cpp
   src/game/shooter_game.cpp
   src/ui/runtime/draw_list.cpp
+  src/ui/runtime/draw_command.cpp
+  src/ui/runtime/draw_command_builder.cpp
   src/ui/runtime/element.cpp
   ${UI_COMPONENT_SOURCES}
   src/ui/runtime/flex_layout.cpp

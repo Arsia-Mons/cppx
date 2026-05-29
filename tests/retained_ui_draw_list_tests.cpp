@@ -16,6 +16,7 @@
   } while (0)
 
 using namespace ui;
+using namespace ui::legacy;
 using namespace ui::components::elements;
 
 static bool same_text(const char *actual, const char *expected) {

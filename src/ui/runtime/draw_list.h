@@ -7,6 +7,12 @@
 
 namespace ui {
 
+// Legacy retained draw-list IR. Lives in ui::legacy so it can coexist in the
+// same translation unit as the new tagged-union IR (ui::DrawCommand /
+// ui::DrawCommandList in draw_command.h) during the dual-path window. This
+// whole namespace is deleted when the legacy render path is pruned (step 7b).
+namespace legacy {
+
 constexpr int UI_RETAINED_MAX_DRAW_COMMANDS = UI_RETAINED_MAX_NODES * 2;
 
 enum class DrawCommandKind : uint8_t {
@@ -34,5 +40,7 @@ struct DrawList {
 };
 
 bool build_draw_list(const UiTree &tree, DrawList *out, NodeId focused_id = 0);
+
+} // namespace legacy
 
 } // namespace ui

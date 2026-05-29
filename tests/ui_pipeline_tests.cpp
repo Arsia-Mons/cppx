@@ -214,17 +214,18 @@ static bool pipeline_updates_retained_runtime_before_render(void) {
 
   pipeline.render_client_ui_frame(test_frame(), [&] {
     probe.render_count += 1;
-    const ::ui::DrawList &draw = pipeline.client_ui().retained_draw_list();
+    const ::ui::legacy::DrawList &draw =
+        pipeline.client_ui().retained_draw_list();
     probe.draw_count = draw.count;
     probe.focused_id =
         ::ui::focus_focused_id(pipeline.client_ui().retained_focus());
     for (int i = 0; i < draw.count; ++i) {
-      const ::ui::DrawCommand &command = draw.commands[i];
-      if (command.kind == ::ui::DrawCommandKind::Rect) {
+      const ::ui::legacy::DrawCommand &command = draw.commands[i];
+      if (command.kind == ::ui::legacy::DrawCommandKind::Rect) {
         probe.saw_button_rect = true;
         probe.button_id = command.node_id;
       }
-      if (command.kind == ::ui::DrawCommandKind::Text &&
+      if (command.kind == ::ui::legacy::DrawCommandKind::Text &&
           strcmp(command.text, "Retained") == 0) {
         probe.saw_label_text = true;
       }

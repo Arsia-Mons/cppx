@@ -1,6 +1,7 @@
 #include "game_loop.h"
 
 #include "../platform/sdl/input.h"
+#include "../renderer/draw_executor.h"
 
 #include <SDL3/SDL.h>
 
@@ -73,7 +74,13 @@ void GameLoop::tick() {
 
   ui_pipeline_.render_client_ui_frame(frame, [&] {
     retained_render_.clear({12, 14, 22, 255});
-    retained_render_.render(ui_pipeline_.client_ui().retained_draw_list());
+    // Styling/render step 2: the live path renders the new tagged-union IR
+    // through execute_draw_commands. Fonts come from the retained renderer,
+    // which already owns the FontRegistry handed to it at initialize().
+    renderer::execute_draw_commands(
+        retained_render_.sdl_renderer(),
+        ui_pipeline_.client_ui().retained_command_list(),
+        retained_render_.fonts());
     control_.capture_after_render(retained_render_.sdl_renderer(),
                                   ui_pipeline_);
     retained_render_.present();
