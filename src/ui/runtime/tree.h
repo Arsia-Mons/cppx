@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../input.h"
+#include "../style/visual_style.h" // Color and the shared paint primitives live here now
 
 #include <array>
 #include <functional>
@@ -224,13 +225,6 @@ struct Rect {
   ComputedEdgeSizes margin = {};
   ComputedEdgeSizes border = {};
   ComputedEdgeSizes padding = {};
-};
-
-struct Color {
-  uint8_t r = 0;
-  uint8_t g = 0;
-  uint8_t b = 0;
-  uint8_t a = 0;
 };
 
 struct Style {
