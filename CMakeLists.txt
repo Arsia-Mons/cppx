@@ -386,6 +386,33 @@ target_link_libraries(retained_ui_draw_list_tests PRIVATE
 
 add_test(NAME retained_ui_draw_list_tests COMMAND retained_ui_draw_list_tests)
 
+add_executable(retained_ui_draw_command_tests
+  tests/retained_ui_draw_command_tests.cpp
+  src/react.cpp
+  src/ui/runtime/draw_command_builder.cpp
+  src/ui/runtime/draw_command.cpp
+  src/ui/runtime/element.cpp
+  ${UI_COMPONENT_SOURCES}
+  src/ui/runtime/tree.cpp
+  src/ui/runtime/flex_layout.cpp
+  src/ui/runtime/yoga_flex_layout.cpp
+)
+
+target_include_directories(retained_ui_draw_command_tests PRIVATE
+  src
+  third_party
+)
+
+target_compile_options(retained_ui_draw_command_tests PRIVATE
+  $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall -Wextra -Wno-missing-field-initializers -Wno-c99-designator -Wno-unused-parameter>
+)
+
+target_link_libraries(retained_ui_draw_command_tests PRIVATE
+  yogacore
+)
+
+add_test(NAME retained_ui_draw_command_tests COMMAND retained_ui_draw_command_tests)
+
 # --- from-first-principles styling system (src/ui/style) ---
 add_executable(ui_style_tests
   tests/ui_style_tests.cpp
@@ -664,6 +691,7 @@ foreach(ui_component_consumer IN ITEMS
   retained_cppx_component_tests
   retained_ui_primitives_tests
   retained_ui_draw_list_tests
+  retained_ui_draw_command_tests
   retained_ui_focus_tests
   client_ui_tests
   ui_pipeline_tests
