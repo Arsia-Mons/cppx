@@ -188,6 +188,53 @@ bool push_gradient_command(DrawCommandList &list, NodeId node_id,
   return list.push(command);
 }
 
+// SHADOW: emit a Shadow command BEFORE the fill so it sits behind the node
+// (design §9.8 ordering: Shadow -> fill/Gradient/Image -> children -> Border).
+// Only the component-resolved VisualStyle carries a shadow (no legacy source);
+// emit when shadow.color.a>0. The shadow color is authored straight; premultiply
+// at emit, the IR's storage convention.
+bool append_shadow(DrawCommandList &list, const NodeSnapshot &node) {
+  const Shadow &sh = node.visual.shadow;
+  if (sh.color.a == 0)
+    return true; // no shadow => emit nothing (resolved-output presence cue).
+
+  DrawCommand command = {};
+  command.kind = DrawCommandKind::Shadow;
+  command.node_id = node.id;
+  command.rect = to_draw_rect(node.layout);
+  command.payload.shadow = {
+      .color = premul(sh.color),
+      .offset = sh.offset,
+      .blur = sh.blur,
+      .spread = sh.spread,
+      .corner_radius = node.visual.corner_radius,
+  };
+  return list.push(command);
+}
+
+// IMAGE: emit an Image command (textured rect) AFTER the fill (design §9.8:
+// fill/Gradient/Image). Only the component-resolved VisualStyle carries an
+// image; emit when image.texture_id!=0. The tint is authored straight;
+// premultiply at emit. nine_slice + corner_radius pass through verbatim (the
+// executor cuts radius on nine-slice per §9.7).
+bool append_image(DrawCommandList &list, const NodeSnapshot &node) {
+  const BackgroundImage &bi = node.visual.image;
+  if (bi.texture_id == 0)
+    return true; // no image => emit nothing (resolved-output presence cue).
+
+  DrawCommand command = {};
+  command.kind = DrawCommandKind::Image;
+  command.node_id = node.id;
+  command.rect = to_draw_rect(node.layout);
+  command.payload.image = {
+      .texture_id = bi.texture_id,
+      .tint = premul(bi.tint),
+      .nine_slice = bi.nine_slice,
+      .corner_radius = node.visual.corner_radius,
+  };
+  return list.push(command);
+}
+
 // FILL: emit a Rect command carrying only the resolved fill (the legacy
 // append_rect fused fill + border + focus into one command; the new IR splits
 // the stroke into a separate Border command, emitted by append_frame).
@@ -445,7 +492,11 @@ bool append_node(const UiTree &tree, DrawCommandList &list, NodeId id,
 
   bool disabled = inherited_disabled || node.interaction.disabled;
   bool focused = focused_id != 0 && focused_id == node.id;
-  if (!append_rect(list, node, focused) ||
+  // Paint order per design §9.8: Shadow -> fill/Gradient -> Image -> [children]
+  // -> Border+Outline. (Children are appended after this node's own paint.)
+  if (!append_shadow(list, node) ||
+      !append_rect(list, node, focused) ||
+      !append_image(list, node) ||
       !append_frame(list, node, focused) ||
       !append_text(list, node, inherited_disabled) ||
       !append_input_contents(list, node, focused, inherited_disabled))

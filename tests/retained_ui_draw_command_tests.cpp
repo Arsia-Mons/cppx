@@ -658,6 +658,144 @@ static bool input_caret_uses_measured_advance(void) {
   return true;
 }
 
+// P5: a node whose resolved VisualStyle carries a drop shadow and a background
+// image must emit a Shadow command (premultiplied, BEFORE the fill) and an Image
+// command (premultiplied tint, AFTER the fill). Resolved-output presence cues:
+// shadow.color.a>0 and image.texture_id!=0.
+static bool shadow_and_image_emit_in_paint_order(void) {
+  react_init_runtime();
+  UiTree tree;
+  UiElementFrame frame;
+  UiElementFrameScope frame_scope(frame);
+
+  VisualStyle v = {};
+  v.background = {30, 40, 50, 255};
+  v.corner_radius = 6.0f;
+  v.shadow = {.color = {0, 0, 0, 160}, .offset = {2.0f, 3.0f}, .blur = 8.0f,
+              .spread = 1.0f};
+  v.image = {.texture_id = 7, .tint = {200, 220, 255, 200}, .nine_slice = {},
+             /*corner_radius unused*/};
+
+  UiElement root = Box({
+      .key = "root",
+      .style =
+          {
+              .width = Length::points(200.0f),
+              .height = Length::points(120.0f),
+              .align_items = AlignItems::Start,
+          },
+      .children = ::ui::children({
+          ::ui::host(::ui::HostKind::Box,
+                     {
+                         .key = "panel",
+                         .style = {.width = Length::points(80.0f),
+                                   .height = Length::points(60.0f)},
+                         .visual = v,
+                     }),
+      }),
+  });
+  ReconcileResult result =
+      reconcile_retained_tree(tree, frame, root, 200.0f, 120.0f);
+  CHECK(result.ok);
+
+  FlexLayoutAdapter adapter = make_yoga_flex_layout_adapter();
+  CHECK(compute_flex_layout(adapter, tree, {200.0f, 120.0f}));
+
+  NodeId root_id = tree.child_at(tree.root_id(), 0);
+  NodeId panel = tree.child_at(root_id, 0);
+
+  DrawCommandList list = {};
+  CHECK(build_draw_command_list(tree, &list, 0));
+  CHECK(list.error_count == 0);
+
+  // Shadow command: premultiplied color, params propagated, radius == box radius.
+  const DrawCommand *shadow =
+      find_command(list, panel, DrawCommandKind::Shadow);
+  CHECK(shadow != nullptr);
+  CHECK(same_color(shadow->payload.shadow.color, premul({0, 0, 0, 160})));
+  CHECK(shadow->payload.shadow.offset.x == 2.0f);
+  CHECK(shadow->payload.shadow.offset.y == 3.0f);
+  CHECK(shadow->payload.shadow.blur == 8.0f);
+  CHECK(shadow->payload.shadow.spread == 1.0f);
+  CHECK(shadow->payload.shadow.corner_radius == 6.0f);
+
+  // Rect (fill) command present.
+  const DrawCommand *fill = find_command(list, panel, DrawCommandKind::Rect);
+  CHECK(fill != nullptr);
+
+  // Image command: opaque presence via texture_id, premultiplied tint.
+  const DrawCommand *image = find_command(list, panel, DrawCommandKind::Image);
+  CHECK(image != nullptr);
+  CHECK(image->payload.image.texture_id == 7);
+  CHECK(same_color(image->payload.image.tint, premul({200, 220, 255, 200})));
+  CHECK(image->payload.image.corner_radius == 6.0f);
+
+  // Paint order on the panel node: Shadow index < Rect index < Image index
+  // (design §9.8: Shadow -> fill -> Image).
+  int idx_shadow = -1, idx_fill = -1, idx_image = -1;
+  for (int i = 0; i < list.count; ++i) {
+    const DrawCommand &c = list.commands[i];
+    if (c.node_id != panel)
+      continue;
+    if (c.kind == DrawCommandKind::Shadow && idx_shadow < 0)
+      idx_shadow = i;
+    else if (c.kind == DrawCommandKind::Rect && idx_fill < 0)
+      idx_fill = i;
+    else if (c.kind == DrawCommandKind::Image && idx_image < 0)
+      idx_image = i;
+  }
+  CHECK(idx_shadow >= 0 && idx_fill >= 0 && idx_image >= 0);
+  CHECK(idx_shadow < idx_fill);
+  CHECK(idx_fill < idx_image);
+  return true;
+}
+
+// P5: presence cues — a node with shadow.color.a==0 and image.texture_id==0
+// emits NEITHER a Shadow NOR an Image command (the resolver produced nothing).
+static bool no_shadow_no_image_when_absent(void) {
+  react_init_runtime();
+  UiTree tree;
+  UiElementFrame frame;
+  UiElementFrameScope frame_scope(frame);
+
+  VisualStyle v = {};
+  v.background = {30, 40, 50, 255}; // a fill, but no shadow, no image.
+
+  UiElement root = Box({
+      .key = "root",
+      .style = {.width = Length::points(120.0f),
+                .height = Length::points(80.0f),
+                .align_items = AlignItems::Start},
+      .children = ::ui::children({
+          ::ui::host(::ui::HostKind::Box,
+                     {
+                         .key = "plain",
+                         .style = {.width = Length::points(40.0f),
+                                   .height = Length::points(30.0f)},
+                         .visual = v,
+                     }),
+      }),
+  });
+  ReconcileResult result =
+      reconcile_retained_tree(tree, frame, root, 120.0f, 80.0f);
+  CHECK(result.ok);
+
+  FlexLayoutAdapter adapter = make_yoga_flex_layout_adapter();
+  CHECK(compute_flex_layout(adapter, tree, {120.0f, 80.0f}));
+
+  NodeId root_id = tree.child_at(tree.root_id(), 0);
+  NodeId plain = tree.child_at(root_id, 0);
+
+  DrawCommandList list = {};
+  CHECK(build_draw_command_list(tree, &list, 0));
+  CHECK(list.error_count == 0);
+
+  CHECK(find_command(list, plain, DrawCommandKind::Shadow) == nullptr);
+  CHECK(find_command(list, plain, DrawCommandKind::Image) == nullptr);
+  CHECK(find_command(list, plain, DrawCommandKind::Rect) != nullptr);
+  return true;
+}
+
 int main(void) {
   if (!button_emits_fill_and_border())
     return 1;
@@ -668,6 +806,10 @@ int main(void) {
   if (!wrapped_text_emits_one_command_per_line())
     return 1;
   if (!input_caret_uses_measured_advance())
+    return 1;
+  if (!shadow_and_image_emit_in_paint_order())
+    return 1;
+  if (!no_shadow_no_image_when_absent())
     return 1;
   return 0;
 }

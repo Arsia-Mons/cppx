@@ -181,6 +181,7 @@ add_executable(hello
   src/renderer/font_registry.cpp
   src/renderer/sdl_retained_renderer.cpp
   src/renderer/draw_executor.cpp
+  src/renderer/texture_registry.cpp
   src/renderer/text_measure_impl.cpp
   src/game/inventory.cpp
   src/game/economy.cpp
@@ -510,6 +511,7 @@ add_executable(renderer_golden_tests
   tests/renderer_golden_tests.cpp
   src/renderer/draw_executor.cpp
   src/renderer/font_registry.cpp
+  src/renderer/texture_registry.cpp
   src/ui/runtime/geometry.cpp
   src/ui/runtime/draw_command.cpp
 )

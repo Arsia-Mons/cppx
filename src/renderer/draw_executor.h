@@ -3,8 +3,9 @@
 // Linear executor over the new tagged-union DrawCommand IR (draw_command.h).
 // Consumes a DrawCommandList and emits SDL draw calls — the P3 renderer.
 // Colors in the IR are premultiplied (design §8.4), so geometry is drawn under
-// SDL_BLENDMODE_BLEND_PREMULTIPLIED. `fonts` may be null (text is then skipped),
-// which keeps geometry goldens font-independent.
+// SDL_BLENDMODE_BLEND_PREMULTIPLIED. `fonts` may be null (text is then skipped)
+// and `textures` may be null (Image commands are then skipped), which keeps
+// geometry goldens font- and texture-independent.
 
 #include "ui/runtime/draw_command.h"
 
@@ -13,9 +14,11 @@
 namespace renderer {
 
 class FontRegistry;
+class TextureRegistry;
 
 void execute_draw_commands(SDL_Renderer *renderer,
                            const ::ui::DrawCommandList &list,
-                           FontRegistry *fonts);
+                           FontRegistry *fonts,
+                           TextureRegistry *textures = nullptr);
 
 } // namespace renderer
