@@ -15,7 +15,14 @@ This is an honest status report. It documents what was built and exactly how to 
 >
 > **Net:** the entire styling architecture (P0–P2c) is implemented and *driving the real app* through the existing renderer. Commits `f911eac`→`b001a27`.
 >
-> **What's left = the visual renderer only (P3–P6):** the tagged-union `DrawCommand` IR + the SDL geometry for rounded corners, gradients, drop shadows, nine-slice, group opacity, and the measure-driven text seam. This is the SDL-heavy, fresh-goldens work — see the revised §3/§5. It's the part that genuinely wants the golden harness + your eyes, and it builds cleanly on what's now in place (components already emit a rich `VisualStyle`; the renderer just needs to consume more of it).
+> ## UPDATE 2 — P3 renderer building blocks landed & golden-PROVEN
+>
+> Then I ground through the visual-renderer foundation, every commit green (now 25/25):
+> - **New tagged-union `DrawCommand` IR** — `src/ui/runtime/draw_command.{h,cpp}` (POD arms, out-of-line text/grad arenas, bounds-checked, `sizeof`/budget asserts). Commit `286ad6f`.
+> - **SDL-free tessellation geometry + golden BMP harness** — `src/ui/runtime/geometry.{h,cpp}`, `tests/golden_util.h`, drafted by a workflow then **adversarially verified**; the review caught 3 real geometry blockers (paired-ring point-count mismatch for plain-box shadows, `border_width ≥ radius`, `radius>32`) + 2 SDL harness blockers (`SDL_RenderPresent` on a bound target; driver-hint override) that the hermetic tests had masked. All fixed (shared-segment ring construction). Commit `de4ef72`.
+> - **New SDL executor** — `src/renderer/draw_executor.{h,cpp}`: linear executor over the IR (Rect/Border/Gradient via the verified geometry, premultiplied; Text via blit; Clip stack). `renderer_golden_tests` renders a hand-authored IR scene (rounded fill, fused border+outline, gradient) and pins it to `tests/fixtures/golden/new_ir_scene.bmp` — **visually confirmed correct**. Commit `4d0bc24`.
+>
+> **The new IR → pixels path is proven and golden-pinned.** What's left is the **live-app swap** (a transcriber `tree → DrawCommandList` reusing the P2c legacy fallback, + rewiring the client's render call to `execute_draw_commands`) and then P5/P6 effects (image/nine-slice/shadow already have geometry; group opacity layers) + measure-driven text (P4). Note: swapping the live renderer is mechanical wiring against a *proven* executor, but its visual payoff needs a theme pass (today's theme uses `corner_radius=0`, so the app looks identical until rounded corners/gradients are authored into `default_theme`). See revised §3/§5.
 
 ---
 
