@@ -238,10 +238,148 @@ bool run_image_scene() {
   return ok;
 }
 
+// ---------------------------------------------------------------------------
+// Scene 3: group opacity (P6, design §9.10). Two OVERLAPPING opaque rects sit
+// inside a LayerPush(opacity=0.5)/LayerPop bracket. The correct composite
+// flattens the children ONCE inside the layer (so the overlap region is exactly
+// the rect color, not double-painted) and then fades the WHOLE group by 0.5.
+//
+// The adversarial point: if the executor ignored the layer and drew children
+// straight onto the background, both rects would land at full opacity and the
+// overlap would be indistinguishable from the non-overlap parts (both fully
+// saturated). With the layer, every covered pixel — overlap and non-overlap
+// alike — reads back at ~half the rect color over the black clear. The pixel
+// probe asserts (a) the group is faded (covered pixels are ~half intensity, not
+// full) and (b) the overlap is NOT darker than the non-overlap (single blend).
+// ---------------------------------------------------------------------------
+DrawCommandList &opacity_scene() {
+  static DrawCommandList list;
+  list.reset();
+
+  // Group-opacity layer over the whole composited subtree. Header rect is the
+  // group's border-box; the executor sizes the transient to the full output so
+  // children draw at absolute coords (this golden does not exercise box-clip).
+  {
+    DrawCommand c{};
+    c.kind = DrawCommandKind::LayerPush;
+    c.rect = {8, 8, 96, 72}; // group box (informational; executor sizes to output)
+    c.payload.layer.opacity = 0.5f;
+    list.push(c);
+  }
+  // Child A: opaque square (premultiplied == straight, a==255).
+  {
+    DrawCommand c{};
+    c.kind = DrawCommandKind::Rect;
+    c.rect = {16, 16, 48, 48};
+    c.payload.rect.fill = {200, 80, 40, 255};
+    c.payload.rect.corner_radius = 0.f;
+    list.push(c);
+  }
+  // Child B: opaque square overlapping A's lower-right quadrant, SAME color so
+  // a double-blend (if it happened) would still be detectable as a saturation
+  // change at the overlap — but with correct single-flatten it is identical.
+  {
+    DrawCommand c{};
+    c.kind = DrawCommandKind::Rect;
+    c.rect = {40, 40, 48, 48};
+    c.payload.rect.fill = {200, 80, 40, 255};
+    c.payload.rect.corner_radius = 0.f;
+    list.push(c);
+  }
+  {
+    DrawCommand c{};
+    c.kind = DrawCommandKind::LayerPop;
+    list.push(c);
+  }
+  return list;
+}
+
+bool run_opacity_scene() {
+  ui_test::GoldenContext ctx;
+  if (!ctx.init()) {
+    fprintf(stderr, "renderer_golden_tests: GoldenContext init failed\n");
+    return false;
+  }
+  const DrawCommandList &list = opacity_scene();
+  if (list.error_count != 0) {
+    fprintf(stderr, "renderer_golden_tests: opacity scene overflowed\n");
+    return false;
+  }
+
+  auto draw = [&](SDL_Renderer *r) {
+    renderer::execute_draw_commands(r, list, /*fonts=*/nullptr);
+  };
+
+  // Independent of the golden bytes: prove group opacity actually composited.
+  {
+    ui_test::Image probe;
+    if (!ctx.render_to_image(128, 96, draw, &probe)) {
+      fprintf(stderr, "renderer_golden_tests (opacity): probe render failed\n");
+      return false;
+    }
+    // Sample three regions of the fill color (200,80,40):
+    //   only-A   : center of A's non-overlap area      (~24,24)
+    //   only-B   : center of B's non-overlap area      (~80,80)
+    //   overlap  : where A and B overlap (40,40)-(64,64) (~52,52)
+    auto avg = [&](int x0, int y0, int x1, int y1, double out[3]) {
+      double s[3] = {0, 0, 0};
+      int n = 0;
+      for (int y = y0; y < y1; ++y)
+        for (int x = x0; x < x1; ++x) {
+          uint8_t p[4];
+          probe.at(x, y, p);
+          s[0] += p[0]; s[1] += p[1]; s[2] += p[2];
+          ++n;
+        }
+      out[0] = s[0] / n; out[1] = s[1] / n; out[2] = s[2] / n;
+    };
+    double only_a[3], only_b[3], overlap[3];
+    avg(20, 20, 30, 30, only_a);
+    avg(74, 74, 84, 84, only_b);
+    avg(48, 48, 58, 58, overlap);
+
+    // (a) Faded: the red channel of covered pixels must be near 100 (=200*0.5),
+    // NOT near 200. A wide window [70,130] absorbs rounding while still failing
+    // hard if the layer were ignored (would be ~200) or fully transparent (~0).
+    if (only_a[0] < 70.0 || only_a[0] > 130.0) {
+      fprintf(stderr,
+              "renderer_golden_tests (opacity): group not faded — only-A red "
+              "%.1f (expected ~100; ~200 means the layer was ignored)\n",
+              only_a[0]);
+      return false;
+    }
+    // (b) No double-darkening: the overlap must match the non-overlap regions
+    // within a tight tolerance on every channel. A double-blend would push the
+    // overlap measurably away from the singly-blended regions.
+    for (int ch = 0; ch < 3; ++ch) {
+      double d_a = overlap[ch] - only_a[ch];
+      double d_b = overlap[ch] - only_b[ch];
+      if (d_a < 0) d_a = -d_a;
+      if (d_b < 0) d_b = -d_b;
+      if (d_a > 3.0 || d_b > 3.0) {
+        fprintf(stderr,
+                "renderer_golden_tests (opacity): overlap channel %d differs "
+                "from non-overlap (overlap %.1f, only-A %.1f, only-B %.1f) — "
+                "children double-blended inside the group\n",
+                ch, overlap[ch], only_a[ch], only_b[ch]);
+        return false;
+      }
+    }
+  }
+
+  ui_test::CompareReport rep;
+  const bool ok = ui_test::render_and_compare(
+      ctx, 128, 96, draw, "tests/fixtures/golden/new_ir_opacity.bmp", kTolerance,
+      &rep);
+  if (!ok)
+    fprintf(stderr, "renderer_golden_tests (opacity): %s\n", rep.message.c_str());
+  return ok;
+}
+
 } // namespace
 
 int main() {
-  if (!run_scene() || !run_image_scene()) {
+  if (!run_scene() || !run_image_scene() || !run_opacity_scene()) {
     fprintf(stderr, "renderer_golden_tests: FAIL\n");
     return 1;
   }

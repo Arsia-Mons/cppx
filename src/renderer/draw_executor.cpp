@@ -172,6 +172,17 @@ void render_image(SDL_Renderer *r, const ::ui::DrawCommand &c,
 
 } // namespace
 
+// One offscreen group-opacity layer (design §9.10). The target is a per-frame
+// transient sized to the FULL render output (not the node box) so children draw
+// at their absolute coordinates with no translation; the whole target is
+// composited back over the parent at the layer opacity. `prev_target` is the
+// render target that was active when this layer was pushed (restored at pop).
+struct LayerSlot {
+  SDL_Texture *target = nullptr;
+  SDL_Texture *prev_target = nullptr;
+  float opacity = 1.f;
+};
+
 void execute_draw_commands(SDL_Renderer *renderer,
                            const ::ui::DrawCommandList &list,
                            FontRegistry *fonts, TextureRegistry *textures) {
@@ -182,6 +193,10 @@ void execute_draw_commands(SDL_Renderer *renderer,
 
   SDL_Rect clip_stack[16];
   int clip_depth = 0;
+
+  constexpr int kLayerStackMax = 8;
+  LayerSlot layer_stack[kLayerStackMax];
+  int layer_depth = 0;
 
   for (int ci = 0; ci < list.count; ++ci) {
     const ::ui::DrawCommand &c = list.commands[ci];
@@ -245,10 +260,80 @@ void execute_draw_commands(SDL_Renderer *renderer,
       SDL_SetRenderClipRect(renderer,
                             clip_depth > 0 ? &clip_stack[clip_depth - 1] : nullptr);
       break;
-    default:
-      // LayerPush / LayerPop / Custom: wired in P6.
+    case ::ui::DrawCommandKind::LayerPush: {
+      // Group opacity (design §9.10): redirect this node's subtree into an
+      // offscreen transient sized to the full render output, so children draw at
+      // their absolute coordinates with no translation. Composited back at pop.
+      if (layer_depth >= kLayerStackMax) {
+        SDL_assert(false && "layer stack overflow");
+        break; // hard no-op in release; brackets stay balanced upstream
+      }
+      SDL_Texture *prev = SDL_GetRenderTarget(renderer);
+      // Output size of the active target (window backbuffer or the parent layer).
+      int out_w = 0, out_h = 0;
+      if (prev) {
+        float tw = 0.f, th = 0.f;
+        SDL_GetTextureSize(prev, &tw, &th);
+        out_w = static_cast<int>(tw);
+        out_h = static_cast<int>(th);
+      } else {
+        SDL_GetCurrentRenderOutputSize(renderer, &out_w, &out_h);
+      }
+      if (out_w <= 0 || out_h <= 0)
+        break;
+      SDL_Texture *target =
+          SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32,
+                            SDL_TEXTUREACCESS_TARGET, out_w, out_h);
+      if (!target)
+        break;
+      SDL_SetTextureBlendMode(target, SDL_BLENDMODE_BLEND_PREMULTIPLIED);
+      layer_stack[layer_depth++] = {target, prev, c.payload.layer.opacity};
+      SDL_SetRenderTarget(renderer, target);
+      SDL_SetRenderClipRect(renderer, nullptr); // clip is in target-local space
+      SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
+      SDL_RenderClear(renderer); // transparent (0,0,0,0)
+      // Re-apply the active clip (target shares the absolute coordinate space).
+      if (clip_depth > 0)
+        SDL_SetRenderClipRect(renderer, &clip_stack[clip_depth - 1]);
       break;
     }
+    case ::ui::DrawCommandKind::LayerPop: {
+      if (layer_depth <= 0) {
+        SDL_assert(false && "layer stack underflow");
+        break;
+      }
+      LayerSlot slot = layer_stack[--layer_depth];
+      SDL_SetRenderTarget(renderer, slot.prev_target);
+      // Composite the whole layer back over the parent at the layer opacity.
+      // The layer texture is PREMULTIPLIED (cleared transparent, drawn premul),
+      // so a correct group fade scales BOTH the premultiplied RGB and the alpha
+      // by `opacity` (alpha-mod alone would scale only A, leaving RGB at full
+      // intensity and breaking the premultiplied invariant). Hence color-mod +
+      // alpha-mod, blended under BLEND_PREMULTIPLIED.
+      SDL_SetTextureBlendMode(slot.target, SDL_BLENDMODE_BLEND_PREMULTIPLIED);
+      Uint8 amod = static_cast<Uint8>(slot.opacity * 255.0f + 0.5f);
+      SDL_SetTextureColorMod(slot.target, amod, amod, amod);
+      SDL_SetTextureAlphaMod(slot.target, amod);
+      SDL_SetRenderClipRect(renderer,
+                            clip_depth > 0 ? &clip_stack[clip_depth - 1]
+                                           : nullptr);
+      // Both target and parent share the full-output coordinate space, so blit
+      // 1:1 over the whole parent (dst = nullptr).
+      SDL_RenderTexture(renderer, slot.target, nullptr, nullptr);
+      SDL_DestroyTexture(slot.target);
+      break;
+    }
+    default:
+      // Custom: reserved enum seat, no renderer path (design §15).
+      break;
+    }
+  }
+  // Defensive: composite/destroy any layers left open by a malformed list so we
+  // never leak a target or leave the renderer pointed at a freed texture.
+  while (layer_depth > 0) {
+    LayerSlot slot = layer_stack[--layer_depth];
+    SDL_SetRenderTarget(renderer, slot.prev_target);
+    SDL_DestroyTexture(slot.target);
   }
   SDL_SetRenderClipRect(renderer, nullptr);
 }

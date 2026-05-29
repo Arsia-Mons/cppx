@@ -796,8 +796,229 @@ static bool no_shadow_no_image_when_absent(void) {
   return true;
 }
 
+// P6: a node with visual.opacity<1 brackets its OWN paint + subtree in a
+// LayerPush/LayerPop. The brackets must be contiguous and balanced: LayerPush
+// precedes all of the node's commands, LayerPop follows them and the subtree,
+// and a stack walk over the whole list never goes negative and ends at zero.
+// opacity>=1 nodes emit NO layer.
+static bool group_opacity_emits_balanced_layer_brackets(void) {
+  react_init_runtime();
+  UiTree tree;
+  UiElementFrame frame;
+  UiElementFrameScope frame_scope(frame);
+
+  VisualStyle group = {};
+  group.background = {30, 40, 50, 255};
+  group.opacity = 0.5f; // <1 => group-opacity layer
+
+  VisualStyle child = {};
+  child.background = {90, 30, 30, 255};
+  // child.opacity defaults to 1 => no nested layer
+
+  UiElement root = Box({
+      .key = "root",
+      .style = {.width = Length::points(120.0f),
+                .height = Length::points(80.0f),
+                .align_items = AlignItems::Start},
+      .children = ::ui::children({
+          ::ui::host(::ui::HostKind::Box,
+                     {
+                         .key = "group",
+                         .style = {.width = Length::points(60.0f),
+                                   .height = Length::points(50.0f),
+                                   .align_items = AlignItems::Start},
+                         .visual = group,
+                         .children = ::ui::children({
+                             ::ui::host(::ui::HostKind::Box,
+                                        {
+                                            .key = "inner",
+                                            .style = {.width = Length::points(20.0f),
+                                                      .height = Length::points(20.0f)},
+                                            .visual = child,
+                                        }),
+                         }),
+                     }),
+      }),
+  });
+  ReconcileResult result =
+      reconcile_retained_tree(tree, frame, root, 120.0f, 80.0f);
+  CHECK(result.ok);
+
+  FlexLayoutAdapter adapter = make_yoga_flex_layout_adapter();
+  CHECK(compute_flex_layout(adapter, tree, {120.0f, 80.0f}));
+
+  NodeId root_id = tree.child_at(tree.root_id(), 0);
+  NodeId group_id = tree.child_at(root_id, 0);
+  NodeId inner_id = tree.child_at(group_id, 0);
+
+  DrawCommandList list = {};
+  CHECK(build_draw_command_list(tree, &list, 0));
+  CHECK(list.error_count == 0);
+
+  // Exactly one LayerPush + one LayerPop, both attributed to the group node.
+  int push_idx = -1, pop_idx = -1, fill_idx = -1, inner_idx = -1;
+  int push_count = 0, pop_count = 0;
+  for (int i = 0; i < list.count; ++i) {
+    const DrawCommand &c = list.commands[i];
+    if (c.kind == DrawCommandKind::LayerPush) {
+      ++push_count;
+      push_idx = i;
+      CHECK(c.node_id == group_id);
+      CHECK(c.payload.layer.opacity == 0.5f);
+    } else if (c.kind == DrawCommandKind::LayerPop) {
+      ++pop_count;
+      pop_idx = i;
+      CHECK(c.node_id == group_id);
+    } else if (c.kind == DrawCommandKind::Rect && c.node_id == group_id) {
+      fill_idx = i;
+    } else if (c.kind == DrawCommandKind::Rect && c.node_id == inner_id) {
+      inner_idx = i;
+    }
+  }
+  CHECK(push_count == 1);
+  CHECK(pop_count == 1);
+  // The group's own fill and the child's subtree fall strictly inside the
+  // bracket: push < group-fill < inner-fill < pop.
+  CHECK(push_idx >= 0 && fill_idx >= 0 && inner_idx >= 0 && pop_idx >= 0);
+  CHECK(push_idx < fill_idx);
+  CHECK(fill_idx < inner_idx);
+  CHECK(inner_idx < pop_idx);
+
+  // Balanced stack walk over the whole list: never negative, ends at zero.
+  int depth = 0, max_depth = 0;
+  for (int i = 0; i < list.count; ++i) {
+    if (list.commands[i].kind == DrawCommandKind::LayerPush) {
+      ++depth;
+      if (depth > max_depth)
+        max_depth = depth;
+    } else if (list.commands[i].kind == DrawCommandKind::LayerPop) {
+      --depth;
+      CHECK(depth >= 0);
+    }
+  }
+  CHECK(depth == 0);
+  CHECK(max_depth == 1);
+  return true;
+}
+
+// P6: opacity>=1 emits no layer (the common path). A fully-opaque node must NOT
+// produce any LayerPush/LayerPop.
+static bool full_opacity_emits_no_layer(void) {
+  react_init_runtime();
+  UiTree tree;
+  UiElementFrame frame;
+  UiElementFrameScope frame_scope(frame);
+
+  VisualStyle v = {};
+  v.background = {30, 40, 50, 255};
+  v.opacity = 1.0f;
+
+  UiElement root = Box({
+      .key = "root",
+      .style = {.width = Length::points(120.0f),
+                .height = Length::points(80.0f),
+                .align_items = AlignItems::Start},
+      .children = ::ui::children({
+          ::ui::host(::ui::HostKind::Box,
+                     {
+                         .key = "opaque",
+                         .style = {.width = Length::points(40.0f),
+                                   .height = Length::points(30.0f)},
+                         .visual = v,
+                     }),
+      }),
+  });
+  ReconcileResult result =
+      reconcile_retained_tree(tree, frame, root, 120.0f, 80.0f);
+  CHECK(result.ok);
+
+  FlexLayoutAdapter adapter = make_yoga_flex_layout_adapter();
+  CHECK(compute_flex_layout(adapter, tree, {120.0f, 80.0f}));
+
+  DrawCommandList list = {};
+  CHECK(build_draw_command_list(tree, &list, 0));
+  CHECK(list.error_count == 0);
+
+  for (int i = 0; i < list.count; ++i) {
+    CHECK(list.commands[i].kind != DrawCommandKind::LayerPush);
+    CHECK(list.commands[i].kind != DrawCommandKind::LayerPop);
+  }
+  return true;
+}
+
+// P6/§8.5: hidden==true skips ALL paint for the node and its subtree, while the
+// node still occupies layout (layout ran before transcription). The node emits
+// no commands at all — not even a layer or a fill.
+static bool hidden_node_emits_nothing(void) {
+  react_init_runtime();
+  UiTree tree;
+  UiElementFrame frame;
+  UiElementFrameScope frame_scope(frame);
+
+  VisualStyle v = {};
+  v.background = {30, 40, 50, 255};
+  v.hidden = true;        // skip paint
+  v.opacity = 0.5f;       // even with a would-be layer, hidden wins
+
+  VisualStyle child = {};
+  child.background = {90, 30, 30, 255};
+
+  UiElement root = Box({
+      .key = "root",
+      .style = {.width = Length::points(120.0f),
+                .height = Length::points(80.0f),
+                .align_items = AlignItems::Start},
+      .children = ::ui::children({
+          ::ui::host(::ui::HostKind::Box,
+                     {
+                         .key = "hidden",
+                         .style = {.width = Length::points(40.0f),
+                                   .height = Length::points(30.0f),
+                                   .align_items = AlignItems::Start},
+                         .visual = v,
+                         .children = ::ui::children({
+                             ::ui::host(::ui::HostKind::Box,
+                                        {
+                                            .key = "child",
+                                            .style = {.width = Length::points(20.0f),
+                                                      .height = Length::points(20.0f)},
+                                            .visual = child,
+                                        }),
+                         }),
+                     }),
+      }),
+  });
+  ReconcileResult result =
+      reconcile_retained_tree(tree, frame, root, 120.0f, 80.0f);
+  CHECK(result.ok);
+
+  FlexLayoutAdapter adapter = make_yoga_flex_layout_adapter();
+  CHECK(compute_flex_layout(adapter, tree, {120.0f, 80.0f}));
+
+  NodeId root_id = tree.child_at(tree.root_id(), 0);
+  NodeId hidden_id = tree.child_at(root_id, 0);
+  NodeId child_id = tree.child_at(hidden_id, 0);
+
+  DrawCommandList list = {};
+  CHECK(build_draw_command_list(tree, &list, 0));
+  CHECK(list.error_count == 0);
+
+  // No command (of any kind) is attributed to the hidden node or its child.
+  for (int i = 0; i < list.count; ++i) {
+    CHECK(list.commands[i].node_id != hidden_id);
+    CHECK(list.commands[i].node_id != child_id);
+  }
+  return true;
+}
+
 int main(void) {
   if (!button_emits_fill_and_border())
+    return 1;
+  if (!group_opacity_emits_balanced_layer_brackets())
+    return 1;
+  if (!full_opacity_emits_no_layer())
+    return 1;
+  if (!hidden_node_emits_nothing())
     return 1;
   if (!focused_button_emits_focus_ring_outline())
     return 1;

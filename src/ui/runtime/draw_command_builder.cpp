@@ -484,14 +484,48 @@ bool append_input_contents(DrawCommandList &list, const NodeSnapshot &node,
   return true;
 }
 
+// Emit a LayerPush bracketing the node's subtree (design §9.10). The header rect
+// is the node's border-box; the executor sizes a transient render-to-target to
+// it and composites the whole subtree back at the layer opacity, so overlapping
+// translucent children flatten once (no double-darkening).
+bool push_layer(DrawCommandList &list, const NodeSnapshot &node) {
+  DrawCommand command = {};
+  command.kind = DrawCommandKind::LayerPush;
+  command.node_id = node.id;
+  command.rect = to_draw_rect(node.layout);
+  command.payload.layer = {.opacity = node.visual.opacity};
+  return list.push(command);
+}
+
+bool pop_layer(DrawCommandList &list, const NodeSnapshot &node) {
+  DrawCommand command = {};
+  command.kind = DrawCommandKind::LayerPop;
+  command.node_id = node.id;
+  return list.push(command);
+}
+
 bool append_node(const UiTree &tree, DrawCommandList &list, NodeId id,
                  bool inherited_disabled, NodeId focused_id) {
   NodeSnapshot node = {};
   if (!tree.snapshot(id, &node))
     return false;
 
+  // hidden => skip paint entirely (layout already happened upstream; design
+  // §9.10 / §8.5). The node and its subtree contribute nothing to the IR.
+  if (node.visual.hidden)
+    return true;
+
   bool disabled = inherited_disabled || node.interaction.disabled;
   bool focused = focused_id != 0 && focused_id == node.id;
+
+  // Group opacity: opacity < 1 brackets the node's own paint + subtree in a
+  // LayerPush/LayerPop so the executor composites the group as a unit (design
+  // §9.10). opacity >= 1 emits no layer (the common path). Brackets are
+  // contiguous and balanced by construction (push before paint, pop after).
+  const bool layer = node.visual.opacity < 1.0f;
+  if (layer && !push_layer(list, node))
+    return false;
+
   // Paint order per design §9.8: Shadow -> fill/Gradient -> Image -> [children]
   // -> Border+Outline. (Children are appended after this node's own paint.)
   if (!append_shadow(list, node) ||
@@ -506,6 +540,9 @@ bool append_node(const UiTree &tree, DrawCommandList &list, NodeId id,
     if (!append_node(tree, list, tree.child_at(id, i), disabled, focused_id))
       return false;
   }
+
+  if (layer && !pop_layer(list, node))
+    return false;
   return true;
 }
 
