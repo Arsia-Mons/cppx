@@ -39,28 +39,50 @@ Color control_fill(const NodeSnapshot &node) {
 }
 
 bool append_rect(DrawList &list, const NodeSnapshot &node, bool focused) {
+  // Component-resolved paint is the source of truth. Legacy Style + role
+  // defaults remain only as a fallback for not-yet-migrated nodes (dual-path).
+  const VisualStyle &v = node.visual;
+  bool visual_box = has_color(v.background) ||
+                    (v.border.color.top.a > 0 && v.border.width.top > 0.0f) ||
+                    (v.outline.color.a > 0 && v.outline.width > 0.0f);
   bool styled_box =
       has_color(node.style.background) ||
       (has_color(node.style.border) && node.style.border_width > 0.0f);
   bool control_box = node.role == NodeRole::Button ||
                      node.role == NodeRole::Checkbox ||
                      node.role == NodeRole::Input;
-  if (!styled_box && !control_box && !focused) {
+  if (!visual_box && !styled_box && !control_box && !focused) {
     return true;
   }
 
-  Color border = has_color(node.style.border)
-                     ? node.style.border
-                     : (node.interaction.disabled ? kButtonDisabledBorder
-                                                   : kButtonBorder);
-  float border_width = node.style.border_width > 0.0f
-                           ? node.style.border_width
-                           : (control_box ? 1.0f : 0.0f);
-  // A focused, non-disabled node gets the accent focus ring. This is the
-  // visible focus indicator: applied here in the retained runtime so focus
-  // styling lands uniformly on any focused control or box, rather than being
-  // baked into each control's style.
-  if (focused && !node.interaction.disabled) {
+  Color fill =
+      has_color(v.background)
+          ? v.background
+          : (has_color(node.style.background)
+                 ? node.style.background
+                 : (control_box ? control_fill(node) : kTransparent));
+
+  Color border;
+  float border_width;
+  if (v.border.color.top.a > 0 && v.border.width.top > 0.0f) {
+    border = v.border.color.top; // uniform border via the old single-color cmd
+    border_width = v.border.width.top;
+  } else {
+    border = has_color(node.style.border)
+                 ? node.style.border
+                 : (node.interaction.disabled ? kButtonDisabledBorder
+                                               : kButtonBorder);
+    border_width = node.style.border_width > 0.0f
+                       ? node.style.border_width
+                       : (control_box ? 1.0f : 0.0f);
+  }
+
+  // Focus ring: prefer the component-resolved outline; else the legacy
+  // any-source injection (kept until every focusable component is migrated).
+  if (v.outline.color.a > 0 && v.outline.width > 0.0f) {
+    border = v.outline.color;
+    border_width = v.outline.width;
+  } else if (focused && !node.interaction.disabled) {
     border = kFocusBorder;
     border_width = kFocusBorderWidth;
   }
@@ -69,9 +91,7 @@ bool append_rect(DrawList &list, const NodeSnapshot &node, bool focused) {
       .kind = DrawCommandKind::Rect,
       .node_id = node.id,
       .rect = node.layout,
-      .fill = has_color(node.style.background)
-                  ? node.style.background
-                  : (control_box ? control_fill(node) : kTransparent),
+      .fill = fill,
       .border = border,
       .border_width = border_width,
   });
@@ -82,18 +102,25 @@ bool append_text(DrawList &list, const NodeSnapshot &node,
   if (node.role != NodeRole::Text)
     return true;
 
+  const VisualStyle &v = node.visual;
+  Color fill = has_color(v.text.color)
+                   ? v.text.color
+                   : (has_color(node.style.text)
+                          ? node.style.text
+                          : ((node.interaction.disabled || inherited_disabled)
+                                 ? kTextDisabledFill
+                                 : kTextFill));
+  uint16_t font_size = v.text.font_size > 0
+                           ? v.text.font_size
+                           : (node.style.font_size > 0 ? node.style.font_size
+                                                       : static_cast<uint16_t>(15));
   DrawCommand command = {
       .kind = DrawCommandKind::Text,
       .node_id = node.id,
       .rect = node.layout,
-      .fill = has_color(node.style.text)
-                  ? node.style.text
-                  : ((node.interaction.disabled || inherited_disabled)
-                         ? kTextDisabledFill
-                         : kTextFill),
+      .fill = fill,
       .border = kTransparent,
-      .font_size = node.style.font_size > 0 ? node.style.font_size
-                                            : static_cast<uint16_t>(15),
+      .font_size = font_size,
   };
   copy_text(command.text, node.value);
   return list.push(command);

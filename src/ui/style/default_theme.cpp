@@ -45,9 +45,9 @@ const Theme &default_theme() {
     seed_control(th.input);
     seed_control(th.checkbox);
 
-    th.checkbox.checked.background = opt(Color{44, 92, 128, 255});
+    // The checkbox BODY does not react to `checked` (only the mark does).
     th.checkbox_mark.base.background = {0, 0, 0, 0};                  // hidden until checked
-    th.checkbox_mark.checked.background = opt(Color{224, 228, 236, 255}); // visible mark
+    th.checkbox_mark.checked.background = opt(Color{44, 92, 128, 255}); // visible mark
 
     th.box.base = VisualStyle{};
     th.text.base.text = TextVisual{th.text_default, 0, 14};

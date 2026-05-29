@@ -34,10 +34,11 @@ namespace {
   // Box body + inner mark each resolve from their theme role (dual-path; the
   // renderer consumes .visual once P3 flips the builder).
   const ::ui::Theme &theme = ::ui::use_theme();
-  const ::ui::InteractionState st =
-      detail::interaction_state(props.disabled, props.checked);
-  const ::ui::VisualStyle box_visual = ::ui::resolve(theme.checkbox, {}, st);
-  const ::ui::VisualStyle mark_visual = ::ui::resolve(theme.checkbox_mark, {}, st);
+  // The body does NOT react to `checked` (only the mark does).
+  const ::ui::VisualStyle box_visual =
+      ::ui::resolve(theme.checkbox, {}, detail::interaction_state(props.disabled));
+  const ::ui::VisualStyle mark_visual = ::ui::resolve(
+      theme.checkbox_mark, {}, detail::interaction_state(props.disabled, props.checked));
 
   return <detail.Host
     kind={::ui::HostKind::Checkbox}
