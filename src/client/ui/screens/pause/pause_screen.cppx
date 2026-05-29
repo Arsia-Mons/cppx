@@ -1,0 +1,104 @@
+#include "pause_screen.h"
+
+#include <memory>
+#include <stdio.h>
+
+#include "client/ui/callback_deps.h"
+#include "client/ui/client_ui.h"
+#include "client/ui/components/screen_chrome.h"
+#include "client/ui/screens/loadout/loadout_screen.h"
+#include "client/ui/screens/main_menu/main_menu_screen.h"
+#include "client/ui/screens/options/options_screen.h"
+#include "react.h"
+
+namespace shooter {
+
+using ::ui::children;
+
+std::function<void()> use_push_pause_screen() {
+  client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
+  return use_callback(
+      [nav] {
+        if (nav.push)
+          nav.push(std::make_unique<PauseScreen>());
+      },
+      client::ui::callback_deps(nav.current_entry_id));
+}
+
+struct PauseScreenProps {
+  uint32_t unused = 0;
+};
+
+static const char *screen_entry_key(const char *prefix,
+                                    client::ui::UiScreenEntryId entry_id) {
+  char key[64] = {};
+  snprintf(key, sizeof(key), "%s-%u", prefix, entry_id);
+  return ::ui::copy_string(key);
+}
+
+static ::ui::UiElement PauseScreenView(const PauseScreenProps &props) {
+  (void)props;
+  client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
+  bool is_top = client::ui::use_screen_is_top();
+  std::function<void()> open_options = use_push_options_screen();
+  std::function<void()> open_loadout = use_push_loadout_screen();
+  std::function<void()> exit_to_main_menu = use_exit_to_main_menu();
+
+  if (!is_top)
+    return ::ui::empty();
+
+  return <CenteredOverlayFrame key="root">
+    <OverlayPanel key="panel">
+      <DialogTitle key="title" value="Paused" />
+      <MenuButton
+        key="resume"
+        id="ResumeButton"
+        label="Resume"
+        onActivate={[pop = nav.pop_current](const ::ui::ActivationEvent &) {
+          if (pop)
+            pop();
+        }}
+      />
+      <MenuButton
+        key="options"
+        id="OpenOptionsFromPauseButton"
+        label="Options"
+        onActivate={[open_options](const ::ui::ActivationEvent &) {
+          if (open_options)
+            open_options();
+        }}
+      />
+      <MenuButton
+        key="loadout"
+        id="OpenLoadoutFromPauseButton"
+        label="Loadout"
+        onActivate={[open_loadout](const ::ui::ActivationEvent &) {
+          if (open_loadout)
+            open_loadout();
+        }}
+      />
+      <MenuButton
+        key="exit-to-menu"
+        id="ExitToMainMenuButton"
+        label="Exit To Menu"
+        onActivate={[exit_to_main_menu](const ::ui::ActivationEvent &) {
+          if (exit_to_main_menu)
+            exit_to_main_menu();
+        }}
+      />
+    </OverlayPanel>
+  </CenteredOverlayFrame>
+}
+
+bool PauseScreen::build_element(::ui::UiElementFrame &frame,
+                                ::ui::UiElement *out) {
+  if (!out)
+    return false;
+  *out = ::ui::component("PauseScreen", PauseScreenProps{}, PauseScreenView,
+                         screen_entry_key("pause", entry_id()));
+  return true;
+}
+
+void PauseScreen::build_ui() {}
+
+} // namespace shooter

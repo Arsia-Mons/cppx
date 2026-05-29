@@ -4,7 +4,7 @@
 #include "../react.h"
 #include "../client/ui/providers/app_shell.h"
 #include "../client/ui/providers/shooter_provider.h"
-#include "../client/ui/screens/main_menu/main_menu_screen.h"
+#include "client/ui/screens/main_menu/main_menu_screen.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>

@@ -70,6 +70,21 @@ cppx_transpile(UI_COMPONENT_GENERATED
   src/ui/components/text.hx
 )
 add_custom_target(cppx_generated_components DEPENDS ${UI_COMPONENT_GENERATED})
+
+cppx_transpile(CLIENT_UI_GENERATED
+  src/client/ui/components/screen_chrome.cppx
+  src/client/ui/components/screen_chrome.hx
+  src/client/ui/screens/in_game/in_game_screen.cppx
+  src/client/ui/screens/in_game/in_game_screen.hx
+  src/client/ui/screens/main_menu/main_menu_screen.cppx
+  src/client/ui/screens/main_menu/main_menu_screen.hx
+  src/client/ui/screens/options/options_screen.cppx
+  src/client/ui/screens/options/options_screen.hx
+  src/client/ui/screens/pause/pause_screen.cppx
+  src/client/ui/screens/pause/pause_screen.hx
+)
+add_custom_target(cppx_generated_client_ui DEPENDS ${CLIENT_UI_GENERATED})
+
 set(UI_COMPONENT_GENERATED_INCLUDE_DIRS
   "${CMAKE_CURRENT_BINARY_DIR}/generated/cppx/src"
   "${CMAKE_CURRENT_BINARY_DIR}/generated/cppx/src/ui/components"
@@ -150,15 +165,12 @@ add_executable(hello
   src/client/ui/providers/shooter_provider.cpp
   src/client/ui/navigation/screen_stack.cpp
   src/client/ui/ui_pipeline.cpp
-  src/client/ui/screens/in_game/in_game_screen.cpp
   src/client/ui/screens/loadout/components/confirm_dialog.cpp
   src/client/ui/screens/loadout/components/equipment_slot.cpp
   src/client/ui/screens/loadout/components/weapon_tile.cpp
   src/client/ui/screens/loadout/loadout_screen.cpp
   src/client/ui/screens/loadout/loadout_state.cpp
-  src/client/ui/screens/main_menu/main_menu_screen.cpp
-  src/client/ui/screens/options/options_screen.cpp
-  src/client/ui/screens/pause/pause_screen.cpp
+  ${CLIENT_UI_GENERATED}
   src/platform/control_mailbox.cpp
   src/platform/sdl/input.cpp
   src/platform/sdl/window.cpp
@@ -185,6 +197,8 @@ target_include_directories(hello PRIVATE
 target_compile_options(hello PRIVATE
   $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall -Wextra -Wno-missing-field-initializers -Wno-c99-designator -Wno-unused-parameter>
 )
+
+add_dependencies(hello cppx_generated_client_ui)
 
 target_link_libraries(hello PRIVATE
   SDL3::SDL3
@@ -464,15 +478,12 @@ add_executable(shooter_ui_tests
   src/client/ui/providers/shooter_provider.cpp
   src/client/ui/navigation/screen_stack.cpp
   src/client/ui/ui_pipeline.cpp
-  src/client/ui/screens/in_game/in_game_screen.cpp
   src/client/ui/screens/loadout/components/confirm_dialog.cpp
   src/client/ui/screens/loadout/components/equipment_slot.cpp
   src/client/ui/screens/loadout/components/weapon_tile.cpp
   src/client/ui/screens/loadout/loadout_screen.cpp
   src/client/ui/screens/loadout/loadout_state.cpp
-  src/client/ui/screens/main_menu/main_menu_screen.cpp
-  src/client/ui/screens/options/options_screen.cpp
-  src/client/ui/screens/pause/pause_screen.cpp
+  ${CLIENT_UI_GENERATED}
   src/game/inventory.cpp
   src/game/economy.cpp
   src/game/shooter_game.cpp
@@ -493,6 +504,8 @@ target_include_directories(shooter_ui_tests PRIVATE
 target_compile_options(shooter_ui_tests PRIVATE
   $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall -Wextra -Wno-missing-field-initializers -Wno-c99-designator -Wno-unused-parameter>
 )
+
+add_dependencies(shooter_ui_tests cppx_generated_client_ui)
 
 target_link_libraries(shooter_ui_tests PRIVATE
   yogacore

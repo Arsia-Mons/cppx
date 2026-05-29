@@ -1,0 +1,110 @@
+#include "options_screen.h"
+
+#include <memory>
+#include <stdio.h>
+#include <string>
+
+#include "client/ui/callback_deps.h"
+#include "client/ui/client_ui.h"
+#include "client/ui/components/screen_chrome.h"
+#include "react.h"
+#include "ui/components/checkbox.h"
+#include "ui/components/input.h"
+
+namespace shooter {
+
+using ::ui::children;
+using ::ui::components::Checkbox;
+using ::ui::components::CheckboxProps;
+using ::ui::components::Input;
+using ::ui::components::InputProps;
+
+std::function<void()> use_push_options_screen() {
+  client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
+  return use_callback(
+      [nav] {
+        if (nav.push)
+          nav.push(std::make_unique<OptionsScreen>());
+      },
+      client::ui::callback_deps(nav.current_entry_id));
+}
+
+struct OptionsScreenProps {
+  uint32_t unused = 0;
+};
+
+static const char *screen_entry_key(const char *prefix,
+                                    client::ui::UiScreenEntryId entry_id) {
+  char key[64] = {};
+  snprintf(key, sizeof(key), "%s-%u", prefix, entry_id);
+  return ::ui::copy_string(key);
+}
+
+static ::ui::UiElement OptionsScreenView(const OptionsScreenProps &props) {
+  (void)props;
+  client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
+  bool is_top = client::ui::use_screen_is_top();
+  int *large_hud = use_state_int(0);
+  int *reduced_motion = use_state_int(1);
+  std::string *player_name = use_state<std::string>(std::string("Ace"));
+
+  if (!is_top || !player_name)
+    return ::ui::empty();
+
+  return <OverlayScreenFrame key="root">
+    <ScreenTitle key="title" value="Options" />
+    <Checkbox
+      key="large-hud"
+      id="LargeHudToggle"
+      checked={large_hud && *large_hud != 0}
+      label="Large HUD"
+      onChange={[large_hud](bool enabled) {
+        if (large_hud)
+          *large_hud = enabled ? 1 : 0;
+      }}
+    />
+    <Checkbox
+      key="reduced-motion"
+      id="ReducedMotionToggle"
+      checked={reduced_motion && *reduced_motion != 0}
+      label="Reduce Motion"
+      onChange={[reduced_motion](bool enabled) {
+        if (reduced_motion)
+          *reduced_motion = enabled ? 1 : 0;
+      }}
+    />
+    <MenuButton
+      key="back"
+      id="BackFromOptionsButton"
+      label="Back"
+      onActivate={[pop = nav.pop_current](const ::ui::ActivationEvent &) {
+        if (pop)
+          pop();
+      }}
+    />
+    <Input
+      key="name"
+      id="NameInput"
+      accessibility={::ui::components::AccessibilityProps{.label = "Name"}}
+      value={player_name->c_str()}
+      onChange={[player_name](const std::string &value) {
+        if (player_name)
+          *player_name = value;
+      }}
+    />
+  </OverlayScreenFrame>
+}
+
+bool OptionsScreen::build_element(::ui::UiElementFrame &frame,
+                                  ::ui::UiElement *out) {
+  if (!out)
+    return false;
+  *out = ::ui::component("OptionsScreen", OptionsScreenProps{},
+                         OptionsScreenView,
+                         screen_entry_key("options", entry_id()));
+  return true;
+}
+
+void OptionsScreen::build_ui() {}
+
+} // namespace shooter

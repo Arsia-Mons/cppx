@@ -1,0 +1,6 @@
+CompileFlags:
+  # CMake writes compile_commands.json into cmake-build-debug/ (see
+  # CMAKE_EXPORT_COMPILE_COMMANDS in CMakeLists.txt). clangd only
+  # auto-discovers it in the project root or build/, so point it here.
+  # Run ./build.sh (or ./build.sh --configure) first to generate it.
+  CompilationDatabase: cmake-build-debug

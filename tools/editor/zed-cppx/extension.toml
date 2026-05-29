@@ -7,5 +7,5 @@ authors = ["Henry Ventura"]
 repository = "https://github.com/hvent90/cppx-zed"
 
 [grammars.cppx]
-repository = "file:///Users/henryventura/.cache/zed-cppx-grammar"
-rev = "e768f226c7f590a97dc63530919f85e8585bcaa6"
+repository = "file:///Users/hv/.cache/zed-cppx-grammar"
+rev = "cea99a0a6160de2f27e57037e380d629354cf92e"

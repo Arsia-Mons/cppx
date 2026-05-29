@@ -2,7 +2,7 @@
 
 #include <functional>
 
-#include "../../navigation/ui_screen.h"
+#include "client/ui/navigation/ui_screen.h"
 
 namespace shooter {
 
