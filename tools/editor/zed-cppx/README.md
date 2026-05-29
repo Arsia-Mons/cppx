@@ -20,11 +20,18 @@ into a submodule pointer), we use a *sidecar* git repo on the local
 filesystem. `install.sh` syncs the grammar source into that sidecar,
 commits, and rewrites the `rev` in `extension.toml`.
 
-1. Run `./tools/editor/zed-cppx/install.sh`. This creates / refreshes
-   `~/.cache/zed-cppx-grammar` (override with `CPPX_SIDECAR_DIR=...`).
+1. Run the install script. This creates / refreshes the sidecar repo.
+   - macOS / Linux: `./tools/editor/zed-cppx/install.sh`
+     → `~/.cache/zed-cppx-grammar` (override with `CPPX_SIDECAR_DIR`)
+   - Windows (PowerShell): `tools\editor\zed-cppx\install.ps1`
+     → `%LOCALAPPDATA%\zed-cppx-grammar` (override with `$env:CPPX_SIDECAR_DIR`)
 2. In Zed, run the `zed: install dev extension` command (Command Palette
    → search for it).
 3. Pick `tools/editor/zed-cppx/` in this repository.
+
+The install script rewrites `[grammars.cppx]` in `extension.toml` with a
+machine-local `file://` URL and the current sidecar commit SHA — those
+edits are per-machine and aren't meant to be committed.
 
 ## Regenerating the parser
 
@@ -35,7 +42,7 @@ If you edit `grammar-source/grammar.js`, regenerate the parser and re-run
 cd tools/editor/zed-cppx/grammar-source
 npx tree-sitter-cli@0.22 generate
 cd ..
-./install.sh
+./install.sh        # or .\install.ps1 on Windows
 ```
 
 This refreshes `src/parser.c`, `src/grammar.json`, and `src/node-types.json`,
