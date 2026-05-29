@@ -5,6 +5,7 @@
 
 #include "../../../../../react.h"
 #include "../../../../../ui/components/components.h"
+#include "client/ui/components/screen_chrome.h"
 #include "../../../hooks/shooter_weapons.h"
 #include "../../../providers/shooter_provider.h"
 #include "../loadout_state.h"
@@ -51,9 +52,8 @@ namespace shooter {
                       .style =
                           {
                               .height = ::ui::Length::points(16.0f),
-                              .text = {226, 238, 236, 255},
-                              .font_size = 14,
                           },
+                      .visual = theme::text_visual({226, 238, 236, 255}, 14),
                   },
                   components::Text),
           }),
@@ -65,6 +65,9 @@ namespace shooter {
                 if (select)
                   select();
               },
+          // Button paint comes from the theme button role (resolved as .visual
+          // inside Button); the selected state is conveyed by focus (autofocus=
+          // selected -> focus ring). Only layout fields live in .style.
           .style =
               {
                   .width = ::ui::Length::points(232.0f),
@@ -72,10 +75,6 @@ namespace shooter {
                   .align_items = ::ui::AlignItems::Start,
                   .justify_content = ::ui::JustifyContent::Center,
                   .padding = {10.0f, 10.0f, 8.0f, 8.0f},
-                  .background = selected ? ::ui::Color{35, 72, 62, 255}
-                                         : ::ui::Color{24, 28, 36, 255},
-                  .border = selected ? ::ui::Color{122, 176, 238, 255}
-                                     : ::ui::Color{78, 88, 104, 255},
                   .border_width = selected ? 2.0f : 1.0f,
               },
       },

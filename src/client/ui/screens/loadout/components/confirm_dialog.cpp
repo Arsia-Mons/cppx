@@ -6,6 +6,7 @@
 
 #include "../../../../../react.h"
 #include "../../../../../ui/components/components.h"
+#include "client/ui/components/screen_chrome.h"
 #include "../../../hooks/shooter_weapons.h"
 #include "../../../providers/shooter_provider.h"
 #include "../loadout_state.h"
@@ -48,8 +49,8 @@ const char *confirm_body_key(uint32_t generation) {
                   .height = ::ui::Length::percent(100.0f),
                   .align_items = ::ui::AlignItems::Center,
                   .justify_content = ::ui::JustifyContent::Center,
-                  .background = {0, 0, 0, 160},
               },
+          .visual = theme::fill_visual({0, 0, 0, 160}),
           .children =
               ::ui::children(
                   {
@@ -62,10 +63,10 @@ const char *confirm_body_key(uint32_t generation) {
                                       .width = ::ui::Length::points(360.0f),
                                       .padding = {18.0f, 18.0f, 18.0f, 18.0f},
                                       .gap = 12.0f,
-                                      .background = {18, 26, 32, 255},
-                                      .border = {92, 116, 126, 255},
                                       .border_width = 1.0f,
                                   },
+                              .visual = theme::panel_visual({18, 26, 32, 255},
+                                                            {92, 116, 126, 255}),
                               .children = ::ui::children(
                                   {
                                       ::ui::component(
@@ -78,10 +79,9 @@ const char *confirm_body_key(uint32_t generation) {
                                                       .height =
                                                           ::ui::Length::points(
                                                               24.0f),
-                                                      .text = {240, 248, 244,
-                                                               255},
-                                                      .font_size = 22,
                                                   },
+                                              .visual = theme::text_visual(
+                                                  {240, 248, 244, 255}, 22),
                                           },
                                           components::Text),
                                       ::ui::component(
@@ -94,10 +94,9 @@ const char *confirm_body_key(uint32_t generation) {
                                                       .height =
                                                           ::ui::Length::points(
                                                               18.0f),
-                                                      .text = {202, 218, 216,
-                                                               255},
-                                                      .font_size = 15,
                                                   },
+                                              .visual = theme::text_visual(
+                                                  {202, 218, 216, 255}, 15),
                                           },
                                           components::Text),
                                       ::ui::component(

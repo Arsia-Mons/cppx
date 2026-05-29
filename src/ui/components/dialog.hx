@@ -20,6 +20,7 @@ struct DialogProps {
   std::function<void(const ::ui::TextEditingEvent &)> on_text_editing = {};
   bool modal = true;
   ::ui::Style style = {};
+  ::ui::VisualStyle visual = {}; // caller-supplied dense paint (dual-path)
   ::ui::UiChildren children = {};
 };
 

@@ -18,19 +18,19 @@ using ::ui::components::Text;
 using ::ui::components::TextProps;
 
 ::ui::UiElement MenuScreenFrame(const MenuScreenFrameProps &props) {
-  return <Box key={props.key} style={theme::menu_screen_frame_style()}>
+  return <Box key={props.key} style={theme::menu_screen_frame_style()} visual={theme::menu_screen_frame_visual()}>
     {props.children}
   </Box>
 }
 
 ::ui::UiElement GameScreenFrame(const GameScreenFrameProps &props) {
-  return <Box key={props.key} style={theme::game_screen_frame_style()}>
+  return <Box key={props.key} style={theme::game_screen_frame_style()} visual={theme::game_screen_frame_visual()}>
     {props.children}
   </Box>
 }
 
 ::ui::UiElement OverlayScreenFrame(const OverlayScreenFrameProps &props) {
-  return <Dialog key={props.key} style={theme::overlay_screen_frame_style()}>
+  return <Dialog key={props.key} style={theme::overlay_screen_frame_style()} visual={theme::overlay_screen_frame_visual()}>
     {props.children}
   </Dialog>
 }
@@ -42,31 +42,31 @@ using ::ui::components::TextProps;
 }
 
 ::ui::UiElement HeroPanel(const HeroPanelProps &props) {
-  return <Box key={props.key} style={theme::hero_panel_style()}>
+  return <Box key={props.key} style={theme::hero_panel_style()} visual={theme::hero_panel_visual()}>
     {props.children}
   </Box>
 }
 
 ::ui::UiElement OverlayPanel(const OverlayPanelProps &props) {
-  return <Box key={props.key} style={theme::overlay_panel_style()}>
+  return <Box key={props.key} style={theme::overlay_panel_style()} visual={theme::overlay_panel_visual()}>
     {props.children}
   </Box>
 }
 
 ::ui::UiElement HeroTitle(const HeroTitleProps &props) {
-  return <Text key={props.key} value={props.value} style={theme::hero_title_style()} />
+  return <Text key={props.key} value={props.value} style={theme::hero_title_style()} visual={theme::hero_title_visual()} />
 }
 
 ::ui::UiElement ScreenTitle(const ScreenTitleProps &props) {
-  return <Text key={props.key} value={props.value} style={theme::screen_title_style()} />
+  return <Text key={props.key} value={props.value} style={theme::screen_title_style()} visual={theme::screen_title_visual()} />
 }
 
 ::ui::UiElement DialogTitle(const DialogTitleProps &props) {
-  return <Text key={props.key} value={props.value} style={theme::dialog_title_style()} />
+  return <Text key={props.key} value={props.value} style={theme::dialog_title_style()} visual={theme::dialog_title_visual()} />
 }
 
 ::ui::UiElement SubtitleText(const SubtitleTextProps &props) {
-  return <Text key={props.key} value={props.value} style={theme::subtitle_style()} />
+  return <Text key={props.key} value={props.value} style={theme::subtitle_style()} visual={theme::subtitle_visual()} />
 }
 
 ::ui::UiElement ActionRow(const ActionRowProps &props) {

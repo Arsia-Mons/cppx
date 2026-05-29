@@ -5,6 +5,7 @@
 
 #include "../../../../../react.h"
 #include "../../../../../ui/components/components.h"
+#include "client/ui/components/screen_chrome.h"
 #include "../../../hooks/shooter_weapons.h"
 #include "../../../providers/shooter_provider.h"
 #include "../loadout_state.h"
@@ -75,9 +76,8 @@ const char *weapon_tile_key(int index) {
                           .style =
                               {
                                   .height = ::ui::Length::points(18.0f),
-                                  .text = {238, 246, 244, 255},
-                                  .font_size = 16,
                               },
+                          .visual = theme::text_visual({238, 246, 244, 255}, 16),
                       },
                       components::Text),
                   ::ui::component(
@@ -88,12 +88,11 @@ const char *weapon_tile_key(int index) {
                           .style =
                               {
                                   .height = ::ui::Length::points(16.0f),
-                                  .text = disabled ? ::ui::Color{142, 148,
-                                                                 150, 255}
-                                                   : ::ui::Color{184, 204,
-                                                                 204, 255},
-                                  .font_size = 12,
                               },
+                          .visual = theme::text_visual(
+                              disabled ? ::ui::Color{142, 148, 150, 255}
+                                       : ::ui::Color{184, 204, 204, 255},
+                              12),
                       },
                       components::Text),
               }),
@@ -104,6 +103,9 @@ const char *weapon_tile_key(int index) {
                 if (select)
                   select();
               },
+          // Button paint comes from the theme button role (resolved as .visual
+          // inside Button); selected/disabled states are conveyed by focus and
+          // the disabled interaction. Only layout fields live in .style.
           .style =
               {
                   .width = ::ui::Length::points(190.0f),
@@ -112,10 +114,6 @@ const char *weapon_tile_key(int index) {
                   .justify_content = ::ui::JustifyContent::Start,
                   .padding = {10.0f, 10.0f, 10.0f, 10.0f},
                   .gap = 5.0f,
-                  .background = selected ? ::ui::Color{35, 72, 62, 255}
-                                         : ::ui::Color{24, 31, 36, 255},
-                  .border = disabled ? ::ui::Color{58, 62, 66, 255}
-                                     : ::ui::Color{102, 142, 150, 255},
                   .border_width = selected ? 2.0f : 1.0f,
               },
       },

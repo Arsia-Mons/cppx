@@ -7,6 +7,7 @@
 #include "../../../../ui/components/components.h"
 #include "../../callback_deps.h"
 #include "../../client_ui.h"
+#include "client/ui/components/screen_chrome.h"
 #include "../../hooks/shooter_weapons.h"
 #include "../../providers/shooter_provider.h"
 #include "components/confirm_dialog.h"
@@ -167,8 +168,8 @@ LoadoutScreenBody(const LoadoutScreenBodyProps &props) {
                               .height = ::ui::Length::percent(100.0f),
                               .padding = {24.0f, 24.0f, 24.0f, 24.0f},
                               .gap = 18.0f,
-                              .background = {12, 20, 24, 245},
                           },
+                      .visual = theme::fill_visual({12, 20, 24, 245}),
                       .children =
                           ::ui::children(
                               {
@@ -181,9 +182,9 @@ LoadoutScreenBody(const LoadoutScreenBodyProps &props) {
                                                   .height =
                                                       ::ui::Length::points(
                                                           30.0f),
-                                                  .text = {236, 246, 242, 255},
-                                                  .font_size = 26,
                                               },
+                                          .visual = theme::text_visual(
+                                              {236, 246, 242, 255}, 26),
                                       }),
                                   ::ui::components::elements::Box(
                                       {
@@ -245,11 +246,6 @@ LoadoutScreenBody(const LoadoutScreenBodyProps &props) {
                                                                        12.0f,
                                                                        7.0f,
                                                                        7.0f},
-                                                                  .background =
-                                                                      *active_tab ==
-                                                                              LOADOUT_TAB_WEAPONS
-                                                                          ? ::ui::Color{42, 80, 60, 255}
-                                                                          : ::ui::Color{24, 28, 36, 255},
                                                               },
                                                       }),
                                                       ::ui::components::elements::Button(
@@ -299,11 +295,6 @@ LoadoutScreenBody(const LoadoutScreenBodyProps &props) {
                                                                            12.0f,
                                                                            7.0f,
                                                                            7.0f},
-                                                                      .background =
-                                                                          *active_tab ==
-                                                                                  LOADOUT_TAB_GEAR
-                                                                              ? ::ui::Color{42, 80, 60, 255}
-                                                                              : ::ui::Color{24, 28, 36, 255},
                                                                   },
                                                           }),
                                                   }),
@@ -352,10 +343,11 @@ LoadoutScreenBody(const LoadoutScreenBodyProps &props) {
                                                                            14.0f},
                                                                       .gap =
                                                                           10.0f,
-                                                                      .background =
-                                                                          {22,
-                                                                           30, 36, 255},
                                                                   },
+                                                              .visual =
+                                                                  theme::fill_visual(
+                                                                      {22, 30,
+                                                                       36, 255}),
                                                               .children = ::ui::
                                                                   children({
                                                                       ::ui::components::elements::Text({
@@ -367,10 +359,11 @@ LoadoutScreenBody(const LoadoutScreenBodyProps &props) {
                                                                               {
                                                                                   .height =
                                                                                       ::ui::Length::points(18.0f),
-                                                                                  .text = {226, 238, 236, 255},
-                                                                                  .font_size =
-                                                                                      14,
                                                                               },
+                                                                          .visual =
+                                                                              theme::text_visual(
+                                                                                  {226, 238, 236, 255},
+                                                                                  14),
                                                                       }),
                                                                       ::ui::components::elements::Checkbox({
                                                                           .key =
@@ -467,10 +460,11 @@ LoadoutScreenBody(const LoadoutScreenBodyProps &props) {
                                                                               {
                                                                                   .height =
                                                                                       ::ui::Length::points(16.0f),
-                                                                                  .text = {202, 218, 216, 255},
-                                                                                  .font_size =
-                                                                                      14,
                                                                               },
+                                                                          .visual =
+                                                                              theme::text_visual(
+                                                                                  {202, 218, 216, 255},
+                                                                                  14),
                                                                       }),
                                                                       ::ui::component(
                                                                           "EquipmentSlot",

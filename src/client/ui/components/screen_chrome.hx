@@ -19,6 +19,36 @@ constexpr ::ui::Color kTitleText = {236, 246, 242, 255};
 constexpr ::ui::Color kHeroTitleText = {235, 246, 242, 255};
 constexpr ::ui::Color kSubtitleText = {154, 177, 184, 255};
 
+// Dense-paint builders: every painted shooter node carries a resolved
+// VisualStyle so the renderer reads node.visual directly (no legacy node.style
+// paint fallback). Colors are STRAIGHT alpha; the IR premultiplies at emit.
+
+// Solid-fill surface (no border).
+inline ::ui::VisualStyle fill_visual(::ui::Color background) {
+  ::ui::VisualStyle v{};
+  v.background = background;
+  return v;
+}
+
+// Solid-fill surface with a uniform 1px-style border (width supplied via the
+// layout Style.border_width; the color is carried here on all four sides).
+inline ::ui::VisualStyle panel_visual(::ui::Color background, ::ui::Color border,
+                                      float border_width = 1.0f) {
+  ::ui::VisualStyle v{};
+  v.background = background;
+  v.border.width = {border_width, border_width, border_width, border_width};
+  v.border.color = {border, border, border, border};
+  return v;
+}
+
+// Text paint (color + size). align/wrap/line_height stay defaults.
+inline ::ui::VisualStyle text_visual(::ui::Color color, uint16_t font_size) {
+  ::ui::VisualStyle v{};
+  v.text.color = color;
+  v.text.font_size = font_size;
+  return v;
+}
+
 inline ::ui::Style menu_screen_frame_style() {
   return {
       .width = ::ui::Length::percent(100.0f),
@@ -27,7 +57,6 @@ inline ::ui::Style menu_screen_frame_style() {
       .align_items = ::ui::AlignItems::Center,
       .justify_content = ::ui::JustifyContent::Center,
       .padding = {36.0f, 36.0f, 36.0f, 36.0f},
-      .background = kMenuBackground,
   };
 }
 
@@ -38,7 +67,6 @@ inline ::ui::Style game_screen_frame_style() {
       .direction = ::ui::FlexDirection::Column,
       .padding = {24.0f, 24.0f, 24.0f, 24.0f},
       .gap = 18.0f,
-      .background = kGameBackground,
   };
 }
 
@@ -50,7 +78,6 @@ inline ::ui::Style overlay_screen_frame_style() {
       .align_items = ::ui::AlignItems::Start,
       .padding = {24.0f, 24.0f, 24.0f, 24.0f},
       .gap = 12.0f,
-      .background = kOverlayBackground,
   };
 }
 
@@ -71,8 +98,8 @@ inline ::ui::Style hero_panel_style() {
       .align_items = ::ui::AlignItems::Center,
       .padding = {24.0f, 24.0f, 24.0f, 24.0f},
       .gap = 14.0f,
-      .background = kHeroPanelBackground,
-      .border = kHeroPanelBorder,
+      // border_width feeds Yoga layout (reserves the border box); the paint
+      // color lives in hero_panel_visual().
       .border_width = 1.0f,
   };
 }
@@ -84,8 +111,6 @@ inline ::ui::Style overlay_panel_style() {
       .align_items = ::ui::AlignItems::Center,
       .padding = {18.0f, 18.0f, 18.0f, 18.0f},
       .gap = 12.0f,
-      .background = kPanelBackground,
-      .border = kPanelBorder,
       .border_width = 1.0f,
   };
 }
@@ -93,32 +118,24 @@ inline ::ui::Style overlay_panel_style() {
 inline ::ui::Style hero_title_style() {
   return {
       .height = ::ui::Length::points(36.0f),
-      .text = kHeroTitleText,
-      .font_size = 30,
   };
 }
 
 inline ::ui::Style screen_title_style() {
   return {
       .height = ::ui::Length::points(32.0f),
-      .text = kTitleText,
-      .font_size = 26,
   };
 }
 
 inline ::ui::Style dialog_title_style() {
   return {
       .height = ::ui::Length::points(34.0f),
-      .text = kTitleText,
-      .font_size = 28,
   };
 }
 
 inline ::ui::Style subtitle_style() {
   return {
       .height = ::ui::Length::points(22.0f),
-      .text = kSubtitleText,
-      .font_size = 16,
   };
 }
 
@@ -128,6 +145,35 @@ inline ::ui::Style action_row_style() {
       .align_items = ::ui::AlignItems::Start,
       .gap = 12.0f,
   };
+}
+
+// ---- resolved paint (node.visual) for the chrome surfaces above ----
+inline ::ui::VisualStyle menu_screen_frame_visual() {
+  return fill_visual(kMenuBackground);
+}
+inline ::ui::VisualStyle game_screen_frame_visual() {
+  return fill_visual(kGameBackground);
+}
+inline ::ui::VisualStyle overlay_screen_frame_visual() {
+  return fill_visual(kOverlayBackground);
+}
+inline ::ui::VisualStyle hero_panel_visual() {
+  return panel_visual(kHeroPanelBackground, kHeroPanelBorder);
+}
+inline ::ui::VisualStyle overlay_panel_visual() {
+  return panel_visual(kPanelBackground, kPanelBorder);
+}
+inline ::ui::VisualStyle hero_title_visual() {
+  return text_visual(kHeroTitleText, 30);
+}
+inline ::ui::VisualStyle screen_title_visual() {
+  return text_visual(kTitleText, 26);
+}
+inline ::ui::VisualStyle dialog_title_visual() {
+  return text_visual(kTitleText, 28);
+}
+inline ::ui::VisualStyle subtitle_visual() {
+  return text_visual(kSubtitleText, 16);
 }
 
 } // namespace theme

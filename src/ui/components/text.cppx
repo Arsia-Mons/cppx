@@ -8,6 +8,7 @@ namespace ui::components {
     id={props.id}
     idOffset={props.id_offset}
     style={props.style}
+    visual={props.visual}
     text={::ui::HostTextProps{.value = props.value}}
     interaction={detail::interaction_from_props(props)}
     accessibility={detail::accessibility_from_props(props, ::ui::SemanticRole::Auto)}

@@ -3,6 +3,7 @@
 #include "../../../react.h"
 #include "../../../ui/components/components.h"
 #include "../hooks/shooter_hud.h"
+#include "client/ui/components/screen_chrome.h"
 
 namespace shooter {
 
@@ -24,9 +25,8 @@ namespace shooter {
             .style =
                 {
                     .height = ::ui::Length::points(22.0f),
-                    .text = {224, 238, 236, 255},
-                    .font_size = 18,
                 },
+            .visual = theme::text_visual({224, 238, 236, 255}, 18),
         },
         components::Text);
   };
@@ -43,10 +43,9 @@ namespace shooter {
                   .align_items = ::ui::AlignItems::Center,
                   .padding = {16.0f, 16.0f, 10.0f, 10.0f},
                   .gap = 18.0f,
-                  .background = {18, 24, 28, 245},
-                  .border = {82, 106, 118, 255},
                   .border_width = 1.0f,
               },
+          .visual = theme::panel_visual({18, 24, 28, 245}, {82, 106, 118, 255}),
           .children = ::ui::children({
               hud_text("health", health),
               hud_text("armor", armor),
