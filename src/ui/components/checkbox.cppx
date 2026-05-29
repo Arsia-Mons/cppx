@@ -31,18 +31,27 @@ namespace {
       detail::interaction_from_props(props, true);
   interaction.checked = props.checked;
 
+  // Box body + inner mark each resolve from their theme role (dual-path; the
+  // renderer consumes .visual once P3 flips the builder).
+  const ::ui::Theme &theme = ::ui::use_theme();
+  const ::ui::InteractionState st =
+      detail::interaction_state(props.disabled, props.checked);
+  const ::ui::VisualStyle box_visual = ::ui::resolve(theme.checkbox, {}, st);
+  const ::ui::VisualStyle mark_visual = ::ui::resolve(theme.checkbox_mark, {}, st);
+
   return <detail.Host
     kind={::ui::HostKind::Checkbox}
     key={props.key}
     id={props.id}
     idOffset={props.id_offset}
     style={detail::control_style(props.disabled, props.style)}
+    visual={box_visual}
     text={::ui::HostTextProps{.value = props.label}}
     interaction={interaction}
     accessibility={detail::accessibility_from_props(props, ::ui::SemanticRole::Checkbox)}
     callbacks={callbacks}
   >
-    <Box key="mark" style={checkbox_mark_style(props.checked)} />
+    <Box key="mark" style={checkbox_mark_style(props.checked)} visual={mark_visual} />
     {props.label}
   </detail.Host>
 }

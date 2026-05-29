@@ -213,12 +213,16 @@ void publish_change(const std::function<void(const std::string &)> &on_change,
     state->composition_length = event.length;
   };
 
+  const ::ui::VisualStyle visual = ::ui::resolve(
+      ::ui::use_theme().input, {}, detail::interaction_state(props.disabled));
+
   return <detail.Host
     kind={::ui::HostKind::Input}
     key={props.key}
     id={props.id}
     idOffset={props.id_offset}
     style={detail::control_style(props.disabled, props.style)}
+    visual={visual}
     text={::ui::HostTextProps{.value = props.value}}
     interaction={detail::interaction_from_props(props, true)}
     textEdit={text_edit_metadata(*state)}

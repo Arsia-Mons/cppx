@@ -1,6 +1,9 @@
 #pragma once
 
 #include "../runtime/element.h"
+#include "../runtime/interaction_hooks.h" // use_hovered/pressed/focused/focus_visible
+#include "../style/resolve.h"             // resolve(), RoleStyle, VisualStyle
+#include "../style/theme.h"               // use_theme()
 
 #include <functional>
 
@@ -88,6 +91,19 @@ inline ::ui::HostCallbacks callbacks_from_props(const Props &props) {
       .on_text_input = props.on_text_input,
       .on_text_editing = props.on_text_editing,
   };
+}
+
+// Reads this component's live interaction state (every-frame read; styling §7).
+inline ::ui::InteractionState interaction_state(bool disabled,
+                                                bool checked = false) {
+  ::ui::InteractionState st{};
+  st.hovered = ::ui::use_hovered();
+  st.pressed = ::ui::use_pressed();
+  st.focused = ::ui::use_focused();
+  st.focus_visible = ::ui::use_focus_visible();
+  st.checked = checked;
+  st.disabled = disabled;
+  return st;
 }
 
 inline ::ui::Style control_style(bool disabled, ::ui::Style style = {}) {

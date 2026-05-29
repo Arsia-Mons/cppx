@@ -92,6 +92,10 @@ set(UI_COMPONENT_GENERATED_INCLUDE_DIRS
 
 set(UI_COMPONENT_SOURCES
   ${UI_COMPONENT_GENERATED}
+  src/ui/style/resolve.cpp
+  src/ui/style/default_theme.cpp
+  src/ui/style/text_measure.cpp
+  src/ui/runtime/interaction_hooks.cpp
 )
 
 function(target_use_ui_components target_name)
@@ -158,7 +162,6 @@ add_executable(hello
   src/app/app.cpp
   src/app/game_loop.cpp
   src/client/ui/client_ui.cpp
-  src/ui/runtime/interaction_hooks.cpp
   src/client/ui/components/hud_band.cpp
   src/client/ui/hooks/shooter_hud.cpp
   src/client/ui/hooks/shooter_weapons.cpp
@@ -464,7 +467,6 @@ add_executable(client_ui_tests
   tests/client_ui_tests.cpp
   src/react.cpp
   src/client/ui/client_ui.cpp
-  src/ui/runtime/interaction_hooks.cpp
   src/client/ui/navigation/screen_stack.cpp
   src/ui/runtime/draw_list.cpp
   src/ui/runtime/element.cpp
@@ -494,7 +496,6 @@ add_executable(ui_pipeline_tests
   tests/ui_pipeline_tests.cpp
   src/react.cpp
   src/client/ui/client_ui.cpp
-  src/ui/runtime/interaction_hooks.cpp
   src/client/ui/navigation/screen_stack.cpp
   src/client/ui/ui_pipeline.cpp
   src/ui/runtime/draw_list.cpp
@@ -525,7 +526,6 @@ add_executable(shooter_ui_tests
   tests/shooter_ui_tests.cpp
   src/react.cpp
   src/client/ui/client_ui.cpp
-  src/ui/runtime/interaction_hooks.cpp
   src/client/ui/components/hud_band.cpp
   src/client/ui/hooks/shooter_hud.cpp
   src/client/ui/hooks/shooter_weapons.cpp

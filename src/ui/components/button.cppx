@@ -14,12 +14,17 @@ namespace {
 } // namespace
 
 ::ui::UiElement Button(const ButtonProps &props) {
+  // Resolve dense paint from theme + this component's live interaction; commit
+  // as .visual. The renderer consumes it once P3 flips the builder.
+  const ::ui::VisualStyle visual = ::ui::resolve(
+      ::ui::use_theme().button, {}, detail::interaction_state(props.disabled));
   return <detail.Host
     kind={::ui::HostKind::Button}
     key={props.key}
     id={props.id}
     idOffset={props.id_offset}
     style={detail::control_style(props.disabled, props.style)}
+    visual={visual}
     text={::ui::HostTextProps{.value = props.label}}
     interaction={detail::interaction_from_props(props, true)}
     accessibility={detail::accessibility_from_props(props, ::ui::SemanticRole::Button)}
