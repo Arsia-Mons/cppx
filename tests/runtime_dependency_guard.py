@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import re
 import sys
 
 
@@ -8,6 +9,46 @@ SCAN_FILES = [ROOT / "CMakeLists.txt"]
 SCAN_DIRS = [ROOT / "src"]
 SOURCE_SUFFIXES = {".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp"}
 BLOCKED = ("clay", "ui/focus", "ui/primitives")
+
+# src/ui/ is the SDL-free generic toolkit (architecture.md §3, §6). The ONLY
+# seams across the SDL boundary are the geometry mesh contract and the single
+# MeasureTextFn function pointer — neither names an SDL/SDL_ttf type. So no file
+# under src/ui/ may include SDL/SDL_ttf or reference an SDL_/TTF_ symbol. We scan
+# code only (comments are stripped) so prose mentioning "SDL_ttf" stays legal.
+UI_SDL_FREE_DIR = ROOT / "src/ui"
+SDL_INCLUDE_RE = re.compile(r'#\s*include\s*[<"]\s*(SDL3?/|SDL[._]|SDL_ttf)', re.IGNORECASE)
+SDL_SYMBOL_RE = re.compile(r'\b(?:SDL|TTF)_[A-Za-z][A-Za-z0-9_]*')
+
+
+def strip_comments(text: str) -> str:
+    """Remove // line comments and /* */ block comments and string/char literals
+    so identifier scans only see real code. Good enough for a structural guard."""
+    out = []
+    i, n = 0, len(text)
+    while i < n:
+        c = text[i]
+        two = text[i:i + 2]
+        if two == "//":
+            j = text.find("\n", i)
+            i = n if j == -1 else j
+        elif two == "/*":
+            j = text.find("*/", i + 2)
+            i = n if j == -1 else j + 2
+        elif c in ('"', "'"):
+            quote = c
+            i += 1
+            while i < n:
+                if text[i] == "\\":
+                    i += 2
+                    continue
+                if text[i] == quote:
+                    i += 1
+                    break
+                i += 1
+        else:
+            out.append(c)
+            i += 1
+    return "".join(out)
 SOURCE_BLOCKED = (
     "ui/runtime/components.h",
     "runtime/components.h",
@@ -55,6 +96,22 @@ def main() -> int:
                         f"{rel}: contains blocked immediate retained API term {term!r}"
                     )
                     break
+
+        if is_under(path, UI_SDL_FREE_DIR) and path.suffix in SOURCE_SUFFIXES:
+            code = strip_comments(path.read_text(encoding="utf-8"))
+            include_hit = SDL_INCLUDE_RE.search(code)
+            if include_hit:
+                failures.append(
+                    f"{rel}: src/ui/ is SDL-free — illegal SDL/SDL_ttf include "
+                    f"{include_hit.group(0)!r}"
+                )
+            symbol_hit = SDL_SYMBOL_RE.search(code)
+            if symbol_hit:
+                failures.append(
+                    f"{rel}: src/ui/ is SDL-free — illegal SDL_/TTF_ symbol "
+                    f"{symbol_hit.group(0)!r} (only the MeasureTextFn pointer + "
+                    "geometry mesh seam may cross the SDL boundary)"
+                )
 
     cmake_text = (ROOT / "CMakeLists.txt").read_text(encoding="utf-8").lower()
     if "src/ui/runtime/components.cpp" in cmake_text:

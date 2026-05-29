@@ -146,6 +146,15 @@ set_tests_properties(runtime_dependency_guard PROPERTIES
 )
 
 add_test(
+  NAME ui_style_invariants_guard
+  COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/ui_style_invariants_guard.py
+)
+set_tests_properties(ui_style_invariants_guard PROPERTIES
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+add_test(
   NAME component_descriptor_guard
   COMMAND ${Python3_EXECUTABLE}
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/component_descriptor_guard.py

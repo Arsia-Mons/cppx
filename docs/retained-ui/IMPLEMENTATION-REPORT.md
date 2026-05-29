@@ -23,6 +23,20 @@ This is an honest status report. It documents what was built and exactly how to 
 > - **New SDL executor** — `src/renderer/draw_executor.{h,cpp}`: linear executor over the IR (Rect/Border/Gradient via the verified geometry, premultiplied; Text via blit; Clip stack). `renderer_golden_tests` renders a hand-authored IR scene (rounded fill, fused border+outline, gradient) and pins it to `tests/fixtures/golden/new_ir_scene.bmp` — **visually confirmed correct**. Commit `4d0bc24`.
 >
 > **The new IR → pixels path is proven and golden-pinned.** What's left is the **live-app swap** (a transcriber `tree → DrawCommandList` reusing the P2c legacy fallback, + rewiring the client's render call to `execute_draw_commands`) and then P5/P6 effects (image/nine-slice/shadow already have geometry; group opacity layers) + measure-driven text (P4). Note: swapping the live renderer is mechanical wiring against a *proven* executor, but its visual payoff needs a theme pass (today's theme uses `corner_radius=0`, so the app looks identical until rounded corners/gradients are authored into `default_theme`). See revised §3/§5.
+>
+> ## UPDATE — FINAL: the rewrite is COMPLETE
+>
+> The from-first-principles styling/render system is finished end to end. Every step was committed green, one green step at a time:
+> - **Transcriber landed (`6f17d7e`)** — `src/ui/runtime/draw_command_builder.{h,cpp}`: the `tree → DrawCommandList` walk (additive, dual-path at first).
+> - **Live path swapped (`74aa816`)** — `GameLoop::tick` now clears the `UiSurface`, calls `build_draw_command_list`, and renders the tagged-union IR through `renderer::execute_draw_commands`. The legacy `DrawList` + `SdlRetainedRenderer` were kept compiling alongside (dual-path) only until the deletion step.
+> - **Theme pass (`e98e93a`)** — authored the new dark look into `default_theme()`; gradient emission wired into the new-IR builder.
+> - **P4 — measure-driven text (`8403099`)** — one injected `MeasureTextFn` (`src/renderer/text_measure_impl.cpp`, installed once at startup) drives Yoga layout, paint, and caret placement, so measure == paint by construction. `ui/` stays SDL-free.
+> - **P5 — image + shadow (`d196392`)** — `Image` (plain stretch / nine-slice / rounded) and `Shadow` wired in the executor (geometry from §9.6–§9.8); `TextureRegistry` owns decoded textures.
+> - **P6 — group opacity (`c092fcc`)** — `LayerPush`/`LayerPop` composite a subtree through an offscreen render target at `opacity < 1` (§9.10).
+> - **Legacy deleted (`f67ad50`, `e7817f1`)** — `7a` migrated client + control components fully onto `.visual` and dropped the `control_style()` dependencies; `7b` deleted the legacy `draw_list.{h,cpp}`, `sdl_retained_renderer.{h,cpp}`, `control_style()`/`kControl*Fill`, and the `Style` paint fields. The builder now reads `node.visual` **exclusively** — the legacy paint fallback is gone.
+> - **Finalization (this step)** — created **`architecture.md`** at the repo root (the canonical mental model referenced by every `CLAUDE.md`); extended `tests/runtime_dependency_guard.py` to fail on any `<SDL...>`/`SDL_`/`TTF_` use under `src/ui/` (comments stripped so prose stays legal; the geometry mesh + the single `MeasureTextFn` pointer are the only sanctioned seams); added `tests/ui_style_invariants_guard.py` pinning the authoring optionality model (`Opt<T>{set,value}`, every `StylePatch` member is an `Opt<…>`, `apply()`/`merge()` gate on `.set` only — **no value-space sentinels**); wired both guards into ctest.
+>
+> **Final state:** the live app renders entirely through the new component-resolved `VisualStyle → build_draw_command_list → premultiplied DrawCommand IR → execute_draw_commands` path. The legacy path is gone. `./build.sh --tests` is **fully green — `100% tests passed, 0 tests failed out of 26`** (24 prior + the 2 new guards). Architecture doc and dependency/invariant guards are in place. The rewrite is done.
 
 ---
 
