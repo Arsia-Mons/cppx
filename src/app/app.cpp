@@ -2,6 +2,7 @@
 
 #include "game_loop.h"
 #include "../react.h"
+#include "../renderer/text_measure_impl.h"
 #include "../client/ui/providers/app_shell.h"
 #include "../client/ui/providers/shooter_provider.h"
 #include "client/ui/screens/main_menu/main_menu_screen.h"
@@ -85,6 +86,10 @@ bool App::initialize(const AppOptions &options) {
     if (!fonts_.initialize(window_.renderer())) {
         return false;
     }
+    // Install the ONE SDL_ttf-backed text measurer (design §10.1). It is used by
+    // BOTH the Yoga measure shim and the draw-list transcriber, so layout and
+    // paint measure identically. ui/ stays SDL-free; this is the only seam.
+    renderer::install_text_measurer(&fonts_);
     if (!retained_render_.initialize(window_.renderer(), fonts_)) {
         return false;
     }

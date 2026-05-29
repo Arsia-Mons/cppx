@@ -181,6 +181,7 @@ add_executable(hello
   src/renderer/font_registry.cpp
   src/renderer/sdl_retained_renderer.cpp
   src/renderer/draw_executor.cpp
+  src/renderer/text_measure_impl.cpp
   src/game/inventory.cpp
   src/game/economy.cpp
   src/game/shooter_game.cpp
@@ -243,6 +244,7 @@ add_test(NAME react_runtime_tests COMMAND react_runtime_tests)
 add_executable(retained_ui_runtime_tests
   tests/retained_ui_runtime_tests.cpp
   src/ui/runtime/tree.cpp
+  src/ui/style/text_measure.cpp
   src/ui/runtime/flex_layout.cpp
 )
 
@@ -259,6 +261,7 @@ add_test(NAME retained_ui_runtime_tests COMMAND retained_ui_runtime_tests)
 add_executable(retained_ui_yoga_tests
   tests/retained_ui_yoga_tests.cpp
   src/ui/runtime/tree.cpp
+  src/ui/style/text_measure.cpp
   src/ui/runtime/flex_layout.cpp
   src/ui/runtime/yoga_flex_layout.cpp
 )
@@ -282,6 +285,7 @@ add_executable(retained_ui_reconciler_tests
   src/react.cpp
   src/ui/runtime/element.cpp
   src/ui/runtime/tree.cpp
+  src/ui/style/text_measure.cpp
 )
 
 target_include_directories(retained_ui_reconciler_tests PRIVATE

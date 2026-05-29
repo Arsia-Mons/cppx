@@ -53,15 +53,6 @@ NodeRole node_role_for_host_kind(HostKind kind) {
   return NodeRole::Generic;
 }
 
-Size measure_text_node(MeasureInput input, void *user) {
-  const char *text = static_cast<const char *>(user);
-  float width = text ? (float)strlen(text) * 8.0f : 0.0f;
-  if (input.width_mode == MeasureMode::AtMost && width > input.width) {
-    width = input.width;
-  }
-  return {width, 16.0f};
-}
-
 ReactFiberId make_reconciler_fiber_id(const char *name, const char *key) {
   uint32_t sibling_index = react_next_child_index();
   if (key && key[0] != '\0') {
@@ -139,9 +130,11 @@ private:
     }
     bool measure_ok = true;
     if (host.kind == HostKind::Text) {
-      measure_ok = tree_.set_measure(
-          id, measure_text_node,
-          const_cast<char *>(props.text.value ? props.text.value : ""));
+      // Route layout through the shared injected measurer (design §10.1): the
+      // node's value + resolved TextVisual drive the query, so layout and paint
+      // measure identically. metadata is committed above, so the node already
+      // carries value + visual.text.
+      measure_ok = tree_.set_text_measure(id);
       if (!measure_ok) {
         ++error_count_;
       }

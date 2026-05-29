@@ -2,6 +2,7 @@
 #include "ui/runtime/draw_command_builder.h"
 #include "ui/runtime/flex_layout.h"
 #include "ui/runtime/yoga_flex_layout.h"
+#include "ui/style/text_measure.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -398,12 +399,275 @@ static bool default_text_color_is_premultiplied(void) {
   return true;
 }
 
+// ---------------------------------------------------------------------------
+// P4: a deterministic FAKE measurer (no SDL). Fixed advance per ASCII byte and a
+// fixed line height, with greedy word-wrap on spaces. 1-byte ASCII fixtures =>
+// byte==glyph==advance, so per-line geometry and caret offsets are exact and
+// platform-independent (matches the spec's mock contract, §13.4).
+namespace {
+constexpr float kFakeAdvance = 7.0f; // px per ASCII byte
+constexpr float kFakeLineH = 20.0f;  // px per line box
+
+float fake_aligned_x(TextAlign align, float line_w, float box_w) {
+  if (box_w <= 0.0f)
+    return 0.0f;
+  if (align == TextAlign::Center)
+    return (box_w - line_w) * 0.5f;
+  if (align == TextAlign::Right)
+    return box_w - line_w;
+  return 0.0f;
+}
+
+TextMetricsResult fake_measure(const TextMetricsQuery &q) {
+  TextMetricsResult out = {};
+  const char *s = q.utf8 ? q.utf8 : "";
+  uint32_t n = q.len;
+  float line_h = q.line_height > 0.0f ? q.line_height : kFakeLineH;
+
+  auto advance = [&](uint32_t len) { return static_cast<float>(len) * kFakeAdvance; };
+  auto push = [&](uint32_t off, uint32_t len, float y) {
+    if (out.line_count >= UI_MAX_TEXT_LINES) {
+      out.overflowed = true;
+      return false;
+    }
+    float w = advance(len);
+    float x = fake_aligned_x(q.align, w, q.wrap_width);
+    LineRun &run = out.lines[out.line_count++];
+    run.slice_offset = off;
+    run.slice_len = len;
+    run.x = x;
+    run.y = y;
+    run.w = w;
+    run.h = line_h;
+    if (w > out.width)
+      out.width = w;
+    return true;
+  };
+
+  if (q.wrap == TextWrap::Words && q.wrap_width > 0.0f && n > 0) {
+    uint32_t line_start = 0;
+    float y = 0.0f;
+    while (line_start < n) {
+      uint32_t fit_end = line_start;
+      uint32_t scan = line_start;
+      uint32_t next_start = n;
+      bool placed = false;
+      for (;;) {
+        uint32_t ws = scan;
+        while (ws < n && s[ws] == ' ')
+          ++ws;
+        uint32_t we = ws;
+        while (we < n && s[we] != ' ')
+          ++we;
+        if (we == ws)
+          break; // no more words
+        float w = advance(we - line_start);
+        if (w <= q.wrap_width || !placed) {
+          fit_end = we;
+          placed = true;
+          scan = we;
+          if (we >= n) {
+            next_start = n;
+            break;
+          }
+        } else {
+          next_start = fit_end;
+          while (next_start < n && s[next_start] == ' ')
+            ++next_start;
+          break;
+        }
+      }
+      if (!placed)
+        break;
+      if (!push(line_start, fit_end - line_start, y))
+        break;
+      y += line_h;
+      line_start = next_start;
+    }
+    out.height = static_cast<float>(out.line_count) * line_h;
+    return out;
+  }
+
+  // Single line.
+  push(0, n, 0.0f);
+  out.height = line_h;
+  return out;
+}
+} // namespace
+
+static bool wrapped_text_emits_one_command_per_line(void) {
+  set_text_measurer(fake_measure);
+  react_init_runtime();
+  UiTree tree;
+  UiElementFrame frame;
+  UiElementFrameScope frame_scope(frame);
+
+  // A narrow box forces the words to wrap onto multiple lines. wrap_width is the
+  // content width (~140px => 20 chars at 7px/char).
+  UiElement root = Box({
+      .key = "root",
+      .style =
+          {
+              .width = Length::points(140.0f),
+              .height = Length::points(200.0f),
+              .align_items = AlignItems::Start,
+          },
+      .children = ::ui::children({
+          // Low-level Text host so we can set the resolved TextVisual (wrap) the
+          // high-level Text() component does not expose yet.
+          ::ui::host(::ui::HostKind::Text,
+                     {
+                         .key = "para",
+                         .visual = {.text = {.font_size = 16,
+                                             .wrap = TextWrap::Words}},
+                         .text = {.value =
+                                      "alpha beta gamma delta epsilon zeta"},
+                     }),
+      }),
+  });
+  ReconcileResult result =
+      reconcile_retained_tree(tree, frame, root, 140.0f, 200.0f);
+  CHECK(result.ok);
+
+  FlexLayoutAdapter adapter = make_yoga_flex_layout_adapter();
+  CHECK(compute_flex_layout(adapter, tree, {140.0f, 200.0f}));
+
+  NodeId root_id = tree.child_at(tree.root_id(), 0);
+  NodeId para = tree.child_at(root_id, 0);
+
+  DrawCommandList list = {};
+  CHECK(build_draw_command_list(tree, &list, 0));
+  CHECK(list.error_count == 0);
+
+  // Count the Text commands for the paragraph and verify line_index/y increase.
+  int line_count = 0;
+  uint16_t prev_index = 0;
+  float prev_y = -1.0f;
+  uint32_t reconstructed_len = 0;
+  for (int i = 0; i < list.count; ++i) {
+    const DrawCommand &c = list.commands[i];
+    if (c.node_id != para || c.kind != DrawCommandKind::Text)
+      continue;
+    const TextData &t = c.payload.text;
+    if (line_count > 0) {
+      CHECK(t.line_index == static_cast<uint16_t>(prev_index + 1));
+      CHECK(c.rect.y > prev_y);
+    } else {
+      CHECK(t.line_index == 0);
+    }
+    prev_index = t.line_index;
+    prev_y = c.rect.y;
+    reconstructed_len += t.text_len;
+    ++line_count;
+  }
+  // 35 chars, wrap_width=140 (20 chars/line) => more than one line.
+  CHECK(line_count >= 2);
+  CHECK(line_count <= UI_MAX_TEXT_LINES);
+  // Lines hold the visible glyphs (spaces between lines are folded into breaks),
+  // so the reconstructed length is <= the source length.
+  CHECK(reconstructed_len <= strlen("alpha beta gamma delta epsilon zeta"));
+
+  set_text_measurer(nullptr);
+  return true;
+}
+
+static bool input_caret_uses_measured_advance(void) {
+  set_text_measurer(fake_measure);
+  react_init_runtime();
+  UiTree tree;
+  UiElementFrame frame;
+  UiElementFrameScope frame_scope(frame);
+
+  UiElement root = Box({
+      .key = "root",
+      .style =
+          {
+              .width = Length::points(320.0f),
+              .height = Length::points(80.0f),
+          },
+      .children = ::ui::children({
+          Input({
+              .key = "name",
+              .id = "NameInput",
+              .value = "abcdef",
+          }),
+      }),
+  });
+  ReconcileResult result =
+      reconcile_retained_tree(tree, frame, root, 320.0f, 80.0f);
+  CHECK(result.ok);
+
+  NodeId root_id0 = tree.child_at(tree.root_id(), 0);
+  NodeId input0 = tree.child_at(root_id0, 0);
+  // Select the whole value [0,6): drives a selection rect + caret at the end.
+  ::ui::UiKeyInputEvent select_all = {
+      .key = ::ui::UiKey::A,
+      .modifiers = ::ui::UI_KEY_MOD_CTRL,
+  };
+  CHECK(tree.invoke_key(input0, select_all));
+
+  frame.reset();
+  root = Box({
+      .key = "root",
+      .style =
+          {
+              .width = Length::points(320.0f),
+              .height = Length::points(80.0f),
+          },
+      .children = ::ui::children({
+          Input({
+              .key = "name",
+              .id = "NameInput",
+              .value = "abcdef",
+          }),
+      }),
+  });
+  result = reconcile_retained_tree(tree, frame, root, 320.0f, 80.0f);
+  CHECK(result.ok);
+
+  FlexLayoutAdapter adapter = make_yoga_flex_layout_adapter();
+  CHECK(compute_flex_layout(adapter, tree, {320.0f, 80.0f}));
+
+  NodeId root_id = tree.child_at(tree.root_id(), 0);
+  NodeId input = tree.child_at(root_id, 0);
+
+  DrawCommandList list = {};
+  CHECK(build_draw_command_list(tree, &list, input));
+  CHECK(list.error_count == 0);
+
+  // The input text origin is layout.x + 8 (kInsetX). The value "abcdef" is fully
+  // selected: 6 chars * 7px (the fake advance) = 42px, NOT 6*8=48 (the old
+  // kCharWidth bug). Caret sits at the end (index 6) at origin + 42.
+  constexpr float kInsetX = 8.0f;
+  NodeSnapshot snap = {};
+  CHECK(tree.snapshot(input, &snap));
+  float origin_x = snap.layout.x + kInsetX;
+
+  const DrawCommand *selection_rect =
+      find_command(list, input, DrawCommandKind::Rect, 0);
+  const DrawCommand *caret_rect =
+      find_command(list, input, DrawCommandKind::Rect, 1);
+  CHECK(selection_rect != nullptr);
+  CHECK(caret_rect != nullptr);
+  // 6 * 7px = 42 — proves measured advance, not char*8 (= 48).
+  CHECK(selection_rect->rect.w == 42.0f);
+  CHECK(selection_rect->rect.x == origin_x);
+  CHECK(caret_rect->rect.x == origin_x + 42.0f);
+
+  set_text_measurer(nullptr);
+  return true;
+}
+
 int main(void) {
   if (!button_emits_fill_and_border())
     return 1;
   if (!focused_button_emits_focus_ring_outline())
     return 1;
   if (!default_text_color_is_premultiplied())
+    return 1;
+  if (!wrapped_text_emits_one_command_per_line())
+    return 1;
+  if (!input_caret_uses_measured_advance())
     return 1;
   return 0;
 }

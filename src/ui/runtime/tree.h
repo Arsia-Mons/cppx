@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../input.h"
+#include "../style/text_measure.h" // the injected MeasureTextFn seam (text nodes)
 #include "../style/visual_style.h" // Color and the shared paint primitives live here now
 
 #include <array>
@@ -418,6 +419,12 @@ public:
 
   bool set_cleanup(NodeId id, CleanupFn cleanup, void *user);
   bool set_measure(NodeId id, MeasureFn measure, void *user);
+  // Install the shared text-measure shim on a text node. The shim builds a
+  // TextMetricsQuery from the node's committed value + resolved TextVisual and
+  // calls the injected text_measurer() — the SAME measurer the transcriber uses
+  // at paint time, so layout==paint by construction (design §10.1). Must be
+  // called after set_metadata (reads node->visual.text and node->value).
+  bool set_text_measure(NodeId id);
   bool set_baseline(NodeId id, BaselineFn baseline, void *user);
   bool set_metadata(NodeId id, const NodeMetadata &metadata);
   bool measure(NodeId id, MeasureInput input, Size *out) const;
@@ -433,6 +440,19 @@ public:
 
   bool snapshot(NodeId id, NodeSnapshot *out) const;
   bool contains(NodeId id) const;
+
+  // Stable per-node view the text-measure shim reads. utf8 points into the
+  // node's own committed value buffer; the resolved font params mirror the
+  // transcriber's source-selection so layout==paint.
+  struct TextMeasureView {
+    const char *utf8 = "";
+    uint16_t font_id = 0;
+    uint16_t font_size = 0;       // from visual.text.font_size (0 => fallback)
+    uint16_t style_font_size = 0; // legacy Style::font_size fallback
+    TextAlign align = TextAlign::Left;
+    TextWrap wrap = TextWrap::None;
+    float line_height = 0.0f;
+  };
 
   NodeId root_id() const { return UI_RETAINED_ROOT_ID; }
   NodeId current_parent_id() const;
@@ -478,6 +498,7 @@ private:
     void *cleanup_user = nullptr;
     MeasureFn measure = nullptr;
     void *measure_user = nullptr;
+    TextMeasureView text_measure_view = {};
     BaselineFn baseline = nullptr;
     void *baseline_user = nullptr;
   };

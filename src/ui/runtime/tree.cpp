@@ -142,6 +142,76 @@ bool UiTree::set_measure(NodeId id, MeasureFn measure, void *user) {
   return true;
 }
 
+namespace {
+
+// Resolved effective text paint for a node, mirroring the transcriber's source-
+// selection so layout and paint agree. The IR's font-size fallback is 15.
+uint16_t effective_font_size(const UiTree::TextMeasureView &view) {
+  if (view.font_size > 0)
+    return view.font_size;
+  if (view.style_font_size > 0)
+    return view.style_font_size;
+  return 15;
+}
+
+// The shared text-measure shim (design §10.1). user is the node's stable
+// TextMeasureView. Builds a query and routes through the injected measurer; if
+// no measurer is installed (hermetic layout tests), falls back to a fixed
+// per-byte advance so layout stays deterministic.
+Size text_measure_shim(MeasureInput input, void *user) {
+  const auto *view = static_cast<const UiTree::TextMeasureView *>(user);
+  if (!view)
+    return {0.0f, 16.0f};
+  const char *utf8 = view->utf8 ? view->utf8 : "";
+  uint32_t len = static_cast<uint32_t>(strlen(utf8));
+  uint16_t font_size = effective_font_size(*view);
+
+  MeasureTextFn measurer = text_measurer();
+  float wrap_width =
+      (input.width_mode == MeasureMode::AtMost) ? input.width : 0.0f;
+  if (!measurer) {
+    // Deterministic fallback for tests without an installed measurer.
+    float width = static_cast<float>(len) * 8.0f;
+    if (input.width_mode == MeasureMode::AtMost && width > input.width)
+      width = input.width;
+    return {width, 16.0f};
+  }
+
+  TextMetricsQuery query = {};
+  query.utf8 = utf8;
+  query.len = len;
+  query.font_id = view->font_id;
+  query.font_size = font_size;
+  query.align = view->align;
+  query.wrap = view->wrap;
+  query.line_height = view->line_height;
+  query.wrap_width = wrap_width; // box width; wrap only happens when wrap==Words
+  TextMetricsResult result = measurer(query);
+  float height = result.height > 0.0f ? result.height : 16.0f;
+  return {result.width, height};
+}
+
+} // namespace
+
+bool UiTree::set_text_measure(NodeId id) {
+  Node *node = find_mutable(id);
+  if (!node)
+    return false;
+  // Snapshot the resolved text paint into a stable per-node view the shim reads.
+  node->text_measure_view = {
+      .utf8 = node->value,
+      .font_id = node->visual.text.font_id,
+      .font_size = node->visual.text.font_size,
+      .style_font_size = node->style.font_size,
+      .align = node->visual.text.align,
+      .wrap = node->visual.text.wrap,
+      .line_height = node->visual.text.line_height,
+  };
+  node->measure = text_measure_shim;
+  node->measure_user = &node->text_measure_view;
+  return true;
+}
+
 bool UiTree::set_baseline(NodeId id, BaselineFn baseline, void *user) {
   Node *node = find_mutable(id);
   if (!node)

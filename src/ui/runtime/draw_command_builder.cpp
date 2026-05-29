@@ -1,5 +1,7 @@
 #include "draw_command_builder.h"
 
+#include "../style/text_measure.h"
+
 #include <string.h>
 
 namespace ui {
@@ -63,31 +65,83 @@ int clamp_int(int value, int low, int high) {
   return value;
 }
 
-bool push_text_command(DrawCommandList &list, NodeId node_id, const Rect &rect,
-                       const char *value, Color straight_color,
-                       uint16_t font_size, TextAlign align) {
-  const char *safe = value ? value : "";
-  uint32_t len = static_cast<uint32_t>(strlen(safe));
-  uint16_t bytes = len > 0xFFFFu ? static_cast<uint16_t>(0xFFFFu)
-                                 : static_cast<uint16_t>(len);
+// Emit one Text command for a byte slice at an explicit draw rect. The rect is
+// the already-positioned per-line box (the measurer baked alignment + line y);
+// the executor blits at rect.x/rect.y verbatim.
+bool push_text_line(DrawCommandList &list, NodeId node_id, const DrawRect &rect,
+                    const char *bytes, uint32_t byte_len, Color straight_color,
+                    uint16_t font_id, uint16_t font_size, uint16_t line_index,
+                    TextAlign align) {
+  uint16_t n = byte_len > 0xFFFFu ? static_cast<uint16_t>(0xFFFFu)
+                                  : static_cast<uint16_t>(byte_len);
   uint32_t off = 0;
-  if (!list.push_text(safe, bytes, &off))
+  if (!list.push_text(bytes ? bytes : "", n, &off))
     return false;
 
   DrawCommand command = {};
   command.kind = DrawCommandKind::Text;
   command.node_id = node_id;
-  command.rect = to_draw_rect(rect);
+  command.rect = rect;
   command.payload.text = {
       .text_off = off,
-      .text_len = bytes,
+      .text_len = n,
       .color = premul(straight_color),
-      .font_id = 0,
+      .font_id = font_id,
       .font_size = font_size,
-      .line_index = 0,
+      .line_index = line_index,
       .align = align,
   };
   return list.push(command);
+}
+
+// Single-line convenience used by inputs and the no-measurer fallback.
+bool push_text_command(DrawCommandList &list, NodeId node_id, const Rect &rect,
+                       const char *value, Color straight_color,
+                       uint16_t font_size, TextAlign align) {
+  const char *safe = value ? value : "";
+  uint32_t len = static_cast<uint32_t>(strlen(safe));
+  return push_text_line(list, node_id, to_draw_rect(rect), safe, len,
+                        straight_color, 0, font_size, 0, align);
+}
+
+// The content box of a node: its laid-out rect minus its own border + padding.
+// Text layout (wrap width, alignment, line origin) happens inside this box.
+Rect content_rect(const Rect &layout) {
+  Rect r = layout;
+  r.x = layout.x + layout.border.left + layout.padding.left;
+  r.y = layout.y + layout.border.top + layout.padding.top;
+  r.width = layout.width - layout.border.left - layout.border.right -
+            layout.padding.left - layout.padding.right;
+  r.height = layout.height - layout.border.top - layout.border.bottom -
+             layout.padding.top - layout.padding.bottom;
+  if (r.width < 0.0f)
+    r.width = 0.0f;
+  if (r.height < 0.0f)
+    r.height = 0.0f;
+  return r;
+}
+
+// Measured pen advance for a byte sub-slice [0,len) of value, via the injected
+// measurer (design §10.5). No measurer (hermetic tests) => fixed 8px/byte so
+// caret math stays deterministic. wrap=None, no box (single run advance).
+float measured_advance(const char *value, uint32_t len, uint16_t font_id,
+                       uint16_t font_size, float line_height) {
+  if (len == 0)
+    return 0.0f;
+  MeasureTextFn measurer = text_measurer();
+  if (!measurer)
+    return static_cast<float>(len) * 8.0f;
+  TextMetricsQuery query = {};
+  query.utf8 = value;
+  query.len = len;
+  query.font_id = font_id;
+  query.font_size = font_size;
+  query.align = TextAlign::Left;
+  query.wrap = TextWrap::None;
+  query.line_height = line_height;
+  query.wrap_width = 0.0f;
+  TextMetricsResult result = measurer(query);
+  return result.width;
 }
 
 bool push_rect_command(DrawCommandList &list, NodeId node_id, const Rect &rect,
@@ -244,7 +298,10 @@ bool append_frame(DrawCommandList &list, const NodeSnapshot &node,
   return list.push(command);
 }
 
-// TEXT (role==Text): single-line for this step (P4 makes it multi-line).
+// TEXT (role==Text): measure-driven, multi-line. Asks the injected measurer for
+// per-line layout (alignment + wrap baked in) and emits one Text command per
+// LineRun, line_index propagated. Measure == layout because both call the same
+// measurer (design §10.4). Overflow beyond UI_MAX_TEXT_LINES is a failed frame.
 bool append_text(DrawCommandList &list, const NodeSnapshot &node,
                  bool inherited_disabled) {
   if (node.role != NodeRole::Text)
@@ -263,21 +320,58 @@ bool append_text(DrawCommandList &list, const NodeSnapshot &node,
           ? v.text.font_size
           : (node.style.font_size > 0 ? node.style.font_size
                                       : static_cast<uint16_t>(15));
+  uint16_t font_id = v.text.font_id;
   TextAlign align = v.text.align;
-  return push_text_command(list, node.id, node.layout, node.value, color,
-                           font_size, align);
+  const char *value = node.value ? node.value : "";
+  uint32_t value_len = static_cast<uint32_t>(strlen(value));
+
+  Rect content = content_rect(node.layout);
+
+  MeasureTextFn measurer = text_measurer();
+  if (!measurer) {
+    // Hermetic fallback (no measurer installed): one line at the content rect.
+    return push_text_command(list, node.id, content, value, color, font_size,
+                             align);
+  }
+
+  TextMetricsQuery query = {};
+  query.utf8 = value;
+  query.len = value_len;
+  query.font_id = font_id;
+  query.font_size = font_size;
+  query.align = align;
+  query.wrap = v.text.wrap;
+  query.line_height = v.text.line_height;
+  query.wrap_width = content.width;
+  TextMetricsResult metrics = measurer(query);
+
+  for (uint8_t i = 0; i < metrics.line_count; ++i) {
+    const LineRun &line = metrics.lines[i];
+    if (line.slice_offset + line.slice_len > value_len)
+      return false; // measurer returned an out-of-range slice — fail the frame
+    DrawRect rect = {content.x + line.x, content.y + line.y, line.w, line.h};
+    if (!push_text_line(list, node.id, rect, value + line.slice_offset,
+                        line.slice_len, color, font_id, font_size, i, align))
+      return false;
+  }
+
+  if (metrics.overflowed) {
+    ++list.error_count; // text needed > UI_MAX_TEXT_LINES — never a silent drop
+    return false;
+  }
+  return true;
 }
 
-// INPUT contents (role==Input): selection rect, value text, caret rect. Keeps
-// the legacy kInsetX/kCharWidth/kTextHeight geometry (P4 replaces kCharWidth
-// with real measurement).
+// INPUT contents (role==Input): selection rect, value text, caret rect. Caret
+// and selection x come from REAL measured advances of the value's byte prefixes
+// (design §10.5) — never the old kCharWidth=8 hack — so the cursor lands exactly
+// under the glyph the same measurer laid out.
 bool append_input_contents(DrawCommandList &list, const NodeSnapshot &node,
                            bool focused, bool inherited_disabled) {
   if (node.role != NodeRole::Input)
     return true;
 
   constexpr float kInsetX = 8.0f;
-  constexpr float kCharWidth = 8.0f;
   constexpr float kTextHeight = 16.0f;
   float text_y = node.layout.y + (node.layout.height - kTextHeight) * 0.5f;
   Rect text_rect = {};
@@ -286,7 +380,14 @@ bool append_input_contents(DrawCommandList &list, const NodeSnapshot &node,
   text_rect.width = node.layout.width - kInsetX * 2.0f;
   text_rect.height = kTextHeight;
 
-  int length = text_length(node.value);
+  const char *value = node.value ? node.value : "";
+  int length = text_length(value);
+  uint16_t font_size = node.style.font_size > 0 ? node.style.font_size
+                                                : static_cast<uint16_t>(15);
+  // Inputs are single-line; reuse the node's resolved text line height if any.
+  float line_height = node.visual.text.line_height;
+  uint16_t font_id = node.visual.text.font_id;
+
   int selection_start = clamp_int(node.text_edit.selection_start, 0, length);
   int selection_end = clamp_int(node.text_edit.selection_end, 0, length);
   if (selection_end < selection_start) {
@@ -295,12 +396,19 @@ bool append_input_contents(DrawCommandList &list, const NodeSnapshot &node,
     selection_end = tmp;
   }
 
+  // Measured pen x for the prefix [0, idx) of the value.
+  auto advance_to = [&](int idx) -> float {
+    return measured_advance(value, static_cast<uint32_t>(idx), font_id,
+                            font_size, line_height);
+  };
+
   if (focused && selection_end > selection_start) {
+    float start_x = advance_to(selection_start);
+    float end_x = advance_to(selection_end);
     Rect sel = {};
-    sel.x = text_rect.x + static_cast<float>(selection_start) * kCharWidth;
+    sel.x = text_rect.x + start_x;
     sel.y = text_rect.y;
-    sel.width =
-        static_cast<float>(selection_end - selection_start) * kCharWidth;
+    sel.width = end_x - start_x;
     sel.height = text_rect.height;
     if (!push_rect_command(list, node.id, sel, kSelectionFill, 0.0f))
       return false;
@@ -311,16 +419,15 @@ bool append_input_contents(DrawCommandList &list, const NodeSnapshot &node,
                          : kTextFill;
   if (has_color(node.style.text))
     text_color = node.style.text;
-  uint16_t font_size = node.style.font_size > 0 ? node.style.font_size
-                                                : static_cast<uint16_t>(15);
-  if (!push_text_command(list, node.id, text_rect, node.value, text_color,
-                         font_size, TextAlign::Left))
+  if (!push_text_command(list, node.id, text_rect, value, text_color, font_size,
+                         TextAlign::Left))
     return false;
 
   if (focused) {
     int caret = clamp_int(node.text_edit.caret, 0, length);
+    float caret_x = advance_to(caret);
     Rect caret_rect = {};
-    caret_rect.x = text_rect.x + static_cast<float>(caret) * kCharWidth;
+    caret_rect.x = text_rect.x + caret_x;
     caret_rect.y = text_rect.y - 1.0f;
     caret_rect.width = 1.0f;
     caret_rect.height = text_rect.height + 2.0f;
