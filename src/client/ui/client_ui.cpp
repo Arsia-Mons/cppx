@@ -154,14 +154,10 @@ bool ClientUi::update_retained_runtime(const ::ui::FlexLayoutAdapter &layout,
       .source = ::ui::focus_source(retained_focus_),
   };
 
-  // Dual-path (styling/render step 2): build the legacy list (built-but-unused
-  // now) and the new tagged-union IR that the live render path executes. Both
-  // must succeed; the new list is what renderer::execute_draw_commands runs.
-  bool legacy_ok =
-      ::ui::legacy::build_draw_list(retained_tree_, &retained_draw_list_, active);
-  bool command_ok = ::ui::build_draw_command_list(
-      retained_tree_, &retained_command_list_, active);
-  return legacy_ok && command_ok;
+  // Build the tagged-union IR that the live render path executes via
+  // renderer::execute_draw_commands.
+  return ::ui::build_draw_command_list(retained_tree_, &retained_command_list_,
+                                       active);
 }
 
 bool ClientUi::push_screen(std::unique_ptr<UiScreen> screen) {

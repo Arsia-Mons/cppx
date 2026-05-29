@@ -7,12 +7,11 @@
 
 namespace app {
 
-GameLoop::GameLoop(platform::sdl::Window &window,
-                   renderer::SdlRetainedRenderer &retained_render,
+GameLoop::GameLoop(platform::sdl::Window &window, renderer::UiSurface &surface,
                    client::ui::UiPipeline &ui_pipeline,
                    platform::ControlMailbox &control, bool &running)
-    : window_(window), retained_render_(retained_render),
-      ui_pipeline_(ui_pipeline), control_(control), running_(running) {}
+    : window_(window), surface_(surface), ui_pipeline_(ui_pipeline),
+      control_(control), running_(running) {}
 
 void GameLoop::tick() {
   ::ui::UiInputFrame ui_input = {};
@@ -73,17 +72,15 @@ void GameLoop::tick() {
   };
 
   ui_pipeline_.render_client_ui_frame(frame, [&] {
-    retained_render_.clear({12, 14, 22, 255});
-    // Styling/render step 2: the live path renders the new tagged-union IR
-    // through execute_draw_commands. Fonts come from the retained renderer,
-    // which already owns the FontRegistry handed to it at initialize().
+    surface_.clear({12, 14, 22, 255});
+    // The live path renders the tagged-union IR through execute_draw_commands.
+    // Fonts come from the surface, which owns the FontRegistry handed to it at
+    // initialize().
     renderer::execute_draw_commands(
-        retained_render_.sdl_renderer(),
-        ui_pipeline_.client_ui().retained_command_list(),
-        retained_render_.fonts());
-    control_.capture_after_render(retained_render_.sdl_renderer(),
-                                  ui_pipeline_);
-    retained_render_.present();
+        surface_.sdl_renderer(),
+        ui_pipeline_.client_ui().retained_command_list(), surface_.fonts());
+    control_.capture_after_render(surface_.sdl_renderer(), ui_pipeline_);
+    surface_.present();
   });
   control_.finish_frame(ui_pipeline_);
 

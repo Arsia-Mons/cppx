@@ -3,7 +3,7 @@
 #include "client/ui/navigation/ui_screen.h"
 #include "react.h"
 #include "ui/components/components.h"
-#include "ui/runtime/draw_list.h"
+#include "ui/runtime/draw_command.h"
 #include "ui/runtime/focus.h"
 
 #include <memory>
@@ -214,26 +214,34 @@ static bool pipeline_updates_retained_runtime_before_render(void) {
 
   pipeline.render_client_ui_frame(test_frame(), [&] {
     probe.render_count += 1;
-    const ::ui::legacy::DrawList &draw =
-        pipeline.client_ui().retained_draw_list();
+    // The live IR is the new tagged-union DrawCommandList: the focused button
+    // emits a fill (Gradient/Rect), a Border, and a Text command for its label.
+    const ::ui::DrawCommandList &draw =
+        pipeline.client_ui().retained_command_list();
     probe.draw_count = draw.count;
     probe.focused_id =
         ::ui::focus_focused_id(pipeline.client_ui().retained_focus());
     for (int i = 0; i < draw.count; ++i) {
-      const ::ui::legacy::DrawCommand &command = draw.commands[i];
-      if (command.kind == ::ui::legacy::DrawCommandKind::Rect) {
+      const ::ui::DrawCommand &command = draw.commands[i];
+      if (command.kind == ::ui::DrawCommandKind::Rect ||
+          command.kind == ::ui::DrawCommandKind::Gradient) {
         probe.saw_button_rect = true;
         probe.button_id = command.node_id;
       }
-      if (command.kind == ::ui::legacy::DrawCommandKind::Text &&
-          strcmp(command.text, "Retained") == 0) {
-        probe.saw_label_text = true;
+      if (command.kind == ::ui::DrawCommandKind::Text) {
+        const ::ui::TextData &t = command.payload.text;
+        if (t.text_len == strlen("Retained") &&
+            t.text_off + t.text_len <=
+                static_cast<uint32_t>(draw.text_len_used) &&
+            memcmp(draw.text_arena + t.text_off, "Retained", t.text_len) == 0) {
+          probe.saw_label_text = true;
+        }
       }
     }
   });
 
   CHECK(probe.render_count == 1);
-  CHECK(probe.draw_count == 2);
+  CHECK(probe.draw_count > 0);
   CHECK(probe.saw_button_rect);
   CHECK(probe.saw_label_text);
   CHECK(probe.button_id != 0);

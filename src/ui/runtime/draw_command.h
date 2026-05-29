@@ -1,14 +1,11 @@
 #pragma once
 
-// The new tagged-union DrawCommand IR (styling/render design §8). A trivially-
-// copyable POD command stream produced by build_draw_list (a pure transcriber)
-// and executed linearly by the SDL renderer. Colors are PREMULTIPLIED at emit.
-// Variable data (text bytes, gradient stops) lives in out-of-line arenas; arms
-// hold integer handles, never pointers, so DrawCommand stays trivially copyable
-// and DrawList stays relocatable.
-//
-// This lands as a NEW header alongside the legacy draw_list.h; the renderer and
-// transcriber switch to it when the executor is flipped (P3).
+// The tagged-union DrawCommand IR (styling/render design §8). A trivially-
+// copyable POD command stream produced by build_draw_command_list (a pure
+// transcriber) and executed linearly by the SDL renderer. Colors are
+// PREMULTIPLIED at emit. Variable data (text bytes, gradient stops) lives in
+// out-of-line arenas; arms hold integer handles, never pointers, so DrawCommand
+// stays trivially copyable and DrawList stays relocatable.
 
 #include "../style/text_measure.h" // UI_MAX_TEXT_LINES
 #include "../style/visual_style.h"

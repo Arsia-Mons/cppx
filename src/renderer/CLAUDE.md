@@ -5,7 +5,9 @@ Drawing backend: SDL3-based retained UI command rendering + font ownership. This
 ## Files
 
 - `font_registry.{h,cpp}` — opens a default font and owns `TTF_TextEngine` lifetime.
-- `sdl_retained_renderer.{h,cpp}` — translates retained `DrawList` rect/text commands into SDL draw calls.
+- `draw_executor.{h,cpp}` — executes the tagged-union `DrawCommandList` IR (`ui/runtime/draw_command.h`) into SDL draw calls.
+- `ui_surface.{h,cpp}` — the minimal SDL surface the per-frame loop draws into (clear/present + the SDL_Renderer and FontRegistry the executor needs).
+- `texture_registry.{h,cpp}` — owns decoded textures for image draw commands.
 
 ## Hard rules
 

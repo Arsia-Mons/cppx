@@ -266,13 +266,11 @@ struct Style {
   StyleValue row_gap = {};
   StyleValue column_gap = {};
 
-  Color background = {};
-  Color border = {};
-  Color text = {};
-  // Visual all-edge border shorthand; also feeds Yoga's all-edge border for
-  // existing callers. Use border_widths for per-edge Yoga layout borders.
+  // All-edge layout border shorthand: feeds Yoga's all-edge border
+  // (YGNodeStyleSetBorder) so the laid-out content box reserves the border.
+  // Use border_widths for per-edge Yoga layout borders. This is a LAYOUT field
+  // only; paint lives in the resolved VisualStyle (node.visual).
   float border_width = 0.0f;
-  uint16_t font_size = 0;
 };
 
 enum class MeasureMode : uint8_t {
@@ -447,8 +445,7 @@ public:
   struct TextMeasureView {
     const char *utf8 = "";
     uint16_t font_id = 0;
-    uint16_t font_size = 0;       // from visual.text.font_size (0 => fallback)
-    uint16_t style_font_size = 0; // legacy Style::font_size fallback
+    uint16_t font_size = 0; // from visual.text.font_size (0 => fallback)
     TextAlign align = TextAlign::Left;
     TextWrap wrap = TextWrap::None;
     float line_height = 0.0f;

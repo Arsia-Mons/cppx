@@ -417,13 +417,32 @@ static bool client_ui_owns_retained_runtime_outputs(void) {
   CHECK(::ui::focus_focused_id(client_ui.retained_focus()) == button_id);
   CHECK(focus_count == 1);
 
-  const ::ui::legacy::DrawList &draw = client_ui.retained_draw_list();
+  // The live IR is the new tagged-union DrawCommandList: a focused button emits
+  // a fill (Gradient/Rect), a Border, and a Text command for its label.
+  const ::ui::DrawCommandList &draw = client_ui.retained_command_list();
   CHECK(draw.error_count == 0);
-  CHECK(draw.count == 2);
-  CHECK(draw.commands[0].kind == ::ui::legacy::DrawCommandKind::Rect);
-  CHECK(draw.commands[0].node_id == button_id);
-  CHECK(draw.commands[1].kind == ::ui::legacy::DrawCommandKind::Text);
-  CHECK(strcmp(draw.commands[1].text, "Confirm") == 0);
+  CHECK(draw.count > 0);
+  bool saw_button_fill = false;
+  bool saw_confirm_text = false;
+  for (int i = 0; i < draw.count; ++i) {
+    const ::ui::DrawCommand &c = draw.commands[i];
+    if (c.node_id == button_id &&
+        (c.kind == ::ui::DrawCommandKind::Rect ||
+         c.kind == ::ui::DrawCommandKind::Gradient)) {
+      saw_button_fill = true;
+    }
+    if (c.kind == ::ui::DrawCommandKind::Text) {
+      const ::ui::TextData &t = c.payload.text;
+      if (t.text_len == strlen("Confirm") &&
+          t.text_off + t.text_len <=
+              static_cast<uint32_t>(draw.text_len_used) &&
+          memcmp(draw.text_arena + t.text_off, "Confirm", t.text_len) == 0) {
+        saw_confirm_text = true;
+      }
+    }
+  }
+  CHECK(saw_button_fill);
+  CHECK(saw_confirm_text);
   return true;
 }
 

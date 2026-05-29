@@ -3,14 +3,13 @@
 #include "../client/ui/ui_pipeline.h"
 #include "../platform/control_mailbox.h"
 #include "../platform/sdl/window.h"
-#include "../renderer/sdl_retained_renderer.h"
+#include "../renderer/ui_surface.h"
 
 namespace app {
 
 class GameLoop {
 public:
-  GameLoop(platform::sdl::Window &window,
-           renderer::SdlRetainedRenderer &retained_render,
+  GameLoop(platform::sdl::Window &window, renderer::UiSurface &surface,
            client::ui::UiPipeline &ui_pipeline,
            platform::ControlMailbox &control, bool &running);
 
@@ -18,7 +17,7 @@ public:
 
 private:
   platform::sdl::Window &window_;
-  renderer::SdlRetainedRenderer &retained_render_;
+  renderer::UiSurface &surface_;
   client::ui::UiPipeline &ui_pipeline_;
   platform::ControlMailbox &control_;
   bool &running_;

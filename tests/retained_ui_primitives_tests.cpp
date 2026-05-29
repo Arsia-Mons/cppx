@@ -77,6 +77,9 @@ static bool html_primitives_write_semantic_metadata_and_layout(void) {
                   {
                       .width = Length::points(120.0f),
                       .height = Length::points(44.0f),
+                  },
+              .visual =
+                  {
                       .background = {20, 28, 32, 255},
                   },
               .children = ::ui::children({

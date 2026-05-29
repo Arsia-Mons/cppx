@@ -72,18 +72,25 @@ static bool button_emits_fill_and_border(void) {
               .align_items = AlignItems::Start,
               .padding = {4.0f, 4.0f, 4.0f, 4.0f},
               .gap = 6.0f,
-              .background = {18, 27, 32, 245},
-              .border = {83, 108, 118, 255},
               .border_width = 1.0f,
+          },
+      .visual =
+          {
+              .background = {18, 27, 32, 245},
+              .border = {{1.0f, 1.0f, 1.0f, 1.0f},
+                         {{83, 108, 118, 255},
+                          {83, 108, 118, 255},
+                          {83, 108, 118, 255},
+                          {83, 108, 118, 255}}},
           },
       .children = ::ui::children({
           Text({
               .key = "title",
               .value = "Title",
-              .style =
+              .visual =
                   {
-                      .text = {235, 246, 242, 255},
-                      .font_size = 24,
+                      .text = {.color = {235, 246, 242, 255},
+                               .font_size = 24},
                   },
           }),
           Button({
@@ -126,18 +133,25 @@ static bool button_emits_fill_and_border(void) {
               .align_items = AlignItems::Start,
               .padding = {4.0f, 4.0f, 4.0f, 4.0f},
               .gap = 6.0f,
-              .background = {18, 27, 32, 245},
-              .border = {83, 108, 118, 255},
               .border_width = 1.0f,
+          },
+      .visual =
+          {
+              .background = {18, 27, 32, 245},
+              .border = {{1.0f, 1.0f, 1.0f, 1.0f},
+                         {{83, 108, 118, 255},
+                          {83, 108, 118, 255},
+                          {83, 108, 118, 255},
+                          {83, 108, 118, 255}}},
           },
       .children = ::ui::children({
           Text({
               .key = "title",
               .value = "Title",
-              .style =
+              .visual =
                   {
-                      .text = {235, 246, 242, 255},
-                      .font_size = 24,
+                      .text = {.color = {235, 246, 242, 255},
+                               .font_size = 24},
                   },
           }),
           Button({

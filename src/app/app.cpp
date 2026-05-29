@@ -90,7 +90,7 @@ bool App::initialize(const AppOptions &options) {
     // BOTH the Yoga measure shim and the draw-list transcriber, so layout and
     // paint measure identically. ui/ stays SDL-free; this is the only seam.
     renderer::install_text_measurer(&fonts_);
-    if (!retained_render_.initialize(window_.renderer(), fonts_)) {
+    if (!surface_.initialize(window_.renderer(), fonts_)) {
         return false;
     }
 
@@ -121,7 +121,7 @@ bool App::initialize(const AppOptions &options) {
 
 int App::run() {
     if (!initialized_) return 1;
-    GameLoop loop(window_, retained_render_, ui_pipeline_, control_, running_);
+    GameLoop loop(window_, surface_, ui_pipeline_, control_, running_);
     while (running_) {
         loop.tick();
     }

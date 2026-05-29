@@ -4,7 +4,7 @@
 #include "../platform/control_mailbox.h"
 #include "../platform/sdl/window.h"
 #include "../renderer/font_registry.h"
-#include "../renderer/sdl_retained_renderer.h"
+#include "../renderer/ui_surface.h"
 #include "../game/shooter_game.h"
 
 namespace app {
@@ -32,7 +32,7 @@ private:
     AppOptions                 options_        = {};
     platform::sdl::Window      window_         = {};
     renderer::FontRegistry     fonts_          = {};
-    renderer::SdlRetainedRenderer retained_render_ = {};
+    renderer::UiSurface        surface_        = {};
     client::ui::UiPipeline     ui_pipeline_    = {};
     shooter::ShooterGame       shooter_game_   = {};
     platform::ControlMailbox   control_        = {};

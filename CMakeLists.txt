@@ -179,14 +179,13 @@ add_executable(hello
   src/platform/sdl/input.cpp
   src/platform/sdl/window.cpp
   src/renderer/font_registry.cpp
-  src/renderer/sdl_retained_renderer.cpp
+  src/renderer/ui_surface.cpp
   src/renderer/draw_executor.cpp
   src/renderer/texture_registry.cpp
   src/renderer/text_measure_impl.cpp
   src/game/inventory.cpp
   src/game/economy.cpp
   src/game/shooter_game.cpp
-  src/ui/runtime/draw_list.cpp
   src/ui/runtime/draw_command.cpp
   src/ui/runtime/draw_command_builder.cpp
   src/ui/runtime/geometry.cpp
@@ -369,32 +368,6 @@ target_link_libraries(retained_ui_primitives_tests PRIVATE
 
 add_test(NAME retained_ui_primitives_tests COMMAND retained_ui_primitives_tests)
 
-add_executable(retained_ui_draw_list_tests
-  tests/retained_ui_draw_list_tests.cpp
-  src/react.cpp
-  src/ui/runtime/draw_list.cpp
-  src/ui/runtime/element.cpp
-  ${UI_COMPONENT_SOURCES}
-  src/ui/runtime/tree.cpp
-  src/ui/runtime/flex_layout.cpp
-  src/ui/runtime/yoga_flex_layout.cpp
-)
-
-target_include_directories(retained_ui_draw_list_tests PRIVATE
-  src
-  third_party
-)
-
-target_compile_options(retained_ui_draw_list_tests PRIVATE
-  $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall -Wextra -Wno-missing-field-initializers -Wno-c99-designator -Wno-unused-parameter>
-)
-
-target_link_libraries(retained_ui_draw_list_tests PRIVATE
-  yogacore
-)
-
-add_test(NAME retained_ui_draw_list_tests COMMAND retained_ui_draw_list_tests)
-
 add_executable(retained_ui_draw_command_tests
   tests/retained_ui_draw_command_tests.cpp
   src/react.cpp
@@ -567,7 +540,6 @@ add_executable(client_ui_tests
   src/react.cpp
   src/client/ui/client_ui.cpp
   src/client/ui/navigation/screen_stack.cpp
-  src/ui/runtime/draw_list.cpp
   src/ui/runtime/draw_command.cpp
   src/ui/runtime/draw_command_builder.cpp
   src/ui/runtime/element.cpp
@@ -599,7 +571,6 @@ add_executable(ui_pipeline_tests
   src/client/ui/client_ui.cpp
   src/client/ui/navigation/screen_stack.cpp
   src/client/ui/ui_pipeline.cpp
-  src/ui/runtime/draw_list.cpp
   src/ui/runtime/draw_command.cpp
   src/ui/runtime/draw_command_builder.cpp
   src/ui/runtime/element.cpp
@@ -645,7 +616,6 @@ add_executable(shooter_ui_tests
   src/game/inventory.cpp
   src/game/economy.cpp
   src/game/shooter_game.cpp
-  src/ui/runtime/draw_list.cpp
   src/ui/runtime/draw_command.cpp
   src/ui/runtime/draw_command_builder.cpp
   src/ui/runtime/element.cpp
@@ -706,7 +676,6 @@ foreach(ui_component_consumer IN ITEMS
   ui_components_tests
   retained_cppx_component_tests
   retained_ui_primitives_tests
-  retained_ui_draw_list_tests
   retained_ui_draw_command_tests
   retained_ui_focus_tests
   client_ui_tests

@@ -48,12 +48,6 @@ inline ::ui::UiElement Host(const HostProps &props) {
                                 });
 }
 
-constexpr ::ui::Color kControlFill = {24, 28, 36, 255};
-constexpr ::ui::Color kControlDisabledFill = {30, 34, 42, 255};
-constexpr ::ui::Color kControlBorder = {78, 88, 104, 255};
-constexpr ::ui::Color kControlDisabledBorder = {62, 68, 78, 255};
-constexpr ::ui::Color kCheckboxCheckedFill = {44, 92, 128, 255};
-
 template <typename Props> inline const char *component_key(const Props &props) {
   return props.key && props.key[0] != '\0' ? props.key : nullptr;
 }
@@ -106,22 +100,11 @@ inline ::ui::InteractionState interaction_state(bool disabled,
   return st;
 }
 
-inline ::ui::Style control_style(bool disabled, ::ui::Style style = {}) {
-  if (style.background.a == 0)
-    style.background = disabled ? kControlDisabledFill : kControlFill;
-  if (style.border.a == 0)
-    style.border = disabled ? kControlDisabledBorder : kControlBorder;
-  if (style.border_width <= 0.0f)
-    style.border_width = 1.0f;
-  return style;
-}
-
 // Layout-only seed for a control's Style: reserves the 1px border box in Yoga
-// (style.border_width feeds YGNodeStyleSetBorder) WITHOUT seeding any legacy
-// paint. Controls resolve their paint from the theme as .visual; this keeps the
-// renderer reading node.visual exclusively (no node.style paint fallback), while
-// preserving the control's laid-out content box. Replaces control_style() at the
-// component call sites (control_style stays until the 7b legacy prune).
+// (style.border_width feeds YGNodeStyleSetBorder) WITHOUT seeding any paint.
+// Controls resolve their paint from the theme as .visual; the renderer reads
+// node.visual exclusively, while this preserves the control's laid-out content
+// box.
 inline ::ui::Style control_layout_style(::ui::Style style = {}) {
   if (style.border_width <= 0.0f)
     style.border_width = 1.0f;

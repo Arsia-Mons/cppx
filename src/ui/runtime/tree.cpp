@@ -149,8 +149,6 @@ namespace {
 uint16_t effective_font_size(const UiTree::TextMeasureView &view) {
   if (view.font_size > 0)
     return view.font_size;
-  if (view.style_font_size > 0)
-    return view.style_font_size;
   return 15;
 }
 
@@ -202,7 +200,6 @@ bool UiTree::set_text_measure(NodeId id) {
       .utf8 = node->value,
       .font_id = node->visual.text.font_id,
       .font_size = node->visual.text.font_size,
-      .style_font_size = node->style.font_size,
       .align = node->visual.text.align,
       .wrap = node->visual.text.wrap,
       .line_height = node->visual.text.line_height,

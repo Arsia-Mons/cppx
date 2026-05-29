@@ -8,7 +8,6 @@
 #include "../../ui/input.h"
 #include "../../ui/runtime/draw_command.h"
 #include "../../ui/runtime/draw_command_builder.h"
-#include "../../ui/runtime/draw_list.h"
 #include "../../ui/runtime/element.h"
 #include "../../ui/runtime/flex_layout.h"
 #include "../../ui/runtime/focus.h"
@@ -41,11 +40,8 @@ public:
   ::ui::UiTree &retained_tree() { return retained_tree_; }
   const ::ui::UiTree &retained_tree() const { return retained_tree_; }
   ::ui::FocusRuntime &retained_focus() { return retained_focus_; }
-  const ::ui::legacy::DrawList &retained_draw_list() const {
-    return retained_draw_list_;
-  }
-  // The new tagged-union IR (built each frame alongside the legacy list). This
-  // is the list the live render path executes via renderer::execute_draw_commands.
+  // The tagged-union IR built each frame; the live render path executes it via
+  // renderer::execute_draw_commands.
   const ::ui::DrawCommandList &retained_command_list() const {
     return retained_command_list_;
   }
@@ -91,10 +87,8 @@ private:
   ::ui::UiElementFrame retained_element_frame_ = {};
   ::ui::UiTree retained_tree_ = {};
   ::ui::FocusRuntime retained_focus_ = {};
-  ::ui::legacy::DrawList retained_draw_list_ = {};
-  // New IR list driving the live render path. Built each frame in
-  // update_retained_runtime; the legacy list above stays built-but-unused
-  // (dual-path) until the legacy renderer is pruned.
+  // The IR list driving the live render path, built each frame in
+  // update_retained_runtime.
   ::ui::DrawCommandList retained_command_list_ = {};
   // Interaction state from the PREVIOUS frame's focus pass, published to the
   // component tree during the next build so use_focused()/use_hovered()/etc.

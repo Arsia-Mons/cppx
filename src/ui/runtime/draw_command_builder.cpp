@@ -8,9 +8,11 @@ namespace ui {
 
 namespace {
 
-// Legacy fallback constants (straight alpha), reproduced from draw_list.cpp.
-// Used only for not-yet-migrated nodes (dual-path); migrated nodes carry
-// node.visual. Premultiplication happens at emit (premul()), never here.
+// Default paint for nodes whose resolved VisualStyle leaves a slot unset (a
+// bare text node with no .visual.text.color; an input's intrinsic
+// selection/caret). These are role/intrinsic defaults — NOT a node.style paint
+// fallback (that legacy path is gone; the transcriber reads node.visual only).
+// Premultiplication happens at emit (premul()), never here.
 constexpr Color kTransparent = {0, 0, 0, 0};
 constexpr Color kButtonFill = {24, 28, 36, 255};
 constexpr Color kButtonDisabledFill = {30, 34, 42, 255};
@@ -244,13 +246,10 @@ bool append_rect(DrawCommandList &list, const NodeSnapshot &node,
   bool visual_box = has_color(v.background) || v.gradient.stop_count > 0 ||
                     (v.border.color.top.a > 0 && v.border.width.top > 0.0f) ||
                     (v.outline.color.a > 0 && v.outline.width > 0.0f);
-  bool styled_box =
-      has_color(node.style.background) ||
-      (has_color(node.style.border) && node.style.border_width > 0.0f);
   bool control_box = node.role == NodeRole::Button ||
                      node.role == NodeRole::Checkbox ||
                      node.role == NodeRole::Input;
-  if (!visual_box && !styled_box && !control_box && !focused) {
+  if (!visual_box && !control_box && !focused) {
     return true;
   }
 
@@ -261,15 +260,11 @@ bool append_rect(DrawCommandList &list, const NodeSnapshot &node,
                                  v.corner_radius);
   }
 
-  Color fill =
-      has_color(v.background)
-          ? v.background
-          : (has_color(node.style.background)
-                 ? node.style.background
-                 : (control_box ? control_fill(node) : kTransparent));
+  Color fill = has_color(v.background)
+                   ? v.background
+                   : (control_box ? control_fill(node) : kTransparent);
 
-  return push_rect_command(list, node.id, node.layout, fill,
-                           v.corner_radius);
+  return push_rect_command(list, node.id, node.layout, fill, v.corner_radius);
 }
 
 // FRAME: the fused per-side border + signed-offset outline (focus ring). Mirror
@@ -283,26 +278,20 @@ bool append_frame(DrawCommandList &list, const NodeSnapshot &node,
                      node.role == NodeRole::Checkbox ||
                      node.role == NodeRole::Input;
 
-  // Border (per-side in the new IR; legacy single-color maps to all 4 sides).
+  // Border: the resolved per-side VisualStyle border, else a control-role
+  // default (a 1px border in the role's border color). Non-control boxes with
+  // no resolved border get none.
   Border border = {};
   bool has_border = false;
   if (v.border.color.top.a > 0 && v.border.width.top > 0.0f) {
     border = v.border;
     has_border = true;
-  } else {
-    Color border_color = has_color(node.style.border)
-                             ? node.style.border
-                             : (node.interaction.disabled
-                                    ? kButtonDisabledBorder
-                                    : kButtonBorder);
-    float border_width = node.style.border_width > 0.0f
-                             ? node.style.border_width
-                             : (control_box ? 1.0f : 0.0f);
-    if (border_width > 0.0f) {
-      border.width = {border_width, border_width, border_width, border_width};
-      border.color = {border_color, border_color, border_color, border_color};
-      has_border = true;
-    }
+  } else if (control_box) {
+    Color border_color =
+        node.interaction.disabled ? kButtonDisabledBorder : kButtonBorder;
+    border.width = {1.0f, 1.0f, 1.0f, 1.0f};
+    border.color = {border_color, border_color, border_color, border_color};
+    has_border = true;
   }
 
   // Outline / focus ring: prefer the component-resolved outline, else the
@@ -357,16 +346,11 @@ bool append_text(DrawCommandList &list, const NodeSnapshot &node,
   const VisualStyle &v = node.visual;
   Color color = has_color(v.text.color)
                     ? v.text.color
-                    : (has_color(node.style.text)
-                           ? node.style.text
-                           : ((node.interaction.disabled || inherited_disabled)
-                                  ? kTextDisabledFill
-                                  : kTextFill));
+                    : ((node.interaction.disabled || inherited_disabled)
+                           ? kTextDisabledFill
+                           : kTextFill);
   uint16_t font_size =
-      v.text.font_size > 0
-          ? v.text.font_size
-          : (node.style.font_size > 0 ? node.style.font_size
-                                      : static_cast<uint16_t>(15));
+      v.text.font_size > 0 ? v.text.font_size : static_cast<uint16_t>(15);
   uint16_t font_id = v.text.font_id;
   TextAlign align = v.text.align;
   const char *value = node.value ? node.value : "";
@@ -429,8 +413,8 @@ bool append_input_contents(DrawCommandList &list, const NodeSnapshot &node,
 
   const char *value = node.value ? node.value : "";
   int length = text_length(value);
-  uint16_t font_size = node.style.font_size > 0 ? node.style.font_size
-                                                : static_cast<uint16_t>(15);
+  uint16_t font_size = node.visual.text.font_size > 0 ? node.visual.text.font_size
+                                                      : static_cast<uint16_t>(15);
   // Inputs are single-line; reuse the node's resolved text line height if any.
   float line_height = node.visual.text.line_height;
   uint16_t font_id = node.visual.text.font_id;
@@ -461,11 +445,11 @@ bool append_input_contents(DrawCommandList &list, const NodeSnapshot &node,
       return false;
   }
 
-  Color text_color = (node.interaction.disabled || inherited_disabled)
-                         ? kTextDisabledFill
-                         : kTextFill;
-  if (has_color(node.style.text))
-    text_color = node.style.text;
+  Color text_color =
+      has_color(node.visual.text.color)
+          ? node.visual.text.color
+          : ((node.interaction.disabled || inherited_disabled) ? kTextDisabledFill
+                                                               : kTextFill);
   if (!push_text_command(list, node.id, text_rect, value, text_color, font_size,
                          TextAlign::Left))
     return false;
