@@ -65,13 +65,15 @@ static bool test_square_is_two_triangles() {
   // 4 vertices, 6 indices => exactly two triangles.
   CHECK(s.vcount == 4);
   CHECK(s.icount == 6);
-  // radius below the 0.5 epsilon also collapses to a quad.
-  MeshSink s2 = make_sink(b);
-  CHECK(tessellate_rect_fill(DrawRect{0, 0, 100, 40}, 0.4f, Color{1, 2, 3, 4}, s2));
-  CHECK(s2.vcount == 4 && s2.icount == 6);
   // all vertices carry the premultiplied fill color verbatim.
   for (int i = 0; i < s.vcount; ++i)
     CHECK(s.verts[i].color == (Color{10, 20, 30, 255}));
+  // radius below the 0.5 epsilon also collapses to a quad (separate buffers so
+  // the assertions above stay valid).
+  Buffers b2;
+  MeshSink s2 = make_sink(b2);
+  CHECK(tessellate_rect_fill(DrawRect{0, 0, 100, 40}, 0.4f, Color{1, 2, 3, 4}, s2));
+  CHECK(s2.vcount == 4 && s2.icount == 6);
   return true;
 }
 
@@ -304,11 +306,66 @@ static bool test_gradient_midpoint() {
   return true;
 }
 
+// --- regression: paired-ring topology must match across radius regimes ------
+// These cases (caught by adversarial review) all hit the "inner ring vs outer
+// ring point-count mismatch" defect that the shared-seg fix resolves. Each must
+// succeed and emit non-empty geometry, never spuriously return false.
+static bool test_paired_ring_regressions() {
+  // (1) PLAIN box (corner_radius=0) drop shadow with blur>0: outer skirt ring is
+  // rounded (blur radius) while the inner ring is square -> must still match.
+  {
+    Buffers b;
+    MeshSink s = make_sink(b);
+    Shadow sh{};
+    sh.color = Color{0, 0, 0, 180};
+    sh.blur = 10.f;
+    CHECK(tessellate_shadow(DrawRect{40, 40, 100, 60}, /*corner_radius=*/0.f, sh, s));
+    CHECK(s.vcount > 4 && s.icount > 6); // inner fill + skirt, not a spurious false
+  }
+  // (2) Large radius (>32) frame: inner/outer band rings would pick different
+  // per-ring seg without the shared-seg fix.
+  {
+    Buffers b;
+    MeshSink s = make_sink(b);
+    Border border{};
+    border.width = SideWidths{3, 3, 3, 3};
+    border.color = SideColors{Color{200, 0, 0, 255}, Color{200, 0, 0, 255},
+                              Color{200, 0, 0, 255}, Color{200, 0, 0, 255}};
+    CHECK(tessellate_frame(DrawRect{0, 0, 200, 160}, /*radius=*/40.f, border, Outline{}, s));
+    CHECK(s.vcount > 0 && s.icount > 0);
+  }
+  // (3) Border width >= corner radius: inner radius collapses to 0 while outer
+  // stays rounded -> the most common real case (1-2px border, small radius).
+  {
+    Buffers b;
+    MeshSink s = make_sink(b);
+    Border border{};
+    border.width = SideWidths{6, 6, 6, 6};
+    border.color = SideColors{Color{0, 200, 0, 255}, Color{0, 200, 0, 255},
+                              Color{0, 200, 0, 255}, Color{0, 200, 0, 255}};
+    CHECK(tessellate_frame(DrawRect{0, 0, 80, 50}, /*radius=*/4.f, border, Outline{}, s));
+    CHECK(s.vcount > 0 && s.icount > 0);
+  }
+  // (4) Outline width approaching/exceeding the ring's outer radius.
+  {
+    Buffers b;
+    MeshSink s = make_sink(b);
+    Outline outline{};
+    outline.width = 4.f;
+    outline.color = Color{120, 170, 255, 255};
+    outline.offset = 0.f;
+    CHECK(tessellate_frame(DrawRect{0, 0, 60, 60}, /*radius=*/4.f, Border{}, outline, s));
+    CHECK(s.vcount > 0 && s.icount > 0);
+  }
+  return true;
+}
+
 int main() {
   bool ok = test_corner_segments() && test_square_is_two_triangles() &&
             test_rounded_corners_contained() && test_gradient_endpoints() &&
             test_shadow_skirt_fades_to_zero() && test_frame_emits_bands() &&
-            test_overflow_returns_false() && test_gradient_midpoint();
+            test_overflow_returns_false() && test_gradient_midpoint() &&
+            test_paired_ring_regressions();
   if (!ok) {
     fprintf(stderr, "ui_geometry_tests: FAIL\n");
     return 1;

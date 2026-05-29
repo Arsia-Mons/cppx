@@ -64,7 +64,15 @@ struct RingPt {
   float x, y;
 };
 
-int build_round_ring(const DrawRect &r, float radius, RingPt *out, int cap) {
+// Build a ring with an EXPLICIT per-corner segment count. This is the key to
+// paired rings (band strips / shadow skirts): both rings MUST share one `seg`
+// so their point counts match regardless of each ring's own radius. seg<=0 =>
+// 4-corner rectangle; seg>0 => 4 arcs of (seg+1) points each. A radius of 0 with
+// seg>0 is fine: the arc points collapse onto the pivot (a sharp corner) while
+// still emitting seg+1 points, so a tiny/zero inner radius keeps matching
+// topology with a rounded outer ring.
+int build_ring_seg(const DrawRect &r, float radius, int seg, RingPt *out,
+                   int cap) {
   radius = clamp_radius(r, radius);
   const float x0 = r.x, y0 = r.y;
   const float x1 = r.x + r.w, y1 = r.y + r.h;
@@ -76,14 +84,13 @@ int build_round_ring(const DrawRect &r, float radius, RingPt *out, int cap) {
     return true;
   };
 
-  if (radius <= kRadiusEps) {
+  if (seg <= 0) {
     // Plain rectangle: 4 corners, CCW with +y down (TL, TR, BR, BL).
     if (!push(x0, y0) || !push(x1, y0) || !push(x1, y1) || !push(x0, y1))
       return -1;
     return n;
   }
 
-  const int seg = corner_segments(radius);
   // Pivots are the inner-rect corners.
   const float pl = x0 + radius, pr = x1 - radius; // pivot x left/right
   const float pt = y0 + radius, pb = y1 - radius; // pivot y top/bottom
@@ -118,6 +125,18 @@ int build_round_ring(const DrawRect &r, float radius, RingPt *out, int cap) {
   return n;
 }
 
+// Pick a segment count from the radius for a STANDALONE ring (fills). For paired
+// rings use build_ring_seg directly with a shared seg.
+int seg_for_radius(float radius) {
+  return radius <= kRadiusEps ? 0 : corner_segments(radius);
+}
+
+// Single-ring builder for fills: picks its own seg from the (clamped) radius.
+int build_round_ring(const DrawRect &r, float radius, RingPt *out, int cap) {
+  const float cr = clamp_radius(r, radius);
+  return build_ring_seg(r, cr, seg_for_radius(cr), out, cap);
+}
+
 // Max ring points: 4 arcs * (max_seg + 1). corner_segments caps at 64.
 constexpr int kMaxRingPts = 4 * (64 + 1);
 
@@ -131,11 +150,12 @@ float gradient_t(const DrawRect &r, float dx, float dy, float px, float py) {
   const float c2 = r.x * dx + (r.y + r.h) * dy;
   const float c3 = (r.x + r.w) * dx + (r.y + r.h) * dy;
   float lo = c0, hi = c0;
-  for (float c : {c1, c2, c3}) {
-    if (c < lo)
-      lo = c;
-    if (c > hi)
-      hi = c;
+  const float cs[3] = {c1, c2, c3};
+  for (int i = 0; i < 3; ++i) {
+    if (cs[i] < lo)
+      lo = cs[i];
+    if (cs[i] > hi)
+      hi = cs[i];
   }
   const float span = hi - lo;
   if (span <= 1e-6f)
@@ -229,7 +249,9 @@ Color side_color_for(const SideColors &col, float cx, float cy, float px,
 // ---------------------------------------------------------------------------
 
 bool MeshSink::tri(const Vertex &a, const Vertex &b, const Vertex &c) {
-  if (vcount + 3 > vcap || icount + 3 > icap)
+  // Guard vertex capacity, index capacity, AND uint16 index space (indices are
+  // uint16_t, so vcount must stay <= 65536) — never a silent wrap.
+  if (vcount + 3 > vcap || icount + 3 > icap || vcount + 3 > 65536)
     return false;
   const uint16_t base = (uint16_t)vcount;
   verts[vcount++] = a;
@@ -243,7 +265,7 @@ bool MeshSink::tri(const Vertex &a, const Vertex &b, const Vertex &c) {
 
 bool MeshSink::quad(const Vertex &a, const Vertex &b, const Vertex &c,
                     const Vertex &d) {
-  if (vcount + 4 > vcap || icount + 6 > icap)
+  if (vcount + 4 > vcap || icount + 6 > icap || vcount + 4 > 65536)
     return false;
   const uint16_t base = (uint16_t)vcount;
   verts[vcount++] = a;
@@ -315,8 +337,12 @@ static bool emit_band(const DrawRect &outer_rect, float outer_radius,
                       const SideColors &colors, MeshSink &sink) {
   RingPt outer[kMaxRingPts];
   RingPt inner[kMaxRingPts];
-  const int no = build_round_ring(outer_rect, outer_radius, outer, kMaxRingPts);
-  const int ni = build_round_ring(inner_rect, inner_radius, inner, kMaxRingPts);
+  // ONE shared seg (from the outer radius) so both rings have matching topology,
+  // even when the inner radius collapses (border width >= corner radius) or the
+  // box is square. Without this, paired rings diverge and the strip is rejected.
+  const int seg = seg_for_radius(clamp_radius(outer_rect, outer_radius));
+  const int no = build_ring_seg(outer_rect, outer_radius, seg, outer, kMaxRingPts);
+  const int ni = build_ring_seg(inner_rect, inner_radius, seg, inner, kMaxRingPts);
   if (no < 3 || ni != no)
     return false; // ring topology must match for a clean strip.
 
@@ -472,8 +498,11 @@ bool tessellate_shadow(const DrawRect &rect, float corner_radius,
 
   RingPt inner_ring[kMaxRingPts];
   RingPt outer_ring[kMaxRingPts];
-  const int ni = build_round_ring(inner, inner_radius, inner_ring, kMaxRingPts);
-  const int no = build_round_ring(outer, outer_radius, outer_ring, kMaxRingPts);
+  // Shared seg (from the outer radius) so a plain box (inner_radius 0) with
+  // blur>0 still produces matching ring topology — the masked-blocker case.
+  const int seg = seg_for_radius(clamp_radius(outer, outer_radius));
+  const int ni = build_ring_seg(inner, inner_radius, seg, inner_ring, kMaxRingPts);
+  const int no = build_ring_seg(outer, outer_radius, seg, outer_ring, kMaxRingPts);
   if (ni < 3 || no != ni)
     return false;
 

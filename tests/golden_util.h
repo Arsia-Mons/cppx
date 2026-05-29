@@ -115,8 +115,10 @@ public:
     // Force the headless software path. SDL_SetHint also honors any value the
     // environment already provides, but we set it explicitly so the harness is
     // self-contained when run outside ctest.
-    SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
-    SDL_SetHint(SDL_HINT_RENDER_DRIVER, "software");
+    // SDL_HINT_OVERRIDE so these win even if an env var is already present
+    // (plain SDL_SetHint will NOT override an existing env var/override hint).
+    SDL_SetHintWithPriority(SDL_HINT_VIDEO_DRIVER, "dummy", SDL_HINT_OVERRIDE);
+    SDL_SetHintWithPriority(SDL_HINT_RENDER_DRIVER, "software", SDL_HINT_OVERRIDE);
 
     if (!SDL_Init(SDL_INIT_VIDEO)) {
       fprintf(stderr, "golden_util: SDL_Init failed: %s\n", SDL_GetError());
@@ -133,7 +135,7 @@ public:
               SDL_GetError());
       return false;
     }
-    renderer_ = SDL_CreateRenderer(window_, nullptr);
+    renderer_ = SDL_CreateRenderer(window_, "software");
     if (!renderer_) {
       fprintf(stderr, "golden_util: SDL_CreateRenderer failed: %s\n",
               SDL_GetError());
@@ -205,8 +207,8 @@ public:
       if (draw)
         draw(renderer_);
 
-      SDL_RenderPresent(renderer_); // flush to the target texture
-
+      // Do NOT SDL_RenderPresent while a texture target is bound — SDL3 fails
+      // that. SDL_RenderReadPixels reads the current render target directly.
       ok = read_target(width, height, out);
     }
 

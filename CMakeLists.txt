@@ -420,6 +420,23 @@ target_compile_options(ui_style_resolve_tests PRIVATE
 
 add_test(NAME ui_style_resolve_tests COMMAND ui_style_resolve_tests)
 
+# --- SDL-free geometry tessellation math (src/ui/runtime/geometry) ---
+add_executable(ui_geometry_tests
+  tests/ui_geometry_tests.cpp
+  src/ui/runtime/geometry.cpp
+)
+
+target_include_directories(ui_geometry_tests PRIVATE
+  src
+  third_party
+)
+
+target_compile_options(ui_geometry_tests PRIVATE
+  $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall -Wextra -Wno-missing-field-initializers -Wno-c99-designator -Wno-unused-parameter>
+)
+
+add_test(NAME ui_geometry_tests COMMAND ui_geometry_tests)
+
 add_executable(ui_interaction_hooks_tests
   tests/ui_interaction_hooks_tests.cpp
   src/ui/runtime/interaction_hooks.cpp

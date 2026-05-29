@@ -32,13 +32,8 @@
 
 namespace ui {
 
-// Axis-aligned rectangle in UI points. Top-left origin, +y down.
-struct DrawRect {
-  float x = 0.f;
-  float y = 0.f;
-  float w = 0.f;
-  float h = 0.f;
-};
+// DrawRect (axis-aligned rect in UI points, top-left origin, +y down) is the
+// shared IR-local paint rectangle defined in visual_style.h; we reuse it here.
 
 // One output vertex. position in UI points, premultiplied color, uv in [0,1]
 // (only meaningful for textured paths; fills/frames/shadows leave it 0).
