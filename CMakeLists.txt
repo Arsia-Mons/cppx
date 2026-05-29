@@ -400,6 +400,22 @@ target_compile_options(ui_style_tests PRIVATE
 
 add_test(NAME ui_style_tests COMMAND ui_style_tests)
 
+add_executable(ui_style_resolve_tests
+  tests/ui_style_resolve_tests.cpp
+  src/ui/style/resolve.cpp
+)
+
+target_include_directories(ui_style_resolve_tests PRIVATE
+  src
+  third_party
+)
+
+target_compile_options(ui_style_resolve_tests PRIVATE
+  $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall -Wextra -Wno-missing-field-initializers -Wno-c99-designator -Wno-unused-parameter>
+)
+
+add_test(NAME ui_style_resolve_tests COMMAND ui_style_resolve_tests)
+
 add_executable(retained_ui_focus_tests
   tests/retained_ui_focus_tests.cpp
   src/react.cpp
