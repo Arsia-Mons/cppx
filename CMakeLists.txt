@@ -470,6 +470,35 @@ target_compile_options(ui_draw_command_tests PRIVATE
 
 add_test(NAME ui_draw_command_tests COMMAND ui_draw_command_tests)
 
+# --- P3 renderer: new IR -> pixels, golden-verified (SDL) ---
+add_executable(renderer_golden_tests
+  tests/renderer_golden_tests.cpp
+  src/renderer/draw_executor.cpp
+  src/renderer/font_registry.cpp
+  src/ui/runtime/geometry.cpp
+  src/ui/runtime/draw_command.cpp
+)
+
+target_include_directories(renderer_golden_tests PRIVATE
+  src
+  third_party
+  tests
+)
+
+target_compile_options(renderer_golden_tests PRIVATE
+  $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall -Wextra -Wno-missing-field-initializers -Wno-c99-designator -Wno-unused-parameter>
+)
+
+target_link_libraries(renderer_golden_tests PRIVATE
+  SDL3::SDL3
+  SDL3_ttf::SDL3_ttf
+)
+
+add_test(NAME renderer_golden_tests COMMAND renderer_golden_tests)
+set_tests_properties(renderer_golden_tests PROPERTIES
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
 add_executable(retained_ui_focus_tests
   tests/retained_ui_focus_tests.cpp
   src/react.cpp
