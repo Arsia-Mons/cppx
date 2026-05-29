@@ -14,7 +14,7 @@ constexpr Color kButtonFill = {24, 28, 36, 255};
 constexpr Color kButtonDisabledFill = {30, 34, 42, 255};
 constexpr Color kButtonBorder = {78, 88, 104, 255};
 constexpr Color kButtonDisabledBorder = {62, 68, 78, 255};
-constexpr Color kFocusBorder = {122, 176, 238, 255};
+constexpr Color kFocusBorder = {96, 165, 250, 255}; // accent (matches theme focus_ring)
 constexpr float kFocusBorderWidth = 2.0f;
 constexpr float kFocusBorderOffset = 2.0f;
 constexpr Color kCheckedFill = {44, 92, 128, 255};
@@ -103,13 +103,44 @@ bool push_rect_command(DrawCommandList &list, NodeId node_id, const Rect &rect,
   return list.push(command);
 }
 
+// GRADIENT FILL: emit a Gradient command (the gradient IS the fill, replacing
+// the solid Rect). Authored stops are STRAIGHT alpha; premultiply at emit, the
+// IR's storage convention. Stops live in the list's grad_arena via push_stops.
+bool push_gradient_command(DrawCommandList &list, NodeId node_id,
+                           const Rect &rect, const Gradient &gradient,
+                           float corner_radius) {
+  GradientStop premul_stops[UI_MAX_GRADIENT_STOPS] = {};
+  uint8_t n = gradient.stop_count;
+  if (n > UI_MAX_GRADIENT_STOPS)
+    n = UI_MAX_GRADIENT_STOPS;
+  for (uint8_t i = 0; i < n; ++i) {
+    premul_stops[i].t = gradient.stops[i].t;
+    premul_stops[i].color = premul(gradient.stops[i].color);
+  }
+  uint16_t off = 0;
+  if (!list.push_stops(premul_stops, n, &off))
+    return false;
+
+  DrawCommand command = {};
+  command.kind = DrawCommandKind::Gradient;
+  command.node_id = node_id;
+  command.rect = to_draw_rect(rect);
+  command.payload.gradient = {
+      .stop_off = off,
+      .stop_count = n,
+      .angle_deg = gradient.angle_deg,
+      .corner_radius = corner_radius,
+  };
+  return list.push(command);
+}
+
 // FILL: emit a Rect command carrying only the resolved fill (the legacy
 // append_rect fused fill + border + focus into one command; the new IR splits
 // the stroke into a separate Border command, emitted by append_frame).
 bool append_rect(DrawCommandList &list, const NodeSnapshot &node,
                  bool focused) {
   const VisualStyle &v = node.visual;
-  bool visual_box = has_color(v.background) ||
+  bool visual_box = has_color(v.background) || v.gradient.stop_count > 0 ||
                     (v.border.color.top.a > 0 && v.border.width.top > 0.0f) ||
                     (v.outline.color.a > 0 && v.outline.width > 0.0f);
   bool styled_box =
@@ -120,6 +151,13 @@ bool append_rect(DrawCommandList &list, const NodeSnapshot &node,
                      node.role == NodeRole::Input;
   if (!visual_box && !styled_box && !control_box && !focused) {
     return true;
+  }
+
+  // A resolved gradient (stop_count>0) IS the fill — emit it in place of the
+  // solid Rect. Gradients only ever come from the resolved VisualStyle.
+  if (v.gradient.stop_count > 0) {
+    return push_gradient_command(list, node.id, node.layout, v.gradient,
+                                 v.corner_radius);
   }
 
   Color fill =

@@ -175,11 +175,14 @@ static bool retained_draw_list_uses_html_primitive_metadata_and_layout(void) {
   CHECK(same_color(title_text->fill, {235, 246, 242, 255}));
   CHECK(title_text->font_size == 24);
 
+  // The legacy DrawList has no Gradient kind; it flattens the resolved theme to
+  // the control background stop (the gradient's bottom = 28,33,43). The new look
+  // is exercised in full by the new-IR draw_command tests.
   const DrawCommand *button_rect =
       find_command(list, button, DrawCommandKind::Rect);
   CHECK(button_rect != nullptr);
   CHECK(button_rect->rect.width == 132.0f);
-  CHECK(same_color(button_rect->fill, {24, 28, 36, 255}));
+  CHECK(same_color(button_rect->fill, {28, 33, 43, 255}));
 
   const DrawCommand *button_text =
       find_command(list, button_label, DrawCommandKind::Text);
@@ -190,13 +193,13 @@ static bool retained_draw_list_uses_html_primitive_metadata_and_layout(void) {
       find_command(list, checkbox, DrawCommandKind::Rect);
   CHECK(checkbox_rect != nullptr);
   CHECK(checkbox_rect->rect.width == 178.0f);
-  CHECK(same_color(checkbox_rect->fill, {24, 28, 36, 255}));
+  CHECK(same_color(checkbox_rect->fill, {28, 33, 43, 255}));
 
   const DrawCommand *checkbox_mark_rect =
       find_command(list, checkbox_mark, DrawCommandKind::Rect);
   CHECK(checkbox_mark_rect != nullptr);
   CHECK(checkbox_mark_rect->rect.width == 18.0f);
-  CHECK(same_color(checkbox_mark_rect->fill, {44, 92, 128, 255}));
+  CHECK(same_color(checkbox_mark_rect->fill, {96, 165, 250, 255}));
 
   const DrawCommand *checkbox_text =
       find_command(list, checkbox_label, DrawCommandKind::Text);
@@ -273,11 +276,11 @@ static bool retained_draw_list_highlights_focused_control(void) {
   CHECK(same_color(button_rect->border, {122, 176, 238, 255}));
   CHECK(button_rect->border_width == 2.0f);
 
-  // Unfocused controls keep the default border.
+  // Unfocused controls keep the refined control border.
   const DrawCommand *checkbox_rect =
       find_command(list, checkbox, DrawCommandKind::Rect);
   CHECK(checkbox_rect != nullptr);
-  CHECK(same_color(checkbox_rect->border, {78, 88, 104, 255}));
+  CHECK(same_color(checkbox_rect->border, {70, 80, 98, 255}));
   CHECK(checkbox_rect->border_width == 1.0f);
   return true;
 }

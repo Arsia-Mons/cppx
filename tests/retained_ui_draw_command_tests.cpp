@@ -197,20 +197,29 @@ static bool button_emits_fill_and_border(void) {
   CHECK(same_color(title_text->payload.text.color, premul({235, 246, 242, 255})));
   CHECK(title_text->payload.text.font_size == 24);
 
-  // Button: a control fill Rect + a control Border. The button is NOT focused
-  // (the input is), so its border is the default control border at 1px and no
-  // outline.
-  const DrawCommand *button_rect =
-      find_command(list, button, DrawCommandKind::Rect);
-  CHECK(button_rect != nullptr);
-  CHECK(button_rect->rect.w == 132.0f);
-  CHECK(same_color(button_rect->payload.rect.fill, premul({24, 28, 36, 255})));
+  // Button: the new theme paints controls with a subtle vertical gradient, so
+  // the fill is a Gradient command (not a flat Rect) carrying the 8px radius and
+  // the top/bottom slate stops (premultiplied into grad_arena). The button is
+  // NOT focused (the input is), so its border is the default control border at
+  // 1px and no outline.
+  const DrawCommand *button_grad =
+      find_command(list, button, DrawCommandKind::Gradient);
+  CHECK(button_grad != nullptr);
+  CHECK(button_grad->rect.w == 132.0f);
+  CHECK(button_grad->payload.gradient.corner_radius == 8.0f);
+  CHECK(button_grad->payload.gradient.stop_count == 2);
+  {
+    uint16_t off = button_grad->payload.gradient.stop_off;
+    CHECK(same_color(list.grad_arena[off].color, premul({40, 46, 58, 255})));
+    CHECK(same_color(list.grad_arena[off + 1].color, premul({28, 33, 43, 255})));
+  }
   const DrawCommand *button_border =
       find_command(list, button, DrawCommandKind::Border);
   CHECK(button_border != nullptr);
   CHECK(same_color(button_border->payload.border.border.color.top,
-                   premul({78, 88, 104, 255})));
+                   premul({70, 80, 98, 255})));
   CHECK(button_border->payload.border.border.width.top == 1.0f);
+  CHECK(button_border->payload.border.corner_radius == 8.0f);
   CHECK(button_border->payload.border.has_outline == false);
 
   const DrawCommand *button_text =
@@ -218,34 +227,38 @@ static bool button_emits_fill_and_border(void) {
   CHECK(button_text != nullptr);
   CHECK(arena_text_matches(list, button_text->payload.text, "Confirm"));
 
-  // Checked checkbox mark uses the checked fill.
+  // Checked checkbox mark uses the accent checked fill (solid, no gradient).
   const DrawCommand *checkbox_mark_rect =
       find_command(list, checkbox_mark, DrawCommandKind::Rect);
   CHECK(checkbox_mark_rect != nullptr);
   CHECK(checkbox_mark_rect->rect.w == 18.0f);
   CHECK(same_color(checkbox_mark_rect->payload.rect.fill,
-                   premul({44, 92, 128, 255})));
+                   premul({96, 165, 250, 255})));
+  CHECK(checkbox_mark_rect->payload.rect.corner_radius == 4.0f);
 
   const DrawCommand *checkbox_text =
       find_command(list, checkbox_label, DrawCommandKind::Text);
   CHECK(checkbox_text != nullptr);
   CHECK(arena_text_matches(list, checkbox_text->payload.text, "Music"));
 
-  // Focused input: selection rect (ranged) + value text + caret rect.
-  const DrawCommand *input_rect =
-      find_command(list, input, DrawCommandKind::Rect, 0);
+  // Focused input: a gradient body fill + selection rect (ranged) + value text
+  // + caret rect. The Input is migrated, so its body fill is the resolved theme
+  // control gradient (the legacy kInputFill fallback only applies to not-yet-
+  // migrated nodes via control_fill()). The body fill being a Gradient means the
+  // only Rect commands on the input node are the selection (ordinal 0) and the
+  // caret (ordinal 1).
+  const DrawCommand *input_grad =
+      find_command(list, input, DrawCommandKind::Gradient);
   const DrawCommand *selection_rect =
-      find_command(list, input, DrawCommandKind::Rect, 1);
+      find_command(list, input, DrawCommandKind::Rect, 0);
   const DrawCommand *input_text =
       find_command(list, input, DrawCommandKind::Text);
   const DrawCommand *caret_rect =
-      find_command(list, input, DrawCommandKind::Rect, 2);
-  CHECK(input_rect != nullptr);
-  CHECK(input_rect->rect.w == 220.0f);
-  // The Input component is migrated: its fill is the resolved theme control
-  // background (24,28,36,255), not the legacy kInputFill fallback. (The legacy
-  // kInputFill only applies to not-yet-migrated nodes via control_fill().)
-  CHECK(same_color(input_rect->payload.rect.fill, premul({24, 28, 36, 255})));
+      find_command(list, input, DrawCommandKind::Rect, 1);
+  CHECK(input_grad != nullptr);
+  CHECK(input_grad->rect.w == 220.0f);
+  CHECK(input_grad->payload.gradient.corner_radius == 8.0f);
+  CHECK(input_grad->payload.gradient.stop_count == 2);
   CHECK(selection_rect != nullptr);
   CHECK(selection_rect->rect.w == 24.0f);
   // Selection fill is half-ish alpha (180): premultiplied rgb must be scaled.
@@ -265,7 +278,7 @@ static bool button_emits_fill_and_border(void) {
   CHECK(input_border != nullptr);
   CHECK(input_border->payload.border.has_outline == true);
   CHECK(same_color(input_border->payload.border.outline.color,
-                   premul({122, 176, 238, 255})));
+                   premul({96, 165, 250, 255})));
   CHECK(input_border->payload.border.outline.width == 2.0f);
   CHECK(input_border->payload.border.outline.offset == 2.0f);
   return true;
@@ -322,17 +335,19 @@ static bool focused_button_emits_focus_ring_outline(void) {
   CHECK(button_border != nullptr);
   CHECK(button_border->payload.border.has_outline == true);
   CHECK(same_color(button_border->payload.border.outline.color,
-                   premul({122, 176, 238, 255})));
+                   premul({96, 165, 250, 255})));
   CHECK(button_border->payload.border.outline.width == 2.0f);
 
-  // Unfocused control: a Border with no outline.
+  // Unfocused control: a Border with no outline, carrying the 8px radius and the
+  // refined control border color.
   const DrawCommand *checkbox_border =
       find_command(list, checkbox, DrawCommandKind::Border);
   CHECK(checkbox_border != nullptr);
   CHECK(checkbox_border->payload.border.has_outline == false);
   CHECK(same_color(checkbox_border->payload.border.border.color.top,
-                   premul({78, 88, 104, 255})));
+                   premul({70, 80, 98, 255})));
   CHECK(checkbox_border->payload.border.border.width.top == 1.0f);
+  CHECK(checkbox_border->payload.border.corner_radius == 8.0f);
   return true;
 }
 
