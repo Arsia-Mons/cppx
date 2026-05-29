@@ -221,8 +221,70 @@ static bool retained_draw_list_uses_html_primitive_metadata_and_layout(void) {
   return true;
 }
 
+static bool retained_draw_list_highlights_focused_control(void) {
+  react_init_runtime();
+  UiTree tree;
+  UiElementFrame frame;
+  UiElementFrameScope frame_scope(frame);
+
+  UiElement root = Box({
+      .key = "root",
+      .style =
+          {
+              .width = Length::points(320.0f),
+              .height = Length::points(260.0f),
+              .align_items = AlignItems::Start,
+              .gap = 6.0f,
+          },
+      .children = ::ui::children({
+          Button({
+              .key = "confirm",
+              .id = "ConfirmButton",
+              .label = "Confirm",
+          }),
+          Checkbox({
+              .key = "music",
+              .id = "MusicCheckbox",
+              .checked = true,
+              .label = "Music",
+          }),
+      }),
+  });
+  ReconcileResult result =
+      reconcile_retained_tree(tree, frame, root, 320.0f, 260.0f);
+  CHECK(result.ok);
+
+  FlexLayoutAdapter adapter = make_yoga_flex_layout_adapter();
+  CHECK(compute_flex_layout(adapter, tree, {320.0f, 260.0f}));
+
+  NodeId root_id = tree.child_at(tree.root_id(), 0);
+  NodeId button = tree.child_at(root_id, 0);
+  NodeId checkbox = tree.child_at(root_id, 1);
+
+  DrawList list = {};
+  CHECK(build_draw_list(tree, &list, button));
+  CHECK(list.error_count == 0);
+
+  // The focused control gets an accent border at 2px.
+  const DrawCommand *button_rect =
+      find_command(list, button, DrawCommandKind::Rect);
+  CHECK(button_rect != nullptr);
+  CHECK(same_color(button_rect->border, {122, 176, 238, 255}));
+  CHECK(button_rect->border_width == 2.0f);
+
+  // Unfocused controls keep the default border.
+  const DrawCommand *checkbox_rect =
+      find_command(list, checkbox, DrawCommandKind::Rect);
+  CHECK(checkbox_rect != nullptr);
+  CHECK(same_color(checkbox_rect->border, {78, 88, 104, 255}));
+  CHECK(checkbox_rect->border_width == 1.0f);
+  return true;
+}
+
 int main(void) {
   if (!retained_draw_list_uses_html_primitive_metadata_and_layout())
+    return 1;
+  if (!retained_draw_list_highlights_focused_control())
     return 1;
   return 0;
 }

@@ -11,6 +11,8 @@ constexpr Color kButtonFill = {24, 28, 36, 255};
 constexpr Color kButtonDisabledFill = {30, 34, 42, 255};
 constexpr Color kButtonBorder = {78, 88, 104, 255};
 constexpr Color kButtonDisabledBorder = {62, 68, 78, 255};
+constexpr Color kFocusBorder = {122, 176, 238, 255};
+constexpr float kFocusBorderWidth = 2.0f;
 constexpr Color kCheckedFill = {44, 92, 128, 255};
 constexpr Color kInputFill = {18, 22, 28, 255};
 constexpr Color kSelectionFill = {72, 116, 164, 180};
@@ -36,15 +38,31 @@ Color control_fill(const NodeSnapshot &node) {
   return kButtonFill;
 }
 
-bool append_rect(DrawList &list, const NodeSnapshot &node) {
+bool append_rect(DrawList &list, const NodeSnapshot &node, bool focused) {
   bool styled_box =
       has_color(node.style.background) ||
       (has_color(node.style.border) && node.style.border_width > 0.0f);
   bool control_box = node.role == NodeRole::Button ||
                      node.role == NodeRole::Checkbox ||
                      node.role == NodeRole::Input;
-  if (!styled_box && !control_box) {
+  if (!styled_box && !control_box && !focused) {
     return true;
+  }
+
+  Color border = has_color(node.style.border)
+                     ? node.style.border
+                     : (node.interaction.disabled ? kButtonDisabledBorder
+                                                   : kButtonBorder);
+  float border_width = node.style.border_width > 0.0f
+                           ? node.style.border_width
+                           : (control_box ? 1.0f : 0.0f);
+  // A focused, non-disabled node gets the accent focus ring. This is the
+  // visible focus indicator: applied here in the retained runtime so focus
+  // styling lands uniformly on any focused control or box, rather than being
+  // baked into each control's style.
+  if (focused && !node.interaction.disabled) {
+    border = kFocusBorder;
+    border_width = kFocusBorderWidth;
   }
 
   return list.push({
@@ -54,13 +72,8 @@ bool append_rect(DrawList &list, const NodeSnapshot &node) {
       .fill = has_color(node.style.background)
                   ? node.style.background
                   : (control_box ? control_fill(node) : kTransparent),
-      .border = has_color(node.style.border)
-                    ? node.style.border
-                    : (node.interaction.disabled ? kButtonDisabledBorder
-                                                 : kButtonBorder),
-      .border_width = node.style.border_width > 0.0f
-                          ? node.style.border_width
-                          : (control_box ? 1.0f : 0.0f),
+      .border = border,
+      .border_width = border_width,
   });
 }
 
@@ -187,7 +200,7 @@ bool append_node(const UiTree &tree, DrawList &list, NodeId id,
 
   bool disabled = inherited_disabled || node.interaction.disabled;
   bool focused = focused_id != 0 && focused_id == node.id;
-  if (!append_rect(list, node) ||
+  if (!append_rect(list, node, focused) ||
       !append_text(list, node, inherited_disabled) ||
       !append_input_contents(list, node, focused, inherited_disabled))
     return false;
