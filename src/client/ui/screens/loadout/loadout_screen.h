@@ -1,8 +1,7 @@
 #pragma once
 
-#include <functional>
-
 #include "../../navigation/ui_screen.h"
+#include "loadout_actions.h"
 
 namespace shooter {
 
@@ -15,7 +14,5 @@ public:
                      ::ui::UiElement *out) override;
   void build_ui() override;
 };
-
-std::function<void()> use_push_loadout_screen();
 
 } // namespace shooter

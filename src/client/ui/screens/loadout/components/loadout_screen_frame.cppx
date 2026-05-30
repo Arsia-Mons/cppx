@@ -1,0 +1,25 @@
+#include "client/ui/screens/loadout/components/loadout_screen_frame.h"
+
+#include "client/ui/screens/loadout/loadout_tokens.h"
+#include "ui/components/dialog.h"
+
+namespace shooter {
+
+using ::ui::children;
+using ::ui::components::Dialog;
+using ::ui::components::DialogProps;
+
+::ui::UiElement LoadoutScreenFrame(const LoadoutScreenFrameProps &props) {
+  ::ui::Style style{
+      .width = ::ui::Length::percent(100.0f),
+      .height = ::ui::Length::percent(100.0f),
+      .padding = {loadout::kFramePadding, loadout::kFramePadding,
+                  loadout::kFramePadding, loadout::kFramePadding},
+      .gap = loadout::kFrameGap,
+  };
+  return <Dialog key={props.key} modal={!props.confirm_open} style={style} visual={tokens::fill_visual(loadout::kRootBg)}>
+    {props.children}
+  </Dialog>
+}
+
+} // namespace shooter

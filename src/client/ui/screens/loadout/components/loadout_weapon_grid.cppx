@@ -1,0 +1,94 @@
+#include "client/ui/screens/loadout/components/loadout_weapon_grid.h"
+
+#include "client/ui/screens/loadout/components/weapon_tile.h"
+#include "client/ui/screens/loadout/loadout_tokens.h"
+#include "ui/components/box.h"
+#include "ui/components/components.h"
+
+namespace shooter {
+
+using ::ui::children;
+using ::ui::components::Box;
+using ::ui::components::BoxProps;
+
+namespace {
+
+// Reproduces weapon_grid_children() byte-for-byte: same row keys, same tiles per
+// row, same per-tab branch. Tiles register as ::ui::component("WeaponTile", ...)
+// with key=weapon_tile_key(i), index=i so fiber identity matches the monolith.
+::ui::UiChildren weapon_grid_rows(int active_tab) {
+  if (active_tab == LOADOUT_TAB_GEAR) {
+    return ::ui::children({
+        ::ui::components::elements::Box({
+            .key = "gear-row",
+            .style =
+                {
+                    .direction = ::ui::FlexDirection::Row,
+                    .align_items = ::ui::AlignItems::Start,
+                    .gap = loadout::kGridRowGap,
+            },
+            .children = ::ui::children({
+                ::ui::component("WeaponTile",
+                                WeaponTileProps{
+                                    .key = weapon_tile_key(3),
+                                    .index = 3,
+                                },
+                                WeaponTile),
+            }),
+        }),
+    });
+  }
+
+  return ::ui::children({
+      ::ui::components::elements::Box({
+          .key = "weapon-row-0",
+          .style =
+              {
+                  .direction = ::ui::FlexDirection::Row,
+                  .align_items = ::ui::AlignItems::Start,
+                  .gap = loadout::kGridRowGap,
+          },
+          .children = ::ui::children({
+              ::ui::component("WeaponTile",
+                              WeaponTileProps{
+                                  .key = weapon_tile_key(0),
+                                  .index = 0,
+                              },
+                              WeaponTile),
+              ::ui::component("WeaponTile",
+                              WeaponTileProps{
+                                  .key = weapon_tile_key(1),
+                                  .index = 1,
+                              },
+                              WeaponTile),
+          }),
+      }),
+      ::ui::components::elements::Box({
+          .key = "weapon-row-1",
+          .style =
+              {
+                  .direction = ::ui::FlexDirection::Row,
+                  .align_items = ::ui::AlignItems::Start,
+                  .gap = loadout::kGridRowGap,
+          },
+          .children = ::ui::children({
+              ::ui::component("WeaponTile",
+                              WeaponTileProps{
+                                  .key = weapon_tile_key(2),
+                                  .index = 2,
+                              },
+                              WeaponTile),
+          }),
+      }),
+  });
+}
+
+} // namespace
+
+::ui::UiElement LoadoutWeaponGrid(const LoadoutWeaponGridProps &props) {
+  return <Box key={props.key} style={{.width = ::ui::Length::points(loadout::kGridWidth), .gap = loadout::kGridGap}}>
+    {weapon_grid_rows(props.active_tab)}
+  </Box>
+}
+
+} // namespace shooter

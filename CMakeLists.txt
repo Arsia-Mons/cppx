@@ -106,6 +106,18 @@ cppx_transpile(CLIENT_UI_GENERATED
   src/client/ui/screens/options/options_screen.hx
   src/client/ui/screens/pause/pause_screen.cppx
   src/client/ui/screens/pause/pause_screen.hx
+  src/client/ui/screens/loadout/components/loadout_screen_frame.cppx
+  src/client/ui/screens/loadout/components/loadout_screen_frame.hx
+  src/client/ui/screens/loadout/components/loadout_title.cppx
+  src/client/ui/screens/loadout/components/loadout_title.hx
+  src/client/ui/screens/loadout/components/loadout_tabs.cppx
+  src/client/ui/screens/loadout/components/loadout_tabs.hx
+  src/client/ui/screens/loadout/components/loadout_body.cppx
+  src/client/ui/screens/loadout/components/loadout_body.hx
+  src/client/ui/screens/loadout/components/loadout_weapon_grid.cppx
+  src/client/ui/screens/loadout/components/loadout_weapon_grid.hx
+  src/client/ui/screens/loadout/components/loadout_details.cppx
+  src/client/ui/screens/loadout/components/loadout_details.hx
 )
 add_custom_target(cppx_generated_client_ui DEPENDS ${CLIENT_UI_GENERATED})
 
@@ -207,6 +219,8 @@ add_executable(hello
   src/client/ui/screens/loadout/components/weapon_tile.cpp
   src/client/ui/screens/loadout/loadout_screen.cpp
   src/client/ui/screens/loadout/loadout_state.cpp
+  src/client/ui/screens/loadout/loadout_actions.cpp
+  src/client/ui/screens/loadout/components/loadout_content.cpp
   src/client/ui/screens/main_menu/main_menu_actions.cpp
   src/client/ui/screens/pause/pause_actions.cpp
   src/client/ui/screens/options/options_actions.cpp
@@ -651,6 +665,8 @@ add_executable(shooter_ui_tests
   src/client/ui/screens/loadout/components/weapon_tile.cpp
   src/client/ui/screens/loadout/loadout_screen.cpp
   src/client/ui/screens/loadout/loadout_state.cpp
+  src/client/ui/screens/loadout/loadout_actions.cpp
+  src/client/ui/screens/loadout/components/loadout_content.cpp
   src/client/ui/screens/main_menu/main_menu_actions.cpp
   src/client/ui/screens/pause/pause_actions.cpp
   src/client/ui/screens/options/options_actions.cpp

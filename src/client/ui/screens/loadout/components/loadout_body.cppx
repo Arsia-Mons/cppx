@@ -1,0 +1,18 @@
+#include "client/ui/screens/loadout/components/loadout_body.h"
+
+#include "client/ui/screens/loadout/loadout_tokens.h"
+#include "ui/components/box.h"
+
+namespace shooter {
+
+using ::ui::children;
+using ::ui::components::Box;
+using ::ui::components::BoxProps;
+
+::ui::UiElement LoadoutBody(const LoadoutBodyProps &props) {
+  return <Box key={props.key} style={{.direction = ::ui::FlexDirection::Row, .align_items = ::ui::AlignItems::Start, .gap = loadout::kBodyGap}}>
+    {props.children}
+  </Box>
+}
+
+} // namespace shooter
