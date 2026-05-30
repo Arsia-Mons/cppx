@@ -41,6 +41,13 @@ static ::ui::UiElement MainMenuScreenView(const MainMenuScreenProps &props) {
   std::function<void()> start_match = use_start_match();
   std::function<void()> open_options = use_push_options_screen();
   std::function<void()> request_quit = client::ui::use_request_quit();
+  bool is_top = client::ui::use_screen_is_top();
+
+  // Yield the frame when an overlay (Options) is pushed on top. Visible screens
+  // build top-first, so a base screen that keeps rendering paints OVER the
+  // overlay above it. Every other screen follows this same guard.
+  if (!is_top)
+    return ::ui::empty();
 
   return <MenuScreenFrame key="root">
     <HeroPanel key="panel">
