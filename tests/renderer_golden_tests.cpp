@@ -9,6 +9,7 @@
 
 #include "golden_util.h"
 #include "renderer/draw_executor.h"
+#include "renderer/font_registry.h"
 #include "renderer/texture_registry.h"
 #include "ui/runtime/draw_command.h"
 
@@ -440,11 +441,73 @@ bool run_scaled_scene() {
   return ok;
 }
 
+// ---------------------------------------------------------------------------
+// FontRegistry text cache: the (string,size,color)-keyed texture cache must
+// return the SAME texture for a repeated key (so we don't re-rasterize every
+// frame) and DISTINCT textures when any key field differs. Font-dependent, so it
+// skips gracefully when no system font is available (keeps the suite hermetic).
+// ---------------------------------------------------------------------------
+bool run_text_cache_checks() {
+  ui_test::GoldenContext ctx;
+  if (!ctx.init()) {
+    fprintf(stderr, "renderer_golden_tests: GoldenContext init failed\n");
+    return false;
+  }
+  if (!TTF_Init()) {
+    fprintf(stderr, "renderer_golden_tests (text cache): TTF_Init failed: %s\n",
+            SDL_GetError());
+    return false;
+  }
+  renderer::FontRegistry fonts;
+  if (!fonts.initialize(ctx.renderer())) {
+    fprintf(stderr, "renderer_golden_tests (text cache): no font available, "
+                    "skipping cache checks\n");
+    TTF_Quit();
+    return true; // not a failure: environment has no usable system font
+  }
+  SDL_Renderer *r = ctx.renderer();
+  const SDL_Color white{235, 240, 245, 255};
+  const SDL_Color red{220, 80, 80, 255};
+  int w = 0, h = 0;
+
+  SDL_Texture *a = fonts.cached_text_texture(r, "Hello", 5, 16, white, &w, &h);
+  if (!a || w <= 0 || h <= 0) {
+    fprintf(stderr, "renderer_golden_tests (text cache): first render failed\n");
+    return false;
+  }
+  SDL_Texture *a2 = fonts.cached_text_texture(r, "Hello", 5, 16, white, &w, &h);
+  SDL_Texture *diff_str = fonts.cached_text_texture(r, "World", 5, 16, white, &w, &h);
+  SDL_Texture *diff_sz = fonts.cached_text_texture(r, "Hello", 5, 24, white, &w, &h);
+  SDL_Texture *diff_col = fonts.cached_text_texture(r, "Hello", 5, 16, red, &w, &h);
+  // Re-query the original AFTER inserting others — still a hit (cap not exceeded).
+  SDL_Texture *a3 = fonts.cached_text_texture(r, "Hello", 5, 16, white, &w, &h);
+
+  bool ok = true;
+  if (a2 != a)      { fprintf(stderr, "text cache: repeated key missed (no reuse)\n"); ok = false; }
+  if (a3 != a)      { fprintf(stderr, "text cache: key evicted with room to spare\n"); ok = false; }
+  if (diff_str == a){ fprintf(stderr, "text cache: different string reused texture\n"); ok = false; }
+  if (diff_sz == a) { fprintf(stderr, "text cache: different size reused texture\n"); ok = false; }
+  if (diff_col == a){ fprintf(stderr, "text cache: different color reused texture\n"); ok = false; }
+
+  // Over-long strings (>= 64 bytes) bypass the cache (nullptr -> caller renders).
+  char longstr[80];
+  for (int i = 0; i < 79; ++i) longstr[i] = 'x';
+  longstr[79] = '\0';
+  if (fonts.cached_text_texture(r, longstr, 79, 16, white, &w, &h) != nullptr) {
+    fprintf(stderr, "text cache: over-long string should bypass the cache\n");
+    ok = false;
+  }
+
+  fonts.shutdown(); // frees cached textures (must precede renderer teardown)
+  TTF_Quit();
+  return ok;
+}
+
 } // namespace
 
 int main() {
   if (!run_scene() || !run_image_scene() || !run_opacity_scene() ||
-      !run_scaled_scene()) {
+      !run_scaled_scene() || !run_text_cache_checks()) {
     fprintf(stderr, "renderer_golden_tests: FAIL\n");
     return 1;
   }

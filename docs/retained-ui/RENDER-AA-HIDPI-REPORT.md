@@ -120,4 +120,15 @@ fallback if fringe AA proves too risky (systematic-debugging Phase 4.5).
   `App::shutdown` before the renderer dies). Verified headless (density 1 × 2 →
   renders 1600×1000 → downsamples to 800×500): the focus-ring corner is now a
   clean arc (`/tmp/ui_ssaa/compare3.png`: before → fringe AA → AA+SSAA).
-- (pending) Phase 3 — text path perf/color audit + final hand-off
+- **Phase 3 — Text path perf + color fix: DONE & green (26/26).** (1) Perf: the
+  executor rebuilt a `TTF_RenderText_Blended` surface + GPU texture EVERY frame
+  for EVERY string (and the `TTF_TextEngine` FontRegistry created was unused dead
+  code). Added a fixed-capacity LRU texture cache in `FontRegistry`
+  (`cached_text_texture`, keyed by string+pixel_size+straight-color); a label
+  that repeats across frames is now rasterized + uploaded ONCE. Removed the dead
+  engine. (2) Color: the IR text color is premultiplied (by the color-space
+  contract — the transcriber + its tests are unchanged), but `render_text` fed it
+  to TTF as if straight, double-darkening translucent/disabled text. Now
+  un-premultiplied at render time. New golden-suite cache checks assert
+  hit-reuse + per-field key distinction (skip gracefully without a system font).
+- (pending) Phase 4 — adversarial verification of the full diff + hand-off

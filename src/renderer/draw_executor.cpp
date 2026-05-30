@@ -47,32 +47,62 @@ SDL_Rect round_out(const ::ui::DrawRect &r, float scale) {
   return {x0, y0, x1 - x0, y1 - y0};
 }
 
+// IR text color is PREMULTIPLIED (the color-space contract); TTF rasterizes with
+// a STRAIGHT-alpha color and blits under a straight-alpha texture, so we must
+// un-premultiply first. Opaque text (a==255) is a no-op; this fixes translucent
+// / disabled text from double-darkening.
+SDL_Color unpremultiply(::ui::Color c) {
+  if (c.a == 0)
+    return {0, 0, 0, 0};
+  if (c.a == 255)
+    return {c.r, c.g, c.b, 255};
+  auto un = [&](uint8_t v) -> Uint8 {
+    int s = (static_cast<int>(v) * 255 + c.a / 2) / c.a;
+    return static_cast<Uint8>(s > 255 ? 255 : s);
+  };
+  return {un(c.r), un(c.g), un(c.b), c.a};
+}
+
 void render_text(SDL_Renderer *r, const ::ui::DrawCommandList &list,
                  const ::ui::DrawCommand &c, FontRegistry *fonts, float scale) {
   if (!fonts || !fonts->default_font())
     return;
   const ::ui::TextData &t = c.payload.text;
-  if (t.text_len == 0)
+  if (t.text_len == 0 || t.color.a == 0)
     return;
   char buf[256];
   size_t n = t.text_len < 255 ? t.text_len : 255;
   memcpy(buf, &list.text_arena[t.text_off], n);
   buf[n] = '\0';
 
+  const SDL_Color col = unpremultiply(t.color);
+  // Rasterize at DEVICE resolution (font_size * scale) so text is crisp; the
+  // destination is positioned in device pixels and sized to the (device-res)
+  // texture, so it lands 1:1 with no upscaling blur.
+  const int pixel_size =
+      t.font_size > 0 ? static_cast<int>(t.font_size * scale + 0.5f) : 0;
+  const float dx = c.rect.x * scale, dy = c.rect.y * scale;
+
+  // Fast path: registry-cached texture (string rasterized + uploaded ONCE, then
+  // reused every frame instead of rebuilt per frame).
+  int tw = 0, th = 0;
+  if (SDL_Texture *cached =
+          fonts->cached_text_texture(r, buf, n, pixel_size, col, &tw, &th)) {
+    SDL_FRect dst = {dx, dy, static_cast<float>(tw), static_cast<float>(th)};
+    SDL_RenderTexture(r, cached, nullptr, &dst);
+    return;
+  }
+
+  // Uncached fallback (empty/over-long/failed): one-off rasterize + free.
   TTF_Font *font = fonts->default_font();
-  // Rasterize the glyphs at DEVICE resolution (font_size * scale) so HiDPI text
-  // is crisp; the destination is positioned in device pixels and sized to the
-  // (already device-res) surface, so it lands 1:1 with no upscaling blur.
-  if (t.font_size > 0)
-    TTF_SetFontSize(font, static_cast<float>(t.font_size) * scale);
-  SDL_Color col = {t.color.r, t.color.g, t.color.b, t.color.a};
+  if (pixel_size > 0)
+    TTF_SetFontSize(font, static_cast<float>(pixel_size));
   SDL_Surface *surface = TTF_RenderText_Blended(font, buf, n, col);
   if (!surface)
     return;
   SDL_Texture *texture = SDL_CreateTextureFromSurface(r, surface);
   if (texture) {
-    SDL_FRect dst = {c.rect.x * scale, c.rect.y * scale,
-                     static_cast<float>(surface->w),
+    SDL_FRect dst = {dx, dy, static_cast<float>(surface->w),
                      static_cast<float>(surface->h)};
     SDL_RenderTexture(r, texture, nullptr, &dst);
     SDL_DestroyTexture(texture);
