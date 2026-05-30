@@ -66,6 +66,13 @@ const char *weapon_tile_key(int index) {
                 if (set_selected)
                   set_selected(index);
               },
+          .on_activate =
+              [set_selected, index, select](const ::ui::ActivationEvent &) {
+                if (set_selected)
+                  set_selected(index);
+                if (select)
+                  select();
+              },
           .children =
               ::ui::children({
                   ::ui::component(
@@ -96,22 +103,15 @@ const char *weapon_tile_key(int index) {
                       },
                       components::Text),
               }),
-          .on_activate =
-              [set_selected, index, select](const ::ui::ActivationEvent &) {
-                if (set_selected)
-                  set_selected(index);
-                if (select)
-                  select();
-              },
           // Button paint comes from the theme button role (resolved as .visual
           // inside Button); selected/disabled states are conveyed by focus and
           // the disabled interaction. Only layout fields live in .style.
           .style =
               {
-                  .width = ::ui::Length::points(190.0f),
-                  .height = ::ui::Length::points(78.0f),
                   .align_items = ::ui::AlignItems::Start,
                   .justify_content = ::ui::JustifyContent::Start,
+                  .width = ::ui::Length::points(190.0f),
+                  .height = ::ui::Length::points(78.0f),
                   .padding = {10.0f, 10.0f, 10.0f, 10.0f},
                   .gap = 5.0f,
                   .border_width = selected ? 2.0f : 1.0f,

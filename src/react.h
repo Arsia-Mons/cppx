@@ -219,7 +219,9 @@ template <typename T> void destroy_state_slot(void *storage) {
 
 } // namespace react_detail
 
-template <typename T> T *use_state(T initial) {
+namespace react_detail {
+
+template <typename T, typename Initial> T *use_state_impl(Initial &&initial) {
     bool is_new_slot = false;
     void *storage = react_use_generic_state_slot(
         (uint32_t)sizeof(T), (uint32_t)alignof(T),
@@ -229,9 +231,19 @@ template <typename T> T *use_state(T initial) {
         return nullptr;
     }
     if (is_new_slot) {
-        new (storage) T(std::move(initial));
+        new (storage) T(std::forward<Initial>(initial));
     }
     return static_cast<T *>(storage);
+}
+
+} // namespace react_detail
+
+template <typename T> T *use_state(const T &initial) {
+    return react_detail::use_state_impl<T>(initial);
+}
+
+template <typename T> T *use_state(T &&initial) {
+    return react_detail::use_state_impl<T>(std::move(initial));
 }
 
 // --- use_callback ---

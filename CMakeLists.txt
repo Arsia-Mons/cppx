@@ -55,6 +55,14 @@ FetchContent_MakeAvailable(yoga)
 
 enable_testing()
 
+add_compile_options(
+  $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:Clang,AppleClang>>:-Werror=reorder-init-list>
+)
+
+if(MSVC)
+  add_link_options(/STACK:8388608)
+endif()
+
 cppx_transpile(UI_COMPONENT_GENERATED
   src/ui/components/box.cppx
   src/ui/components/box.hx

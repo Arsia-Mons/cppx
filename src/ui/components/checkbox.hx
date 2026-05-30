@@ -22,11 +22,11 @@ struct CheckboxProps {
   const char *label = nullptr;
   std::function<void(bool)> on_change = {};
   ::ui::Style style = {
-      .width = ::ui::Length::points(178.0f),
-      .height = ::ui::Length::points(38.0f),
       .direction = ::ui::FlexDirection::Row,
       .align_items = ::ui::AlignItems::Center,
       .justify_content = ::ui::JustifyContent::Start,
+      .width = ::ui::Length::points(178.0f),
+      .height = ::ui::Length::points(38.0f),
       .padding = {10.0f, 10.0f, 8.0f, 8.0f},
       .gap = 10.0f,
   };

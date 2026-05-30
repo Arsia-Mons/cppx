@@ -67,9 +67,9 @@ static bool button_emits_fill_and_border(void) {
       .key = "root",
       .style =
           {
+              .align_items = AlignItems::Start,
               .width = Length::points(320.0f),
               .height = Length::points(260.0f),
-              .align_items = AlignItems::Start,
               .padding = {4.0f, 4.0f, 4.0f, 4.0f},
               .gap = 6.0f,
               .border_width = 1.0f,
@@ -128,9 +128,9 @@ static bool button_emits_fill_and_border(void) {
       .key = "root",
       .style =
           {
+              .align_items = AlignItems::Start,
               .width = Length::points(320.0f),
               .height = Length::points(260.0f),
-              .align_items = AlignItems::Start,
               .padding = {4.0f, 4.0f, 4.0f, 4.0f},
               .gap = 6.0f,
               .border_width = 1.0f,
@@ -309,9 +309,9 @@ static bool focused_button_emits_focus_ring_outline(void) {
       .key = "root",
       .style =
           {
+              .align_items = AlignItems::Start,
               .width = Length::points(320.0f),
               .height = Length::points(260.0f),
-              .align_items = AlignItems::Start,
               .gap = 6.0f,
           },
       .children = ::ui::children({
@@ -522,9 +522,9 @@ static bool wrapped_text_emits_one_command_per_line(void) {
       .key = "root",
       .style =
           {
+              .align_items = AlignItems::Start,
               .width = Length::points(140.0f),
               .height = Length::points(200.0f),
-              .align_items = AlignItems::Start,
           },
       .children = ::ui::children({
           // Low-level Text host so we can set the resolved TextVisual (wrap) the
@@ -694,9 +694,9 @@ static bool shadow_and_image_emit_in_paint_order(void) {
       .key = "root",
       .style =
           {
+              .align_items = AlignItems::Start,
               .width = Length::points(200.0f),
               .height = Length::points(120.0f),
-              .align_items = AlignItems::Start,
           },
       .children = ::ui::children({
           ::ui::host(::ui::HostKind::Box,
@@ -777,9 +777,9 @@ static bool no_shadow_no_image_when_absent(void) {
 
   UiElement root = Box({
       .key = "root",
-      .style = {.width = Length::points(120.0f),
-                .height = Length::points(80.0f),
-                .align_items = AlignItems::Start},
+      .style = {.align_items = AlignItems::Start,
+                .width = Length::points(120.0f),
+                .height = Length::points(80.0f)},
       .children = ::ui::children({
           ::ui::host(::ui::HostKind::Box,
                      {
@@ -831,16 +831,16 @@ static bool group_opacity_emits_balanced_layer_brackets(void) {
 
   UiElement root = Box({
       .key = "root",
-      .style = {.width = Length::points(120.0f),
-                .height = Length::points(80.0f),
-                .align_items = AlignItems::Start},
+      .style = {.align_items = AlignItems::Start,
+                .width = Length::points(120.0f),
+                .height = Length::points(80.0f)},
       .children = ::ui::children({
           ::ui::host(::ui::HostKind::Box,
                      {
                          .key = "group",
-                         .style = {.width = Length::points(60.0f),
-                                   .height = Length::points(50.0f),
-                                   .align_items = AlignItems::Start},
+                         .style = {.align_items = AlignItems::Start,
+                                   .width = Length::points(60.0f),
+                                   .height = Length::points(50.0f)},
                          .visual = group,
                          .children = ::ui::children({
                              ::ui::host(::ui::HostKind::Box,
@@ -929,9 +929,9 @@ static bool full_opacity_emits_no_layer(void) {
 
   UiElement root = Box({
       .key = "root",
-      .style = {.width = Length::points(120.0f),
-                .height = Length::points(80.0f),
-                .align_items = AlignItems::Start},
+      .style = {.align_items = AlignItems::Start,
+                .width = Length::points(120.0f),
+                .height = Length::points(80.0f)},
       .children = ::ui::children({
           ::ui::host(::ui::HostKind::Box,
                      {
@@ -979,16 +979,16 @@ static bool hidden_node_emits_nothing(void) {
 
   UiElement root = Box({
       .key = "root",
-      .style = {.width = Length::points(120.0f),
-                .height = Length::points(80.0f),
-                .align_items = AlignItems::Start},
+      .style = {.align_items = AlignItems::Start,
+                .width = Length::points(120.0f),
+                .height = Length::points(80.0f)},
       .children = ::ui::children({
           ::ui::host(::ui::HostKind::Box,
                      {
                          .key = "hidden",
-                         .style = {.width = Length::points(40.0f),
-                                   .height = Length::points(30.0f),
-                                   .align_items = AlignItems::Start},
+                         .style = {.align_items = AlignItems::Start,
+                                   .width = Length::points(40.0f),
+                                   .height = Length::points(30.0f)},
                          .visual = v,
                          .children = ::ui::children({
                              ::ui::host(::ui::HostKind::Box,

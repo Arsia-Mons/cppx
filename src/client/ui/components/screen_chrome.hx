@@ -51,20 +51,20 @@ inline ::ui::VisualStyle text_visual(::ui::Color color, uint16_t font_size) {
 
 inline ::ui::Style menu_screen_frame_style() {
   return {
-      .width = ::ui::Length::percent(100.0f),
-      .height = ::ui::Length::percent(100.0f),
       .direction = ::ui::FlexDirection::Column,
       .align_items = ::ui::AlignItems::Center,
       .justify_content = ::ui::JustifyContent::Center,
+      .width = ::ui::Length::percent(100.0f),
+      .height = ::ui::Length::percent(100.0f),
       .padding = {36.0f, 36.0f, 36.0f, 36.0f},
   };
 }
 
 inline ::ui::Style game_screen_frame_style() {
   return {
+      .direction = ::ui::FlexDirection::Column,
       .width = ::ui::Length::percent(100.0f),
       .height = ::ui::Length::percent(100.0f),
-      .direction = ::ui::FlexDirection::Column,
       .padding = {24.0f, 24.0f, 24.0f, 24.0f},
       .gap = 18.0f,
   };
@@ -72,10 +72,10 @@ inline ::ui::Style game_screen_frame_style() {
 
 inline ::ui::Style overlay_screen_frame_style() {
   return {
-      .width = ::ui::Length::percent(100.0f),
-      .height = ::ui::Length::percent(100.0f),
       .direction = ::ui::FlexDirection::Column,
       .align_items = ::ui::AlignItems::Start,
+      .width = ::ui::Length::percent(100.0f),
+      .height = ::ui::Length::percent(100.0f),
       .padding = {24.0f, 24.0f, 24.0f, 24.0f},
       .gap = 12.0f,
   };
@@ -83,19 +83,19 @@ inline ::ui::Style overlay_screen_frame_style() {
 
 inline ::ui::Style centered_overlay_frame_style() {
   return {
-      .width = ::ui::Length::percent(100.0f),
-      .height = ::ui::Length::percent(100.0f),
       .direction = ::ui::FlexDirection::Column,
       .align_items = ::ui::AlignItems::Center,
       .justify_content = ::ui::JustifyContent::Center,
+      .width = ::ui::Length::percent(100.0f),
+      .height = ::ui::Length::percent(100.0f),
   };
 }
 
 inline ::ui::Style hero_panel_style() {
   return {
-      .width = ::ui::Length::points(340.0f),
       .direction = ::ui::FlexDirection::Column,
       .align_items = ::ui::AlignItems::Center,
+      .width = ::ui::Length::points(340.0f),
       .padding = {24.0f, 24.0f, 24.0f, 24.0f},
       .gap = 14.0f,
       // border_width feeds Yoga layout (reserves the border box); the paint
@@ -106,9 +106,9 @@ inline ::ui::Style hero_panel_style() {
 
 inline ::ui::Style overlay_panel_style() {
   return {
-      .width = ::ui::Length::points(220.0f),
       .direction = ::ui::FlexDirection::Column,
       .align_items = ::ui::AlignItems::Center,
+      .width = ::ui::Length::points(220.0f),
       .padding = {18.0f, 18.0f, 18.0f, 18.0f},
       .gap = 12.0f,
       .border_width = 1.0f,

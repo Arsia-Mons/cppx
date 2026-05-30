@@ -43,6 +43,14 @@ namespace shooter {
                   set_selected(weapon_index);
               },
           .label = slot_text,
+          .on_activate =
+              [set_selected, weapon_index = props.weapon_index,
+               select](const ::ui::ActivationEvent &) {
+                if (set_selected)
+                  set_selected(weapon_index);
+                if (select)
+                  select();
+              },
           .children = ::ui::children({
               ::ui::component(
                   "Text",
@@ -57,23 +65,15 @@ namespace shooter {
                   },
                   components::Text),
           }),
-          .on_activate =
-              [set_selected, weapon_index = props.weapon_index,
-               select](const ::ui::ActivationEvent &) {
-                if (set_selected)
-                  set_selected(weapon_index);
-                if (select)
-                  select();
-              },
           // Button paint comes from the theme button role (resolved as .visual
           // inside Button); the selected state is conveyed by focus (autofocus=
           // selected -> focus ring). Only layout fields live in .style.
           .style =
               {
-                  .width = ::ui::Length::points(232.0f),
-                  .height = ::ui::Length::points(38.0f),
                   .align_items = ::ui::AlignItems::Start,
                   .justify_content = ::ui::JustifyContent::Center,
+                  .width = ::ui::Length::points(232.0f),
+                  .height = ::ui::Length::points(38.0f),
                   .padding = {10.0f, 10.0f, 8.0f, 8.0f},
                   .border_width = selected ? 2.0f : 1.0f,
               },

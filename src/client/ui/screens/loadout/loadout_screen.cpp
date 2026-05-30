@@ -229,18 +229,18 @@ LoadoutScreenBody(const LoadoutScreenBodyProps &props) {
                                                               },
                                                           .style =
                                                               {
-                                                                  .width =
-                                                                      ::
-                                                                          ui::Length::points(
-                                                                              132.0f),
-                                                                  .height =
-                                                                      ::ui::Length::points(34.0f),
                                                                   .align_items =
                                                                       ::ui::AlignItems::Center,
                                                                   .justify_content =
                                                                       ::
                                                                           ui::JustifyContent::
                                                                               Center,
+                                                                  .width =
+                                                                      ::
+                                                                          ui::Length::points(
+                                                                              132.0f),
+                                                                  .height =
+                                                                      ::ui::Length::points(34.0f),
                                                                   .padding =
                                                                       {12.0f,
                                                                        12.0f,
@@ -278,18 +278,18 @@ LoadoutScreenBody(const LoadoutScreenBodyProps &props) {
                                                                   },
                                                               .style =
                                                                   {
-                                                                      .width =
-                                                                          ::
-                                                                              ui::Length::points(
-                                                                                  132.0f),
-                                                                      .height =
-                                                                          ::ui::Length::points(34.0f),
                                                                       .align_items =
                                                                           ::ui::AlignItems::Center,
                                                                       .justify_content =
                                                                           ::
                                                                               ui::JustifyContent::
                                                                                   Center,
+                                                                      .width =
+                                                                          ::
+                                                                              ui::Length::points(
+                                                                                  132.0f),
+                                                                      .height =
+                                                                          ::ui::Length::points(34.0f),
                                                                       .padding =
                                                                           {12.0f,
                                                                            12.0f,

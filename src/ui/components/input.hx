@@ -23,10 +23,10 @@ struct InputProps {
   const char *value = "";
   std::function<void(const std::string &)> on_change = {};
   ::ui::Style style = {
-      .width = ::ui::Length::points(220.0f),
-      .height = ::ui::Length::points(36.0f),
       .align_items = ::ui::AlignItems::Stretch,
       .justify_content = ::ui::JustifyContent::Center,
+      .width = ::ui::Length::points(220.0f),
+      .height = ::ui::Length::points(36.0f),
       .padding = {8.0f, 8.0f, 8.0f, 8.0f},
   };
 };

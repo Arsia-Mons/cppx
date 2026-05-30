@@ -18,13 +18,13 @@ struct ButtonProps {
   std::function<void(const ::ui::TextInputEvent &)> on_text_input = {};
   std::function<void(const ::ui::TextEditingEvent &)> on_text_editing = {};
   const char *label = nullptr;
-  ::ui::UiChildren children = {};
   std::function<void(const ::ui::ActivationEvent &)> on_activate = {};
+  ::ui::UiChildren children = {};
   ::ui::Style style = {
-      .width = ::ui::Length::points(132.0f),
-      .height = ::ui::Length::points(38.0f),
       .align_items = ::ui::AlignItems::Center,
       .justify_content = ::ui::JustifyContent::Center,
+      .width = ::ui::Length::points(132.0f),
+      .height = ::ui::Length::points(38.0f),
       .padding = {14.0f, 14.0f, 8.0f, 8.0f},
   };
 };
