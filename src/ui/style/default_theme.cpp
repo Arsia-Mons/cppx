@@ -9,7 +9,7 @@
 //   disabled      - button/input/checkbox (dimmed fill + border)
 //   checked       - checkbox / checkbox_mark
 //   focus_visible - every focusable role (the ONLY wiring that produces the focus ring)
-//   hover/pressed/active - empty in v1 (left for tuning)
+//   hover/pressed - every focusable role (subtle surface response)
 
 namespace ui {
 
@@ -30,6 +30,12 @@ constexpr Color kAccent = {96, 165, 250, 255};
 constexpr Color kControlTop = {40, 46, 58, 255};
 constexpr Color kControlBottom = {28, 33, 43, 255};
 constexpr Color kControlBorder = {70, 80, 98, 255};
+constexpr Color kHoverTop = {48, 56, 70, 255};
+constexpr Color kHoverBottom = {34, 40, 52, 255};
+constexpr Color kHoverBorder = {90, 104, 126, 255};
+constexpr Color kPressedTop = {26, 31, 41, 255};
+constexpr Color kPressedBottom = {20, 24, 32, 255};
+constexpr Color kPressedBorder = {96, 165, 250, 255};
 
 constexpr Color kDisabledTop = {30, 34, 42, 255};
 constexpr Color kDisabledBottom = {24, 27, 34, 255};
@@ -74,6 +80,17 @@ const Theme &default_theme() {
       r.disabled.border = opt(Border{{1, 1, 1, 1},
                                      {kDisabledBorder, kDisabledBorder,
                                       kDisabledBorder, kDisabledBorder}});
+      r.hover.background = opt(kHoverBottom);
+      r.hover.gradient = opt(vgrad(kHoverTop, kHoverBottom));
+      r.hover.border =
+          opt(Border{{1, 1, 1, 1},
+                     {kHoverBorder, kHoverBorder, kHoverBorder, kHoverBorder}});
+      r.pressed.background = opt(kPressedBottom);
+      r.pressed.gradient = opt(vgrad(kPressedTop, kPressedBottom));
+      r.pressed.border = opt(
+          Border{{1, 1, 1, 1},
+                 {kPressedBorder, kPressedBorder, kPressedBorder,
+                  kPressedBorder}});
       r.focus_visible = focus_ring_patch; // the locked focus ring
     };
     seed_control(th.button);

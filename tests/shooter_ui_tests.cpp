@@ -397,6 +397,32 @@ static bool loadout_tabs_and_equipment_slots_are_real_focus_targets(void) {
   return true;
 }
 
+static bool loadout_from_pause_stack_commits_without_runtime_errors(void) {
+  react_init_runtime();
+  shooter::ShooterGame game;
+  TestFrameProviders providers{.game = &game};
+  client::ui::UiPipeline pipeline;
+  client::ui::ClientUi &client_ui = pipeline.client_ui();
+  CHECK(client_ui.push_screen(std::make_unique<shooter::ShooterGameScreen>()));
+
+  run_pipeline_frame(pipeline, providers);
+  run_pipeline_frame(pipeline, providers, keyboard_confirm());
+  CHECK(client_ui.screens().count() == 2);
+  CHECK(strcmp(client_ui.screens().top()->debug_name(), "Pause") == 0);
+
+  run_pipeline_frame(pipeline, providers);
+  run_pipeline_frame(pipeline, providers, keyboard_down());
+  run_pipeline_frame(pipeline, providers, keyboard_down());
+  run_pipeline_frame(pipeline, providers, keyboard_confirm());
+  CHECK(client_ui.screens().count() == 3);
+  CHECK(strcmp(client_ui.screens().top()->debug_name(), "Loadout") == 0);
+
+  run_pipeline_frame(pipeline, providers);
+  CHECK(react_error_count() == 0);
+  CHECK(retained_control_id(client_ui, "WeaponsTab") != 0);
+  return true;
+}
+
 static bool shooter_game_mutations_wait_for_client_ui_drain(void) {
   react_init_runtime();
   shooter::ShooterGame game;
@@ -524,6 +550,8 @@ int main(void) {
   if (!loadout_buy_uses_confirm_dialog_and_restores_parent_focus())
     return 1;
   if (!loadout_tabs_and_equipment_slots_are_real_focus_targets())
+    return 1;
+  if (!loadout_from_pause_stack_commits_without_runtime_errors())
     return 1;
   if (!shooter_game_mutations_wait_for_client_ui_drain())
     return 1;

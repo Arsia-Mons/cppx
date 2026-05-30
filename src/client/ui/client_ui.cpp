@@ -42,6 +42,10 @@ void ClientUi::build_visible_screens(const UiElementWrapper &wrap_root) {
   ::ui::UiElementFrameScope frame_scope(retained_element_frame_);
   ::ui::Span<UiScreen *> visible = screens_.visible_screens();
   for (int i = 0; i < visible.count; ++i) {
+    // Descriptors and copied props only need to live through the immediate
+    // commit below. Reset per visible screen so overlay stacks do not exhaust
+    // the transient frame before the top screen commits.
+    retained_element_frame_.reset();
     UiScreen *screen = visible[i];
     if (!screen)
       continue;
@@ -80,8 +84,9 @@ void ClientUi::build_visible_screens(const UiElementWrapper &wrap_root) {
         ::ui::ReconcileResult result = ::ui::commit_retained_elements(
             retained_tree_, retained_element_frame_, provider);
         if (!result.ok) {
-          react_report_error("client/ui: failed to commit returned screen %s\n",
-                             screen->debug_name());
+          react_report_error(
+              "client/ui: failed to commit returned screen %s (errors=%d)\n",
+              screen->debug_name(), result.error_count);
         }
       }
     };
