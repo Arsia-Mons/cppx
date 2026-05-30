@@ -28,6 +28,12 @@ public:
     void finish_frame(client::ui::UiPipeline &pipeline);
     void shutdown(void);
 
+    // A render-mode change requested via the "render_mode" op since the last
+    // call. Returns true and writes the requested slug (e.g. "sdf") into *out,
+    // then clears it; false if none pending. The mailbox stays renderer-agnostic
+    // (it forwards the raw slug; app/ maps it to a RenderMode).
+    bool take_pending_render_mode(std::string *out);
+
 private:
     struct PendingWait {
         int id = 0;
@@ -70,6 +76,7 @@ private:
     std::vector<PendingWait> pending_waits_;
     std::vector<PendingScreenshot> pending_screenshots_;
     std::vector<PendingCapture> pending_captures_;
+    std::string pending_render_mode_; // raw slug from a "render_mode" op; "" = none
 };
 
 } // namespace platform

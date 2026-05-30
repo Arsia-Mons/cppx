@@ -250,6 +250,8 @@ def command_main(args: argparse.Namespace) -> int:
         payload = {"out": args.out}
     elif op == "capture_frames":
         payload = {"out_dir": args.out_dir, "count": args.count}
+    elif op == "render_mode":
+        payload = {"mode": args.mode}
     reply = send_command(control_dir, wire_op, payload, args.timeout)
     if op == "screenshot":
         out = Path(reply.get("result", {}).get("out", args.out))
@@ -409,6 +411,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--out-dir", required=True)
     p.add_argument("--count", type=int, default=3)
     add_dm_options(p)
+    p.set_defaults(func=command_main)
+
+    p = sub.add_parser("render_mode")
+    add_common(p)
+    p.add_argument("--mode", required=True,
+                   choices=["ssaa", "fringe", "sdf"],
+                   help="rounded-primitive AA strategy to switch to live")
     p.set_defaults(func=command_main)
 
     p = sub.add_parser("smoke")

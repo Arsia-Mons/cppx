@@ -13,6 +13,7 @@ bool UiSurface::initialize(SDL_Renderer *renderer, FontRegistry &fonts) {
 }
 
 void UiSurface::shutdown() {
+  sdf_cache_.clear(); // free SDF mask textures before the renderer dies
   if (ss_target_) {
     SDL_DestroyTexture(ss_target_);
     ss_target_ = nullptr;

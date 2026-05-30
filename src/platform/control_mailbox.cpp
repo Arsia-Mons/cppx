@@ -498,10 +498,26 @@ void ControlMailbox::poll(::ui::UiInputFrame &ui_input, bool &running,
           .dir = dir,
           .remaining = count,
       });
+    } else if (op == "render_mode") {
+      // Forward the raw slug to the loop (app/ maps it to a RenderMode and
+      // applies it after poll). Keeps platform/ free of renderer/ deps.
+      std::string mode = json_string_value(raw, "mode");
+      pending_render_mode_ = mode;
+      write_reply(id, true,
+                  "\"result\":{\"mode\":\"" + json_escape(mode) + "\"}");
     } else {
       write_error(id, "BAD_OP", "unknown op: " + op);
     }
   }
+}
+
+bool ControlMailbox::take_pending_render_mode(std::string *out) {
+  if (pending_render_mode_.empty())
+    return false;
+  if (out)
+    *out = pending_render_mode_;
+  pending_render_mode_.clear();
+  return true;
 }
 
 bool ControlMailbox::apply_pointer_override(float &x, float &y,

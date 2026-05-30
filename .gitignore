@@ -48,3 +48,6 @@ tools/__pycache__/
 tests/fixtures/golden/*_actual.bmp
 tests/fixtures/golden/*_diff.bmp
 /prompt.md
+
+# transient ScheduleWakeup lock (runtime, not source)
+.claude/scheduled_tasks.lock

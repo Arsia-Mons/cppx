@@ -4,6 +4,7 @@
 
 #include "../ui/style/visual_style.h" // ::ui::Color
 #include "font_registry.h"
+#include "sdf_raster.h"
 
 namespace renderer {
 
@@ -43,6 +44,10 @@ public:
   // The FontRegistry handed to initialize(); the draw executor needs it to
   // rasterize text. May be null before initialize().
   FontRegistry *fonts() const { return fonts_; }
+  // Persistent SDF coverage-mask cache for RenderMode::Sdf. Owned here (the
+  // renderer frame boundary) and freed in shutdown() before the SDL_Renderer is
+  // destroyed. Handed to execute_draw_commands each frame.
+  SdfMaskCache *sdf_cache() { return &sdf_cache_; }
 
 private:
   SDL_Renderer *renderer_ = nullptr;
@@ -51,6 +56,7 @@ private:
   int ss_w_ = 0;
   int ss_h_ = 0;
   bool ss_active_ = false; // current frame is rendering into ss_target_
+  SdfMaskCache sdf_cache_;
 };
 
 } // namespace renderer
