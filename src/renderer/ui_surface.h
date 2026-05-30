@@ -15,10 +15,29 @@ namespace renderer {
 // client/game deps.
 class UiSurface {
 public:
+  ~UiSurface();
   bool initialize(SDL_Renderer *renderer, FontRegistry &fonts);
+  // Frees the supersample target (if any) and clears handles. Idempotent. Call
+  // before the SDL_Renderer is destroyed (App::shutdown does this); the
+  // destructor is a backstop.
+  void shutdown();
 
   void clear(::ui::Color background);
   void present();
+
+  // Begin a (possibly supersampled) frame. When supersample > 1 a cached
+  // offscreen target sized output*supersample is bound and cleared to
+  // `background`; otherwise the window itself is cleared. Returns the effective
+  // device scale to hand to execute_draw_commands (device_scale * supersample
+  // when supersampling, else device_scale). Pair every call with resolve_frame.
+  // This is full-scene SSAA: render the whole UI at N× then box-downsample on
+  // resolve, which anti-aliases everything (curves, gradients, text) on top of
+  // the per-primitive feather — crisp edges even on a standard-density display.
+  float begin_frame(::ui::Color background, float device_scale, int supersample);
+  // Resolve a supersampled frame: unbind the offscreen target and downsample it
+  // onto the window with a linear filter. No-op when begin_frame rendered
+  // straight to the window. After this the window holds the final frame.
+  void resolve_frame();
 
   SDL_Renderer *sdl_renderer() const { return renderer_; }
   // The FontRegistry handed to initialize(); the draw executor needs it to
@@ -28,6 +47,10 @@ public:
 private:
   SDL_Renderer *renderer_ = nullptr;
   FontRegistry *fonts_ = nullptr;
+  SDL_Texture *ss_target_ = nullptr; // cached supersample target (lazily sized)
+  int ss_w_ = 0;
+  int ss_h_ = 0;
+  bool ss_active_ = false; // current frame is rendering into ss_target_
 };
 
 } // namespace renderer

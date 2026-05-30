@@ -99,5 +99,25 @@ fallback if fringe AA proves too risky (systematic-debugging Phase 4.5).
   tests assert fringe presence + core containment + square-ignores-feather +
   overflow. Golden fixtures regenerated. Verified visually: the focus-ring corner
   staircase is now a smooth ramp (`/tmp/ui_aa/compare_corner.png`).
-- (pending) Phase 2 — HiDPI device-resolution + text path overhaul
-- (pending) Phase 3 — final audit + hand-off
+- **Phase 2a — HiDPI scale plumbing: DONE & green (26/26).** Window requests
+  `SDL_WINDOW_HIGH_PIXEL_DENSITY`; a device `scale` (from
+  `SDL_GetWindowPixelDensity`) threads through `execute_draw_commands` — geometry
+  verts, text font-size + dst, image dst, and clip rects all multiply by `scale`,
+  and the AA feather is `1/scale` so the fringe stays exactly 1 device pixel.
+  Layout stays in points (visual sizes unchanged). New golden scene 4 renders
+  scene 1 at scale=2 with semantic probes + a golden lock; the other 3 goldens
+  are byte-identical (scale==1 unchanged). **Diagnostic:** the local display is
+  1920×1080, density 1.0 (NOT Retina) — so the user's jaggies were purely the
+  no-AA issue, and HiDPI is a correct no-op here (a real win only on Retina).
+- **Phase 2b — Full-scene supersampling (SSAA): DONE & green (26/26).** Because
+  this user is at density 1.0, native 1px AA still steps slightly; the crisp fix
+  is SSAA, reusing the Phase-2a `scale` knob. `UiSurface::begin_frame` binds a
+  cached offscreen target sized `output * supersample`, the UI renders into it at
+  `scale = density * supersample`, and `resolve_frame` box-downsamples it onto
+  the window with a linear filter (anti-aliasing everything — curves, gradients,
+  text — on top of the per-primitive feather). Policy: 2× on standard displays,
+  1× on Retina (already native). Target lifecycle owned by `UiSurface` (freed in
+  `App::shutdown` before the renderer dies). Verified headless (density 1 × 2 →
+  renders 1600×1000 → downsamples to 800×500): the focus-ring corner is now a
+  clean arc (`/tmp/ui_ssaa/compare3.png`: before → fringe AA → AA+SSAA).
+- (pending) Phase 3 — text path perf/color audit + final hand-off

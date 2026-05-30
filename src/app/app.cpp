@@ -132,6 +132,7 @@ void App::shutdown() {
     if (!initialized_) return;
     control_.shutdown();
     react_shutdown();
+    surface_.shutdown(); // free the supersample target before the renderer dies
     fonts_.shutdown();
     window_.shutdown();
     TTF_Quit();

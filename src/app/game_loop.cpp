@@ -72,14 +72,21 @@ void GameLoop::tick() {
   };
 
   ui_pipeline_.render_client_ui_frame(frame, [&] {
-    surface_.clear({12, 14, 22, 255});
-    // The live path renders the tagged-union IR through execute_draw_commands.
-    // Fonts come from the surface, which owns the FontRegistry handed to it at
-    // initialize().
+    const float density = window_.pixel_density();
+    // Supersample standard-density displays ~2x for crisp edges; a high-density
+    // (Retina) panel already renders at native resolution, so don't multiply it.
+    const int supersample = density >= 1.5f ? 1 : 2;
+    // begin_frame binds the (supersample) target + clears, returning the
+    // effective device scale to render at. The live path renders the tagged-
+    // union IR through execute_draw_commands; resolve_frame downsamples to the
+    // window. Fonts come from the surface (owns the FontRegistry from init).
+    const float scale =
+        surface_.begin_frame({12, 14, 22, 255}, density, supersample);
     renderer::execute_draw_commands(
         surface_.sdl_renderer(),
         ui_pipeline_.client_ui().retained_command_list(), surface_.fonts(),
-        /*textures=*/nullptr, window_.pixel_density());
+        /*textures=*/nullptr, scale);
+    surface_.resolve_frame();
     control_.capture_after_render(surface_.sdl_renderer(), ui_pipeline_);
     surface_.present();
   });
