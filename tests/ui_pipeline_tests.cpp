@@ -1,6 +1,6 @@
-#include "client/ui/ui_pipeline.h"
+#include "client/ui/app_shell/ui_pipeline.h"
 
-#include "client/ui/navigation/ui_screen.h"
+#include "client/ui/app_shell/navigation/ui_screen.h"
 #include "react.h"
 #include "ui/components/components.h"
 #include "ui/runtime/draw_command.h"

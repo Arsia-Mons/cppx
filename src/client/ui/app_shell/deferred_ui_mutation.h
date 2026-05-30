@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../client_ui.h"
+#include "client_ui.h"
 
 namespace client::ui::internal {
 

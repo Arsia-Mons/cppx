@@ -1,7 +1,7 @@
 #include "client/ui/screens/loadout/loadout_actions.h"
 
 #include "client/ui/screens/loadout/loadout_screen.h"
-#include "client/ui/client_ui.h"
+#include "client/ui/app_shell/client_ui.h"
 #include "client/ui/callback_deps.h"
 #include "react.h"
 

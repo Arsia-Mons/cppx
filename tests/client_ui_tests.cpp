@@ -1,4 +1,4 @@
-#include "client/ui/client_ui.h"
+#include "client/ui/app_shell/client_ui.h"
 #include "react.h"
 #include "ui/components/components.h"
 #include "ui/runtime/yoga_flex_layout.h"

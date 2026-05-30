@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <string>
 
-#include "client/ui/client_ui.h"
+#include "client/ui/app_shell/client_ui.h"
 #include "client/ui/components/actions/actions.h"
 #include "client/ui/components/layout/layout.h"
 #include "client/ui/components/text/text.h"

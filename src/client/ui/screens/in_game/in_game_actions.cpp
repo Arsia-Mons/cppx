@@ -3,8 +3,8 @@
 #include <memory>
 
 #include "client/ui/callback_deps.h"
-#include "client/ui/client_ui.h"
-#include "client/ui/internal/deferred_ui_mutation.h"
+#include "client/ui/app_shell/client_ui.h"
+#include "client/ui/app_shell/deferred_ui_mutation.h"
 #include "client/ui/providers/shooter_provider.h"
 #include "client/ui/screens/in_game/in_game_screen.h"
 #include "react.h"

@@ -12,7 +12,7 @@
 #include "client/ui/screens/options/options_actions.h"
 #include "client/ui/screens/loadout/loadout_screen.h"
 
-#include "client/ui/client_ui.h"
+#include "client/ui/app_shell/client_ui.h"
 #include "react.h"
 
 namespace shooter {

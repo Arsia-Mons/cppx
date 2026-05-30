@@ -1,4 +1,4 @@
-#include "app_shell.h"
+#include "app_shell_provider.h"
 
 #include "../../../react.h"
 

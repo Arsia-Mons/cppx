@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../navigation/ui_screen.h"
+#include "../../app_shell/navigation/ui_screen.h"
 #include "loadout_actions.h"
 
 namespace shooter {

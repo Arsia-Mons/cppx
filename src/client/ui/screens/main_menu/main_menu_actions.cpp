@@ -3,7 +3,7 @@
 #include <memory>
 
 #include "client/ui/callback_deps.h"
-#include "client/ui/client_ui.h"
+#include "client/ui/app_shell/client_ui.h"
 #include "client/ui/screens/main_menu/main_menu_screen.h"
 #include "react.h"
 

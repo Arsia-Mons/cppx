@@ -2,7 +2,7 @@
 
 #include <stdio.h>
 
-#include "client/ui/client_ui.h"
+#include "client/ui/app_shell/client_ui.h"
 #include "client/ui/components/actions/actions.h"
 #include "client/ui/components/hud_band.h"
 #include "client/ui/components/layout/layout.h"

@@ -206,14 +206,14 @@ add_executable(hello
   src/react.cpp
   src/app/app.cpp
   src/app/game_loop.cpp
-  src/client/ui/client_ui.cpp
+  src/client/ui/app_shell/client_ui.cpp
   src/client/ui/components/hud_band.cpp
   src/client/ui/hooks/shooter_hud.cpp
   src/client/ui/hooks/shooter_weapons.cpp
-  src/client/ui/providers/app_shell.cpp
+  src/client/ui/app_shell/app_shell_provider.cpp
   src/client/ui/providers/shooter_provider.cpp
-  src/client/ui/navigation/screen_stack.cpp
-  src/client/ui/ui_pipeline.cpp
+  src/client/ui/app_shell/navigation/screen_stack.cpp
+  src/client/ui/app_shell/ui_pipeline.cpp
   src/client/ui/screens/loadout/components/confirm_dialog.cpp
   src/client/ui/screens/loadout/components/equipment_slot.cpp
   src/client/ui/screens/loadout/components/weapon_tile.cpp
@@ -591,8 +591,8 @@ add_test(NAME retained_ui_focus_tests COMMAND retained_ui_focus_tests)
 add_executable(client_ui_tests
   tests/client_ui_tests.cpp
   src/react.cpp
-  src/client/ui/client_ui.cpp
-  src/client/ui/navigation/screen_stack.cpp
+  src/client/ui/app_shell/client_ui.cpp
+  src/client/ui/app_shell/navigation/screen_stack.cpp
   src/ui/runtime/draw_command.cpp
   src/ui/runtime/draw_command_builder.cpp
   src/ui/runtime/element.cpp
@@ -621,9 +621,9 @@ add_test(NAME client_ui_tests COMMAND client_ui_tests)
 add_executable(ui_pipeline_tests
   tests/ui_pipeline_tests.cpp
   src/react.cpp
-  src/client/ui/client_ui.cpp
-  src/client/ui/navigation/screen_stack.cpp
-  src/client/ui/ui_pipeline.cpp
+  src/client/ui/app_shell/client_ui.cpp
+  src/client/ui/app_shell/navigation/screen_stack.cpp
+  src/client/ui/app_shell/ui_pipeline.cpp
   src/ui/runtime/draw_command.cpp
   src/ui/runtime/draw_command_builder.cpp
   src/ui/runtime/element.cpp
@@ -652,14 +652,14 @@ add_test(NAME ui_pipeline_tests COMMAND ui_pipeline_tests)
 add_executable(shooter_ui_tests
   tests/shooter_ui_tests.cpp
   src/react.cpp
-  src/client/ui/client_ui.cpp
+  src/client/ui/app_shell/client_ui.cpp
   src/client/ui/components/hud_band.cpp
   src/client/ui/hooks/shooter_hud.cpp
   src/client/ui/hooks/shooter_weapons.cpp
-  src/client/ui/providers/app_shell.cpp
+  src/client/ui/app_shell/app_shell_provider.cpp
   src/client/ui/providers/shooter_provider.cpp
-  src/client/ui/navigation/screen_stack.cpp
-  src/client/ui/ui_pipeline.cpp
+  src/client/ui/app_shell/navigation/screen_stack.cpp
+  src/client/ui/app_shell/ui_pipeline.cpp
   src/client/ui/screens/loadout/components/confirm_dialog.cpp
   src/client/ui/screens/loadout/components/equipment_slot.cpp
   src/client/ui/screens/loadout/components/weapon_tile.cpp

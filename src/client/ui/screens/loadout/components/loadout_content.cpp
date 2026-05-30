@@ -4,7 +4,7 @@
 
 #include "react.h"
 #include "ui/components/common.h"
-#include "client/ui/client_ui.h"
+#include "client/ui/app_shell/client_ui.h"
 #include "client/ui/hooks/shooter_weapons.h"
 #include "client/ui/providers/shooter_provider.h"
 #include "client/ui/screens/loadout/components/confirm_dialog.h"

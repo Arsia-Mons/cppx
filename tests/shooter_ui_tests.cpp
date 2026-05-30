@@ -1,5 +1,5 @@
-#include "client/ui/client_ui.h"
-#include "client/ui/providers/app_shell.h"
+#include "client/ui/app_shell/client_ui.h"
+#include "client/ui/app_shell/app_shell_provider.h"
 #include "client/ui/providers/shooter_provider.h"
 #include "client/ui/screens/in_game/in_game_screen.h"
 #include "client/ui/screens/loadout/components/weapon_tile.h"
@@ -7,7 +7,7 @@
 #include "client/ui/screens/main_menu/main_menu_screen.h"
 #include "client/ui/screens/options/options_screen.h"
 #include "client/ui/screens/pause/pause_screen.h"
-#include "client/ui/ui_pipeline.h"
+#include "client/ui/app_shell/ui_pipeline.h"
 #include "game/shooter_game.h"
 #include "react.h"
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../client/ui/ui_pipeline.h"
+#include "../client/ui/app_shell/ui_pipeline.h"
 #include "../platform/control_mailbox.h"
 #include "../platform/sdl/window.h"
 #include "../renderer/render_mode.h"

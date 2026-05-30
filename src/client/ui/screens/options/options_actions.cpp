@@ -5,7 +5,7 @@
 #include "client/ui/screens/options/options_screen.h"
 
 #include "client/ui/callback_deps.h"
-#include "client/ui/client_ui.h"
+#include "client/ui/app_shell/client_ui.h"
 #include "react.h"
 
 namespace shooter {

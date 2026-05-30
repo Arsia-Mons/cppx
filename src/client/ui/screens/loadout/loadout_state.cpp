@@ -2,7 +2,7 @@
 
 #include "../../../../react.h"
 #include "../../callback_deps.h"
-#include "../../internal/deferred_ui_mutation.h"
+#include "../../app_shell/deferred_ui_mutation.h"
 
 namespace shooter {
 

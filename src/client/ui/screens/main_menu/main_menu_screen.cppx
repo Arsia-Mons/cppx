@@ -2,12 +2,12 @@
 
 #include <stdio.h>
 
-#include "client/ui/client_ui.h"
+#include "client/ui/app_shell/client_ui.h"
 #include "client/ui/components/actions/actions.h"
 #include "client/ui/components/layout/layout.h"
 #include "client/ui/components/surfaces/surfaces.h"
 #include "client/ui/components/text/text.h"
-#include "client/ui/providers/app_shell.h"
+#include "client/ui/app_shell/app_shell_provider.h"
 #include "client/ui/screens/in_game/in_game_actions.h"
 #include "client/ui/screens/options/options_actions.h"
 #include "react.h"

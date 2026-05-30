@@ -3,8 +3,8 @@
 #include "../../../game/shooter_game.h"
 #include "../../../react.h"
 #include "../callback_deps.h"
-#include "../client_ui.h"
-#include "../internal/deferred_ui_mutation.h"
+#include "../app_shell/client_ui.h"
+#include "../app_shell/deferred_ui_mutation.h"
 #include "../providers/shooter_provider.h"
 
 namespace shooter {

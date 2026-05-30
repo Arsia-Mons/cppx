@@ -1,6 +1,6 @@
 #include "client_ui.h"
 
-#include "internal/deferred_ui_mutation.h"
+#include "deferred_ui_mutation.h"
 
 #include <stdio.h>
 

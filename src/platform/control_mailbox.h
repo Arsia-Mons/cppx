@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include "../client/ui/ui_pipeline.h"
+#include "../client/ui/app_shell/ui_pipeline.h"
 #include "../ui/input.h"
 
 namespace platform {

@@ -3,7 +3,7 @@
 #include "game_loop.h"
 #include "../react.h"
 #include "../renderer/text_measure_impl.h"
-#include "../client/ui/providers/app_shell.h"
+#include "../client/ui/app_shell/app_shell_provider.h"
 #include "../client/ui/providers/shooter_provider.h"
 #include "client/ui/screens/main_menu/main_menu_screen.h"
 
