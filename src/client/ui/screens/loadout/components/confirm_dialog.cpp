@@ -6,7 +6,7 @@
 
 #include "../../../../../react.h"
 #include "../../../../../ui/components/components.h"
-#include "client/ui/components/screen_chrome.h"
+#include "client/ui/components/tokens.h"
 #include "../../../hooks/shooter_weapons.h"
 #include "../../../providers/shooter_provider.h"
 #include "../loadout_state.h"
@@ -50,7 +50,7 @@ const char *confirm_body_key(uint32_t generation) {
                   .width = ::ui::Length::percent(100.0f),
                   .height = ::ui::Length::percent(100.0f),
               },
-          .visual = theme::fill_visual({0, 0, 0, 160}),
+          .visual = tokens::fill_visual({0, 0, 0, 160}),
           .children =
               ::ui::children(
                   {
@@ -65,7 +65,7 @@ const char *confirm_body_key(uint32_t generation) {
                                       .gap = 12.0f,
                                       .border_width = 1.0f,
                                   },
-                              .visual = theme::panel_visual({18, 26, 32, 255},
+                              .visual = tokens::panel_visual({18, 26, 32, 255},
                                                             {92, 116, 126, 255}),
                               .children = ::ui::children(
                                   {
@@ -80,7 +80,7 @@ const char *confirm_body_key(uint32_t generation) {
                                                           ::ui::Length::points(
                                                               24.0f),
                                                   },
-                                              .visual = theme::text_visual(
+                                              .visual = tokens::text_visual(
                                                   {240, 248, 244, 255}, 22),
                                           },
                                           components::Text),
@@ -95,7 +95,7 @@ const char *confirm_body_key(uint32_t generation) {
                                                           ::ui::Length::points(
                                                               18.0f),
                                                   },
-                                              .visual = theme::text_visual(
+                                              .visual = tokens::text_visual(
                                                   {202, 218, 216, 255}, 15),
                                           },
                                           components::Text),

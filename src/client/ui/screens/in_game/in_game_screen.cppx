@@ -1,41 +1,18 @@
 #include "in_game_screen.h"
 
-#include <memory>
 #include <stdio.h>
 
-#include "client/ui/callback_deps.h"
 #include "client/ui/client_ui.h"
+#include "client/ui/components/actions/actions.h"
 #include "client/ui/components/hud_band.h"
-#include "client/ui/components/screen_chrome.h"
-#include "client/ui/internal/deferred_ui_mutation.h"
-#include "client/ui/providers/shooter_provider.h"
+#include "client/ui/components/layout/layout.h"
 #include "client/ui/screens/loadout/loadout_screen.h"
-#include "client/ui/screens/pause/pause_screen.h"
+#include "client/ui/screens/pause/pause_actions.h"
 #include "react.h"
 
 namespace shooter {
 
 using ::ui::children;
-
-std::function<void()> use_start_match() {
-  ShooterGame *game = use_shooter_game();
-  client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
-  client::ui::internal::DeferredUiMutationSink mutations =
-      client::ui::internal::use_deferred_ui_mutations();
-  return use_callback(
-      [game, nav, mutations] {
-        if (!nav.reset_to)
-          return;
-        if (game && mutations) {
-          mutations.submit([game] { game->reset(); });
-        }
-        nav.reset_to(std::make_unique<ShooterGameScreen>());
-      },
-      client::ui::callback_deps(
-          client::ui::callback_deps_ptr(game),
-          client::ui::callback_deps_ptr(mutations.owner()),
-          nav.current_entry_id));
-}
 
 struct ShooterGameScreenProps {
   uint32_t unused = 0;
@@ -58,29 +35,23 @@ ShooterGameScreenView(const ShooterGameScreenProps &props) {
   if (!is_top)
     return ::ui::empty();
 
-  return <GameScreenFrame key="root">
+  return <ScreenLayout key="root" variant={ScreenLayoutVariant::Game}>
     <HudBand />
     <ActionRow key="actions">
-      <MenuButton
+      <AppButton
         key="pause"
-        id="OpenPauseButton"
+        controlId="OpenPauseButton"
         label="Pause"
-        onActivate={[open_pause](const ::ui::ActivationEvent &) {
-          if (open_pause)
-            open_pause();
-        }}
+        onPress={open_pause}
       />
-      <MenuButton
+      <AppButton
         key="loadout"
-        id="OpenLoadoutButton"
+        controlId="OpenLoadoutButton"
         label="Loadout"
-        onActivate={[open_loadout](const ::ui::ActivationEvent &) {
-          if (open_loadout)
-            open_loadout();
-        }}
+        onPress={open_loadout}
       />
     </ActionRow>
-  </GameScreenFrame>
+  </ScreenLayout>
 }
 
 bool ShooterGameScreen::build_element(::ui::UiElementFrame &frame,

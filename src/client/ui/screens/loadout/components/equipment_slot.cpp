@@ -5,7 +5,7 @@
 
 #include "../../../../../react.h"
 #include "../../../../../ui/components/components.h"
-#include "client/ui/components/screen_chrome.h"
+#include "client/ui/components/tokens.h"
 #include "../../../hooks/shooter_weapons.h"
 #include "../../../providers/shooter_provider.h"
 #include "../loadout_state.h"
@@ -61,7 +61,7 @@ namespace shooter {
                           {
                               .height = ::ui::Length::points(16.0f),
                           },
-                      .visual = theme::text_visual({226, 238, 236, 255}, 14),
+                      .visual = tokens::text_visual({226, 238, 236, 255}, 14),
                   },
                   components::Text),
           }),

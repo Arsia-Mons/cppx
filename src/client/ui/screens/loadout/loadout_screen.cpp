@@ -7,7 +7,7 @@
 #include "../../../../ui/components/components.h"
 #include "../../callback_deps.h"
 #include "../../client_ui.h"
-#include "client/ui/components/screen_chrome.h"
+#include "client/ui/components/tokens.h"
 #include "../../hooks/shooter_weapons.h"
 #include "../../providers/shooter_provider.h"
 #include "components/confirm_dialog.h"
@@ -169,7 +169,7 @@ LoadoutScreenBody(const LoadoutScreenBodyProps &props) {
                               .padding = {24.0f, 24.0f, 24.0f, 24.0f},
                               .gap = 18.0f,
                           },
-                      .visual = theme::fill_visual({12, 20, 24, 245}),
+                      .visual = tokens::fill_visual({12, 20, 24, 245}),
                       .children =
                           ::ui::children(
                               {
@@ -183,7 +183,7 @@ LoadoutScreenBody(const LoadoutScreenBodyProps &props) {
                                                       ::ui::Length::points(
                                                           30.0f),
                                               },
-                                          .visual = theme::text_visual(
+                                          .visual = tokens::text_visual(
                                               {236, 246, 242, 255}, 26),
                                       }),
                                   ::ui::components::elements::Box(
@@ -345,7 +345,7 @@ LoadoutScreenBody(const LoadoutScreenBodyProps &props) {
                                                                           10.0f,
                                                                   },
                                                               .visual =
-                                                                  theme::fill_visual(
+                                                                  tokens::fill_visual(
                                                                       {22, 30,
                                                                        36, 255}),
                                                               .children = ::ui::
@@ -361,7 +361,7 @@ LoadoutScreenBody(const LoadoutScreenBodyProps &props) {
                                                                                       ::ui::Length::points(18.0f),
                                                                               },
                                                                           .visual =
-                                                                              theme::text_visual(
+                                                                              tokens::text_visual(
                                                                                   {226, 238, 236, 255},
                                                                                   14),
                                                                       }),
@@ -462,7 +462,7 @@ LoadoutScreenBody(const LoadoutScreenBodyProps &props) {
                                                                                       ::ui::Length::points(16.0f),
                                                                               },
                                                                           .visual =
-                                                                              theme::text_visual(
+                                                                              tokens::text_visual(
                                                                                   {202, 218, 216, 255},
                                                                                   14),
                                                                       }),

@@ -1,0 +1,16 @@
+#include "client/ui/components/text/screen_subtitle.h"
+
+#include "ui/components/text.h"
+
+#include "client/ui/components/tokens.h"
+
+namespace shooter {
+
+using ::ui::components::Text;
+using ::ui::components::TextProps;
+
+::ui::UiElement ScreenSubtitle(const ScreenSubtitleProps &props) {
+  return <Text key={props.key} value={props.value} style={{.height = ::ui::Length::points(22.0f)}} visual={tokens::text_visual(tokens::kTextSubtitle, tokens::kFontSubtitle)} />
+}
+
+} // namespace shooter

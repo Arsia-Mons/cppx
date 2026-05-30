@@ -80,8 +80,24 @@ cppx_transpile(UI_COMPONENT_GENERATED
 add_custom_target(cppx_generated_components DEPENDS ${UI_COMPONENT_GENERATED})
 
 cppx_transpile(CLIENT_UI_GENERATED
-  src/client/ui/components/screen_chrome.cppx
-  src/client/ui/components/screen_chrome.hx
+  src/client/ui/components/actions/app_button.cppx
+  src/client/ui/components/actions/app_button.hx
+  src/client/ui/components/actions/app_checkbox.cppx
+  src/client/ui/components/actions/app_checkbox.hx
+  src/client/ui/components/actions/app_input.cppx
+  src/client/ui/components/actions/app_input.hx
+  src/client/ui/components/actions/action_row.cppx
+  src/client/ui/components/actions/action_row.hx
+  src/client/ui/components/layout/screen_layout.cppx
+  src/client/ui/components/layout/screen_layout.hx
+  src/client/ui/components/surfaces/panel.cppx
+  src/client/ui/components/surfaces/panel.hx
+  src/client/ui/components/text/screen_title.cppx
+  src/client/ui/components/text/screen_title.hx
+  src/client/ui/components/text/screen_subtitle.cppx
+  src/client/ui/components/text/screen_subtitle.hx
+  src/client/ui/components/text/body_text.cppx
+  src/client/ui/components/text/body_text.hx
   src/client/ui/screens/in_game/in_game_screen.cppx
   src/client/ui/screens/in_game/in_game_screen.hx
   src/client/ui/screens/main_menu/main_menu_screen.cppx
@@ -191,6 +207,10 @@ add_executable(hello
   src/client/ui/screens/loadout/components/weapon_tile.cpp
   src/client/ui/screens/loadout/loadout_screen.cpp
   src/client/ui/screens/loadout/loadout_state.cpp
+  src/client/ui/screens/main_menu/main_menu_actions.cpp
+  src/client/ui/screens/pause/pause_actions.cpp
+  src/client/ui/screens/options/options_actions.cpp
+  src/client/ui/screens/in_game/in_game_actions.cpp
   ${CLIENT_UI_GENERATED}
   src/platform/control_mailbox.cpp
   src/platform/sdl/input.cpp
@@ -631,6 +651,10 @@ add_executable(shooter_ui_tests
   src/client/ui/screens/loadout/components/weapon_tile.cpp
   src/client/ui/screens/loadout/loadout_screen.cpp
   src/client/ui/screens/loadout/loadout_state.cpp
+  src/client/ui/screens/main_menu/main_menu_actions.cpp
+  src/client/ui/screens/pause/pause_actions.cpp
+  src/client/ui/screens/options/options_actions.cpp
+  src/client/ui/screens/in_game/in_game_actions.cpp
   ${CLIENT_UI_GENERATED}
   src/game/inventory.cpp
   src/game/economy.cpp

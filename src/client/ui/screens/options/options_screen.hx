@@ -1,7 +1,5 @@
 #pragma once
 
-#include <functional>
-
 #include "client/ui/navigation/ui_screen.h"
 
 namespace shooter {
@@ -15,7 +13,5 @@ public:
                      ::ui::UiElement *out) override;
   void build_ui() override;
 };
-
-std::function<void()> use_push_options_screen();
 
 } // namespace shooter

@@ -16,6 +16,4 @@ public:
   void build_ui() override;
 };
 
-std::function<void()> use_push_pause_screen();
-
 } // namespace shooter

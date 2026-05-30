@@ -5,7 +5,7 @@
 
 #include "../../../../../react.h"
 #include "../../../../../ui/components/components.h"
-#include "client/ui/components/screen_chrome.h"
+#include "client/ui/components/tokens.h"
 #include "../../../hooks/shooter_weapons.h"
 #include "../../../providers/shooter_provider.h"
 #include "../loadout_state.h"
@@ -84,7 +84,7 @@ const char *weapon_tile_key(int index) {
                               {
                                   .height = ::ui::Length::points(18.0f),
                               },
-                          .visual = theme::text_visual({238, 246, 244, 255}, 16),
+                          .visual = tokens::text_visual({238, 246, 244, 255}, 16),
                       },
                       components::Text),
                   ::ui::component(
@@ -96,7 +96,7 @@ const char *weapon_tile_key(int index) {
                               {
                                   .height = ::ui::Length::points(16.0f),
                               },
-                          .visual = theme::text_visual(
+                          .visual = tokens::text_visual(
                               disabled ? ::ui::Color{142, 148, 150, 255}
                                        : ::ui::Color{184, 204, 204, 255},
                               12),

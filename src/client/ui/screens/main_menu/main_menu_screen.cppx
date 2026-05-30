@@ -1,29 +1,20 @@
 #include "main_menu_screen.h"
 
-#include <memory>
 #include <stdio.h>
 
-#include "client/ui/callback_deps.h"
 #include "client/ui/client_ui.h"
-#include "client/ui/components/screen_chrome.h"
+#include "client/ui/components/actions/actions.h"
+#include "client/ui/components/layout/layout.h"
+#include "client/ui/components/surfaces/surfaces.h"
+#include "client/ui/components/text/text.h"
 #include "client/ui/providers/app_shell.h"
-#include "client/ui/screens/in_game/in_game_screen.h"
-#include "client/ui/screens/options/options_screen.h"
+#include "client/ui/screens/in_game/in_game_actions.h"
+#include "client/ui/screens/options/options_actions.h"
 #include "react.h"
 
 namespace shooter {
 
 using ::ui::children;
-
-std::function<void()> use_exit_to_main_menu() {
-  client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
-  return use_callback(
-      [nav] {
-        if (nav.reset_to)
-          nav.reset_to(std::make_unique<MainMenuScreen>());
-      },
-      client::ui::callback_deps(nav.current_entry_id));
-}
 
 struct MainMenuScreenProps {
   uint32_t unused = 0;
@@ -49,40 +40,15 @@ static ::ui::UiElement MainMenuScreenView(const MainMenuScreenProps &props) {
   if (!is_top)
     return ::ui::empty();
 
-  return <MenuScreenFrame key="root">
-    <HeroPanel key="panel">
-      <HeroTitle key="title" value="Reference Shooter" />
-      <SubtitleText key="subtitle" value="SDL3 / retained UI flow" />
-      <MenuButton
-        key="start"
-        id="StartMatchButton"
-        label="Start Match"
-        onActivate={[start_match](const ::ui::ActivationEvent &) {
-          if (start_match)
-            start_match();
-        }}
-      />
-      <MenuButton
-        key="options"
-        id="OpenOptionsFromMainMenuButton"
-        label="Options"
-        onActivate={[open_options](const ::ui::ActivationEvent &) {
-          if (open_options)
-            open_options();
-        }}
-      />
-      <MenuButton
-        key="quit"
-        id="QuitButton"
-        disabled={!request_quit}
-        label="Quit"
-        onActivate={[request_quit](const ::ui::ActivationEvent &) {
-          if (request_quit)
-            request_quit();
-        }}
-      />
-    </HeroPanel>
-  </MenuScreenFrame>
+  return <ScreenLayout key="root" variant={ScreenLayoutVariant::Menu}>
+    <Panel key="panel" variant={PanelVariant::Hero}>
+      <ScreenTitle key="title" variant={ScreenTitleVariant::Hero} value="Reference Shooter" />
+      <ScreenSubtitle key="subtitle" value="SDL3 / retained UI flow" />
+      <AppButton key="start" controlId="StartMatchButton" label="Start Match" onPress={start_match} />
+      <AppButton key="options" controlId="OpenOptionsFromMainMenuButton" label="Options" onPress={open_options} />
+      <AppButton key="quit" controlId="QuitButton" disabled={!request_quit} label="Quit" onPress={request_quit} />
+    </Panel>
+  </ScreenLayout>
 }
 
 bool MainMenuScreen::build_element(::ui::UiElementFrame &frame,
