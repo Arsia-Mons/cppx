@@ -43,6 +43,34 @@ find_package(CURL REQUIRED)
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
 include(cmake/cppx_transpile.cmake)
+include(CheckCXXSourceCompiles)
+
+set(_ui_required_flags "${CMAKE_REQUIRED_FLAGS}")
+set(_ui_required_quiet "${CMAKE_REQUIRED_QUIET}")
+if(CMAKE_CXX_COMPILER_ID MATCHES "^(Clang|AppleClang)$")
+  set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -Werror=reorder-init-list")
+endif()
+set(CMAKE_REQUIRED_QUIET TRUE)
+check_cxx_source_compiles([=[
+struct DesignatedInitializerOrderProbe {
+  int first = 0;
+  int second = 0;
+};
+
+int main() {
+  DesignatedInitializerOrderProbe probe{.second = 2, .first = 1};
+  return probe.first;
+}
+]=] UI_ACCEPTS_OUT_OF_ORDER_DESIGNATORS)
+set(CMAKE_REQUIRED_FLAGS "${_ui_required_flags}")
+set(CMAKE_REQUIRED_QUIET "${_ui_required_quiet}")
+if(UI_ACCEPTS_OUT_OF_ORDER_DESIGNATORS)
+  message(FATAL_ERROR
+    "The C++ compiler accepts out-of-order designated initializers. "
+    "This project requires declaration-order designated initializers so "
+    "MSVC, Clang, AppleClang, and GCC builds fail on the same source issue."
+  )
+endif()
 
 FetchContent_Declare(
   yoga
@@ -54,6 +82,15 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(yoga)
 
 enable_testing()
+
+add_compile_options(
+  $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:Clang,AppleClang,GNU>>:-Wall>
+  $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:Clang,AppleClang,GNU>>:-Wextra>
+  $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:Clang,AppleClang,GNU>>:-Wno-missing-field-initializers>
+  $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:Clang,AppleClang,GNU>>:-Wno-c99-designator>
+  $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:Clang,AppleClang,GNU>>:-Wno-unused-parameter>
+  $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:Clang,AppleClang>>:-Werror=reorder-init-list>
+)
 
 cppx_transpile(UI_COMPONENT_GENERATED
   src/ui/components/box.cppx

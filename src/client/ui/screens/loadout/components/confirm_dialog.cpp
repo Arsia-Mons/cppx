@@ -44,10 +44,10 @@ const char *confirm_body_key(uint32_t generation) {
           .key = "scrim",
           .style =
               {
-                  .width = ::ui::Length::percent(100.0f),
-                  .height = ::ui::Length::percent(100.0f),
                   .align_items = ::ui::AlignItems::Center,
                   .justify_content = ::ui::JustifyContent::Center,
+                  .width = ::ui::Length::percent(100.0f),
+                  .height = ::ui::Length::percent(100.0f),
                   .background = {0, 0, 0, 160},
               },
           .children =

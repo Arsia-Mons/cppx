@@ -42,6 +42,27 @@ namespace shooter {
                   set_selected(weapon_index);
               },
           .label = slot_text,
+          .on_activate =
+              [set_selected, weapon_index = props.weapon_index,
+               select](const ::ui::ActivationEvent &) {
+                if (set_selected)
+                  set_selected(weapon_index);
+                if (select)
+                  select();
+              },
+          .style =
+              {
+                  .align_items = ::ui::AlignItems::Start,
+                  .justify_content = ::ui::JustifyContent::Center,
+                  .width = ::ui::Length::points(232.0f),
+                  .height = ::ui::Length::points(38.0f),
+                  .padding = {10.0f, 10.0f, 8.0f, 8.0f},
+                  .background = selected ? ::ui::Color{35, 72, 62, 255}
+                                         : ::ui::Color{24, 28, 36, 255},
+                  .border = selected ? ::ui::Color{122, 176, 238, 255}
+                                     : ::ui::Color{78, 88, 104, 255},
+                  .border_width = selected ? 2.0f : 1.0f,
+              },
           .children = ::ui::children({
               ::ui::component(
                   "Text",
@@ -57,27 +78,6 @@ namespace shooter {
                   },
                   components::Text),
           }),
-          .on_activate =
-              [set_selected, weapon_index = props.weapon_index,
-               select](const ::ui::ActivationEvent &) {
-                if (set_selected)
-                  set_selected(weapon_index);
-                if (select)
-                  select();
-              },
-          .style =
-              {
-                  .width = ::ui::Length::points(232.0f),
-                  .height = ::ui::Length::points(38.0f),
-                  .align_items = ::ui::AlignItems::Start,
-                  .justify_content = ::ui::JustifyContent::Center,
-                  .padding = {10.0f, 10.0f, 8.0f, 8.0f},
-                  .background = selected ? ::ui::Color{35, 72, 62, 255}
-                                         : ::ui::Color{24, 28, 36, 255},
-                  .border = selected ? ::ui::Color{122, 176, 238, 255}
-                                     : ::ui::Color{78, 88, 104, 255},
-                  .border_width = selected ? 2.0f : 1.0f,
-              },
       },
       components::Button);
 }

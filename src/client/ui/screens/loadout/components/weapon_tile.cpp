@@ -65,6 +65,27 @@ const char *weapon_tile_key(int index) {
                 if (set_selected)
                   set_selected(index);
               },
+          .on_activate =
+              [set_selected, index, select](const ::ui::ActivationEvent &) {
+                if (set_selected)
+                  set_selected(index);
+                if (select)
+                  select();
+              },
+          .style =
+              {
+                  .align_items = ::ui::AlignItems::Start,
+                  .justify_content = ::ui::JustifyContent::Start,
+                  .width = ::ui::Length::points(190.0f),
+                  .height = ::ui::Length::points(78.0f),
+                  .padding = {10.0f, 10.0f, 10.0f, 10.0f},
+                  .gap = 5.0f,
+                  .background = selected ? ::ui::Color{35, 72, 62, 255}
+                                         : ::ui::Color{24, 31, 36, 255},
+                  .border = disabled ? ::ui::Color{58, 62, 66, 255}
+                                     : ::ui::Color{102, 142, 150, 255},
+                  .border_width = selected ? 2.0f : 1.0f,
+              },
           .children =
               ::ui::children({
                   ::ui::component(
@@ -97,27 +118,6 @@ const char *weapon_tile_key(int index) {
                       },
                       components::Text),
               }),
-          .on_activate =
-              [set_selected, index, select](const ::ui::ActivationEvent &) {
-                if (set_selected)
-                  set_selected(index);
-                if (select)
-                  select();
-              },
-          .style =
-              {
-                  .width = ::ui::Length::points(190.0f),
-                  .height = ::ui::Length::points(78.0f),
-                  .align_items = ::ui::AlignItems::Start,
-                  .justify_content = ::ui::JustifyContent::Start,
-                  .padding = {10.0f, 10.0f, 10.0f, 10.0f},
-                  .gap = 5.0f,
-                  .background = selected ? ::ui::Color{35, 72, 62, 255}
-                                         : ::ui::Color{24, 31, 36, 255},
-                  .border = disabled ? ::ui::Color{58, 62, 66, 255}
-                                     : ::ui::Color{102, 142, 150, 255},
-                  .border_width = selected ? 2.0f : 1.0f,
-              },
       },
       components::Button);
 }

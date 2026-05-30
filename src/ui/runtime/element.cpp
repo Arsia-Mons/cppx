@@ -188,7 +188,14 @@ private:
 
 } // namespace
 
-UiElementFrame::UiElementFrame() = default;
+UiElementFrame::UiElementFrame()
+    : elements_(std::make_unique<UiElement[]>(UI_RETAINED_MAX_ELEMENTS)),
+      child_elements_(
+          std::make_unique<UiElement[]>(UI_RETAINED_MAX_CHILD_ELEMENTS)),
+      arena_(std::make_unique<std::byte[]>(UI_RETAINED_ELEMENT_ARENA_BYTES)),
+      destructors_(std::make_unique<DestructorEntry[]>(
+          UI_RETAINED_MAX_ELEMENT_DESTRUCTORS)),
+      strings_(std::make_unique<char[]>(UI_RETAINED_STRING_ARENA_BYTES)) {}
 
 UiElementFrame::~UiElementFrame() { reset(); }
 
@@ -204,6 +211,8 @@ UiElementFrameScope::~UiElementFrameScope() {
 UiElementFrame *current_element_frame() { return g_current_element_frame; }
 
 void UiElementFrame::reset() {
+  if (!elements_ || !child_elements_ || !arena_ || !destructors_ || !strings_)
+    return;
   for (int i = destructor_count_ - 1; i >= 0; --i) {
     if (destructors_[i].destroy) {
       destructors_[i].destroy(destructors_[i].storage);
@@ -215,9 +224,9 @@ void UiElementFrame::reset() {
   for (int i = 0; i < child_element_count_; ++i) {
     child_elements_[i] = {};
   }
-
-  destructors_ = {};
-  strings_ = {};
+  for (int i = 0; i < destructor_count_; ++i) {
+    destructors_[i] = {};
+  }
   element_count_ = 0;
   child_element_count_ = 0;
   arena_offset_ = 0;

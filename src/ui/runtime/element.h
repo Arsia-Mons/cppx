@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <functional>
 #include <initializer_list>
+#include <memory>
 #include <new>
 #include <stdint.h>
 #include <type_traits>
@@ -207,12 +208,12 @@ private:
 
   template <typename T> const T *store(const T &value) {
     static_assert(!std::is_reference_v<T>);
-    uintptr_t base = reinterpret_cast<uintptr_t>(arena_.data()) + arena_offset_;
+    uintptr_t base = reinterpret_cast<uintptr_t>(arena_.get()) + arena_offset_;
     uintptr_t aligned =
         (base + alignof(T) - 1u) & ~(uintptr_t)(alignof(T) - 1u);
     size_t next_offset =
-        (aligned - reinterpret_cast<uintptr_t>(arena_.data())) + sizeof(T);
-    if (next_offset > arena_.size() ||
+        (aligned - reinterpret_cast<uintptr_t>(arena_.get())) + sizeof(T);
+    if (next_offset > UI_RETAINED_ELEMENT_ARENA_BYTES ||
         destructor_count_ >= UI_RETAINED_MAX_ELEMENT_DESTRUCTORS) {
       ++error_count_;
       return nullptr;
@@ -232,12 +233,11 @@ private:
                           UiComponentRenderFn render);
   HostProps copy_host_props(const HostProps &props);
 
-  std::array<UiElement, UI_RETAINED_MAX_ELEMENTS> elements_ = {};
-  std::array<UiElement, UI_RETAINED_MAX_CHILD_ELEMENTS> child_elements_ = {};
-  std::array<std::byte, UI_RETAINED_ELEMENT_ARENA_BYTES> arena_ = {};
-  std::array<DestructorEntry, UI_RETAINED_MAX_ELEMENT_DESTRUCTORS>
-      destructors_ = {};
-  std::array<char, UI_RETAINED_STRING_ARENA_BYTES> strings_ = {};
+  std::unique_ptr<UiElement[]> elements_ = {};
+  std::unique_ptr<UiElement[]> child_elements_ = {};
+  std::unique_ptr<std::byte[]> arena_ = {};
+  std::unique_ptr<DestructorEntry[]> destructors_ = {};
+  std::unique_ptr<char[]> strings_ = {};
   int element_count_ = 0;
   int child_element_count_ = 0;
   size_t arena_offset_ = 0;

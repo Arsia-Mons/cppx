@@ -26,15 +26,16 @@ uint64_t mix_u64(uint64_t hash, uint64_t value) {
 
 } // namespace
 
-UiTree::UiTree() = default;
+UiTree::UiTree() : nodes_(std::make_unique<Node[]>(UI_RETAINED_MAX_NODES)) {}
 
 UiTree::~UiTree() { reset(); }
 
 void UiTree::reset() {
+  if (!nodes_)
+    return;
   for (int i = 0; i < node_capacity_used_; ++i) {
     destroy_node(nodes_[i]);
   }
-  nodes_ = {};
   stack_ = {};
   unmounted_ = {};
   node_capacity_used_ = 0;
@@ -61,7 +62,7 @@ void UiTree::begin_frame(float width, float height) {
     return;
 
   root->layout = {0.0f, 0.0f, width, height};
-  stack_[stack_count_++] = static_cast<int>(root - nodes_.data());
+  stack_[stack_count_++] = static_cast<int>(root - nodes_.get());
 }
 
 bool UiTree::end_frame() {
@@ -111,7 +112,7 @@ NodeId UiTree::begin_keyed_node(const char *type, const char *key,
   }
   parent.children[parent.child_count++] = id;
 
-  stack_[stack_count_++] = static_cast<int>(node - nodes_.data());
+  stack_[stack_count_++] = static_cast<int>(node - nodes_.get());
   return id;
 }
 

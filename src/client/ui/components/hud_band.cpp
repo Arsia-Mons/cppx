@@ -37,10 +37,10 @@ namespace shooter {
           .key = "band",
           .style =
               {
-                  .width = ::ui::Length::percent(100.0f),
-                  .height = ::ui::Length::points(44.0f),
                   .direction = ::ui::FlexDirection::Row,
                   .align_items = ::ui::AlignItems::Center,
+                  .width = ::ui::Length::percent(100.0f),
+                  .height = ::ui::Length::points(44.0f),
                   .padding = {16.0f, 16.0f, 10.0f, 10.0f},
                   .gap = 18.0f,
                   .background = {18, 24, 28, 245},

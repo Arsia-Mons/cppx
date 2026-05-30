@@ -50,9 +50,9 @@ static bool retained_draw_list_uses_html_primitive_metadata_and_layout(void) {
       .key = "root",
       .style =
           {
+              .align_items = AlignItems::Start,
               .width = Length::points(320.0f),
               .height = Length::points(260.0f),
-              .align_items = AlignItems::Start,
               .padding = {4.0f, 4.0f, 4.0f, 4.0f},
               .gap = 6.0f,
               .background = {18, 27, 32, 245},
@@ -104,9 +104,9 @@ static bool retained_draw_list_uses_html_primitive_metadata_and_layout(void) {
       .key = "root",
       .style =
           {
+              .align_items = AlignItems::Start,
               .width = Length::points(320.0f),
               .height = Length::points(260.0f),
-              .align_items = AlignItems::Start,
               .padding = {4.0f, 4.0f, 4.0f, 4.0f},
               .gap = 6.0f,
               .background = {18, 27, 32, 245},
@@ -231,9 +231,9 @@ static bool retained_draw_list_highlights_focused_control(void) {
       .key = "root",
       .style =
           {
+              .align_items = AlignItems::Start,
               .width = Length::points(320.0f),
               .height = Length::points(260.0f),
-              .align_items = AlignItems::Start,
               .gap = 6.0f,
           },
       .children = ::ui::children({

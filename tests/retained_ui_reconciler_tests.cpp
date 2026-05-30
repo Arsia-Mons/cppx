@@ -29,11 +29,13 @@ static bool host_elements_commit_to_retained_tree(void) {
 
   UiElement root = frame.box({
       .key = "root",
+      .id = "RootBox",
+      .id_offset = 4,
       .style =
           {
+              .direction = FlexDirection::Row,
               .width = Length::points(300.0f),
               .height = Length::points(120.0f),
-              .direction = FlexDirection::Row,
               .gap = 8.0f,
               .background = {10, 20, 30, 255},
               .border = {50, 60, 70, 255},
@@ -44,8 +46,6 @@ static bool host_elements_commit_to_retained_tree(void) {
               .focusable = true,
               .initial_focus = true,
           },
-      .id = "RootBox",
-      .id_offset = 4,
       .accessibility = {.role = SemanticRole::Dialog},
       .children = ::ui::children({
           ::ui::text("Ready", "label"),

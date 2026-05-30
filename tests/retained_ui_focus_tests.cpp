@@ -50,9 +50,9 @@ static bool layout_tree(FocusTree *out, bool show_modal = false) {
                               .key = "modal",
                               .style =
                                   {
+                                      .align_items = AlignItems::Start,
                                       .width = Length::points(180.0f),
                                       .height = Length::points(80.0f),
-                                      .align_items = AlignItems::Start,
                                       .padding = {8.0f, 8.0f, 8.0f, 8.0f},
                                   },
                               .children = ::ui::children({
@@ -69,9 +69,9 @@ static bool layout_tree(FocusTree *out, bool show_modal = false) {
       .key = "root",
       .style =
           {
+              .align_items = AlignItems::Start,
               .width = Length::points(320.0f),
               .height = Length::points(240.0f),
-              .align_items = AlignItems::Start,
               .padding = {4.0f, 4.0f, 4.0f, 4.0f},
               .gap = 8.0f,
           },

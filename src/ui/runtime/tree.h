@@ -4,6 +4,7 @@
 
 #include <array>
 #include <functional>
+#include <memory>
 #include <stdint.h>
 
 namespace ui {
@@ -493,7 +494,7 @@ private:
   void copy_value(char (&dest)[UI_RETAINED_VALUE_CAP], const char *source);
   void report_error();
 
-  std::array<Node, UI_RETAINED_MAX_NODES> nodes_ = {};
+  std::unique_ptr<Node[]> nodes_ = {};
   std::array<int, UI_RETAINED_MAX_DEPTH> stack_ = {};
   std::array<NodeId, UI_RETAINED_MAX_NODES> unmounted_ = {};
   int node_capacity_used_ = 0;
