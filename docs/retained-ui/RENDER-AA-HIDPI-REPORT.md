@@ -131,4 +131,37 @@ fallback if fringe AA proves too risky (systematic-debugging Phase 4.5).
   to TTF as if straight, double-darkening translucent/disabled text. Now
   un-premultiplied at render time. New golden-suite cache checks assert
   hit-reuse + per-field key distinction (skip gracefully without a system font).
-- (pending) Phase 4 — adversarial verification of the full diff + hand-off
+- **Phase 4 — Adversarial verification: DONE, zero confirmed defects.** Ran a
+  multi-agent review workflow over the whole diff (241b3b3..HEAD) across four
+  dimensions (geometry-AA, executor-scale, ssaa-surface, text-cache); every
+  finding was then handed to an independent skeptic told to refute it. Result: 3
+  findings raised, **all 3 refuted**, 0 confirmed. The geometry-AA concern
+  (possible degenerate fringe quads) was disproved by a verifier that numerically
+  reimplemented the tessellation and swept box sizes / border widths / radii /
+  feather — zero reversed-winding quads, `clamp_half_feather` keeps the core
+  strictly positive (≥0.05px even at 0.5px borders). The other two were
+  speculative exception-safety suggestions, refuted against the no-exceptions
+  policy + the no-throw/no-alloc hot path.
+
+---
+
+## 5. Summary (what shipped)
+
+The user's "jagged corners" were `SDL_RenderGeometry` doing no anti-aliasing.
+Four green-gated commits on `feat/styling-render-system` (each `./build.sh
+--tests` = 26/26):
+
+1. **Fringe AA** (`2d0c106`) — analytic 1-device-pixel edge feather on curved
+   silhouettes (fills, gradients, borders, focus rings). Fixes the jaggies.
+2. **HiDPI scale plumbing** (`16f7898`) — `SDL_WINDOW_HIGH_PIXEL_DENSITY` + a
+   device `scale` through the executor so the UI renders at native resolution on
+   Retina (correct no-op on the local 1080p display).
+3. **Full-scene SSAA** (`d472ed2`) — render the UI 2× into an offscreen target
+   and box-downsample, for crisp edges on standard-density displays (the actual
+   win for this 1080p user).
+4. **Text path** (`b3ee7f6`) — kill per-frame glyph re-rasterization with an LRU
+   texture cache in `FontRegistry`; fix premultiplied-vs-straight text color
+   (translucent text was double-darkening); remove the dead text engine.
+
+Not pushed (per the established branch workflow). Independent adversarial review:
+clean.
