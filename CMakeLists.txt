@@ -190,6 +190,7 @@ add_executable(hello
   src/renderer/font_registry.cpp
   src/renderer/ui_surface.cpp
   src/renderer/draw_executor.cpp
+  src/renderer/sdf_raster.cpp
   src/renderer/texture_registry.cpp
   src/renderer/text_measure_impl.cpp
   src/game/inventory.cpp
@@ -492,6 +493,7 @@ add_test(NAME ui_draw_command_tests COMMAND ui_draw_command_tests)
 add_executable(renderer_golden_tests
   tests/renderer_golden_tests.cpp
   src/renderer/draw_executor.cpp
+  src/renderer/sdf_raster.cpp
   src/renderer/font_registry.cpp
   src/renderer/texture_registry.cpp
   src/ui/runtime/geometry.cpp

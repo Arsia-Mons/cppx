@@ -1,6 +1,7 @@
 #include "draw_executor.h"
 
 #include "font_registry.h"
+#include "sdf_raster.h"
 #include "texture_registry.h"
 #include "ui/runtime/geometry.h"
 
@@ -227,7 +228,8 @@ struct LayerSlot {
 void execute_draw_commands(SDL_Renderer *renderer,
                            const ::ui::DrawCommandList &list,
                            FontRegistry *fonts, TextureRegistry *textures,
-                           float scale) {
+                           float scale, RenderMode mode,
+                           SdfMaskCache *sdf_cache) {
   if (!renderer)
     return;
   if (scale <= 0.f)
@@ -235,11 +237,17 @@ void execute_draw_commands(SDL_Renderer *renderer,
   static Scratch scratch;
   SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND_PREMULTIPLIED);
 
-  // Anti-aliasing: feather curved silhouettes by one DEVICE pixel. Geometry is
-  // tessellated in UI points and scaled to device pixels at submit (* scale), so
-  // a feather authored as 1/scale points becomes exactly 1px. At scale 1 (the
-  // headless software path + goldens) that is 1.0.
-  const float feather = 1.0f / scale;
+  // Per-mode rasterization policy, computed ONCE for the whole list (the mode is
+  // the single source of truth; this is the primitive stage reading it).
+  //   FringeAa -> feather curved silhouettes by one DEVICE pixel. Geometry is
+  //     tessellated in UI points and scaled at submit (* scale), so a feather of
+  //     1/scale points is exactly 1px. (Default; reproduces the legacy path.)
+  //   Ssaa     -> NO per-primitive feather: emit hard-edged geometry and let the
+  //     full-scene supersample (UiSurface) do the anti-aliasing on resolve.
+  //   Sdf      -> route rounded shapes to the analytic distance-field rasterizer;
+  //     non-rounded shapes still take the hard-quad tessellation path.
+  const bool use_sdf = (mode == RenderMode::Sdf);
+  const float feather = (mode == RenderMode::FringeAa) ? (1.0f / scale) : 0.0f;
 
   SDL_Rect clip_stack[16];
   int clip_depth = 0;
@@ -254,9 +262,15 @@ void execute_draw_commands(SDL_Renderer *renderer,
     switch (c.kind) {
     case ::ui::DrawCommandKind::Rect:
       if (c.payload.rect.fill.a > 0) {
-        ::ui::tessellate_rect_fill(c.rect, c.payload.rect.corner_radius,
-                                   c.payload.rect.fill, sink, feather);
-        submit(renderer, sink, scratch, scale);
+        if (use_sdf && c.payload.rect.corner_radius > 0.5f) {
+          sdf_fill_rounded(renderer, sdf_cache, c.rect,
+                           c.payload.rect.corner_radius, c.payload.rect.fill,
+                           scale);
+        } else {
+          ::ui::tessellate_rect_fill(c.rect, c.payload.rect.corner_radius,
+                                     c.payload.rect.fill, sink, feather);
+          submit(renderer, sink, scratch, scale);
+        }
       }
       break;
     case ::ui::DrawCommandKind::Gradient: {
@@ -266,15 +280,26 @@ void execute_draw_commands(SDL_Renderer *renderer,
       g.stop_count = gd.stop_count;
       for (int k = 0; k < gd.stop_count && k < ::ui::UI_MAX_GRADIENT_STOPS; ++k)
         g.stops[k] = list.grad_arena[gd.stop_off + k];
-      ::ui::gradient_fill_colors(c.rect, gd.corner_radius, g, sink, feather);
-      submit(renderer, sink, scratch, scale);
+      if (use_sdf && gd.corner_radius > 0.5f) {
+        sdf_gradient_rounded(renderer, c.rect, gd.corner_radius, g, scale);
+      } else {
+        ::ui::gradient_fill_colors(c.rect, gd.corner_radius, g, sink, feather);
+        submit(renderer, sink, scratch, scale);
+      }
       break;
     }
     case ::ui::DrawCommandKind::Border:
-      ::ui::tessellate_frame(c.rect, c.payload.border.corner_radius,
-                             c.payload.border.border, c.payload.border.outline,
-                             sink, feather);
-      submit(renderer, sink, scratch, scale);
+      if (use_sdf) {
+        sdf_frame_rounded(renderer, sdf_cache, c.rect,
+                          c.payload.border.corner_radius,
+                          c.payload.border.border, c.payload.border.outline,
+                          scale);
+      } else {
+        ::ui::tessellate_frame(c.rect, c.payload.border.corner_radius,
+                               c.payload.border.border, c.payload.border.outline,
+                               sink, feather);
+        submit(renderer, sink, scratch, scale);
+      }
       break;
     case ::ui::DrawCommandKind::Shadow: {
       const ::ui::ShadowData &sd = c.payload.shadow;

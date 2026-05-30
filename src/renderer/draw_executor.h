@@ -13,6 +13,7 @@
 // fills the native-resolution backbuffer crisply (HiDPI). scale==1 reproduces
 // the legacy point==pixel path exactly (headless goldens are unaffected).
 
+#include "render_mode.h"
 #include "ui/runtime/draw_command.h"
 
 #include <SDL3/SDL.h>
@@ -21,11 +22,22 @@ namespace renderer {
 
 class FontRegistry;
 class TextureRegistry;
+class SdfMaskCache;
 
+// `mode` selects how rounded vector primitives (fills, borders, gradients) are
+// rasterized (see render_mode.h). The default — FringeAa at scale 1 — is exactly
+// the legacy per-primitive feather path, so existing call sites and goldens are
+// unchanged. SSAA mode emits hard-edged geometry (its AA comes from a
+// full-scene supersample done by UiSurface, NOT here). SDF mode routes rounded
+// shapes through `sdf_cache` (a null cache still works — masks are then
+// generated transiently per call). Shadows, images, text, clips and layers are
+// mode-independent and shared across all three.
 void execute_draw_commands(SDL_Renderer *renderer,
                            const ::ui::DrawCommandList &list,
                            FontRegistry *fonts,
                            TextureRegistry *textures = nullptr,
-                           float scale = 1.0f);
+                           float scale = 1.0f,
+                           RenderMode mode = RenderMode::FringeAa,
+                           SdfMaskCache *sdf_cache = nullptr);
 
 } // namespace renderer
