@@ -69,12 +69,33 @@ struct MeshSink {
 //   max(16, ceil(radius * 0.5)), capped at 64.
 int corner_segments(float radius);
 
+// ---------------------------------------------------------------------------
+// Anti-aliasing: analytic edge feathering (the `feather` parameter)
+// ---------------------------------------------------------------------------
+// SDL_RenderGeometry does NOT anti-alias — it hard-rasterizes every triangle, so
+// a tessellated curve staircases. To get crisp edges we extrude the silhouette
+// into a thin band that fades to premultiplied-transparent (0,0,0,0): the GPU
+// then blends a coverage ramp across that band (the Dear ImGui AntiAliasedFill
+// technique). `feather` is the band width in the SAME units as `rect` (UI
+// points); the executor passes 1/scale so the band is exactly ONE DEVICE PIXEL.
+//
+// Rules (shared by every tessellator below):
+//   - feather <= 0  => NO fringe; output is byte-for-byte the legacy geometry
+//     (so every existing call site / unit test / golden is unchanged).
+//   - Only CURVED silhouettes (corner_radius > 0.5) are feathered. A pure
+//     axis-aligned rectangle (radius <= 0.5) is left a hard quad: it does not
+//     alias at integer pixel positions and softening crisp UI edges is wrong.
+//   - Sub-pixel accurate: the solid core is inset by feather/2 and the fringe
+//     extends feather/2 outward, so the 50%-coverage line lands on the nominal
+//     edge. (Band cores clamp the inset so a thin border never collapses.)
+
 // Solid (or single-color) rounded-rect fill (design §9.3).
 //   corner_radius <= 0.5 => a single quad (2 triangles).
-//   otherwise => center quad + 4 corner fans + 4 edge quads.
-// Every emitted vertex carries `fill` (already premultiplied).
+//   otherwise => centroid fan over the rounded ring, optionally feathered.
+// Every emitted vertex carries `fill` (already premultiplied); fringe vertices
+// carry (0,0,0,0).
 bool tessellate_rect_fill(const DrawRect &rect, float corner_radius, Color fill,
-                          MeshSink &sink);
+                          MeshSink &sink, float feather = 0.f);
 
 // Fused frame: per-side border bands + signed-offset outline ring (design
 // §9.4, §9.11). Border bands are inset from the border-box edge by each side's
@@ -85,7 +106,7 @@ bool tessellate_rect_fill(const DrawRect &rect, float corner_radius, Color fill,
 // at 0). A side/ring is emitted only when its width>0 and color.a>0.
 bool tessellate_frame(const DrawRect &rect, float corner_radius,
                       const Border &border, const Outline &outline,
-                      MeshSink &sink);
+                      MeshSink &sink, float feather = 0.f);
 
 // Linear gradient fill (design §9.6): same tessellation as tessellate_rect_fill,
 // but each vertex's color is computed by projecting the vertex onto the gradient
@@ -93,7 +114,8 @@ bool tessellate_frame(const DrawRect &rect, float corner_radius,
 // rect's projected extent, then lerping the bracketing stops IN PREMULTIPLIED
 // SPACE. stop_count==0 emits nothing and returns true (no work, not an error).
 bool gradient_fill_colors(const DrawRect &rect, float corner_radius,
-                          const Gradient &gradient, MeshSink &sink);
+                          const Gradient &gradient, MeshSink &sink,
+                          float feather = 0.f);
 
 // Drop shadow (design §9.8): the border-box translated by shadow.offset and
 // expanded by shadow.spread on every side, drawn as a solid inner quad at full

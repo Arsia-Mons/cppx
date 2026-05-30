@@ -360,12 +360,106 @@ static bool test_paired_ring_regressions() {
   return true;
 }
 
+// --- anti-aliasing: feathered fill grows a transparent fringe --------------
+// With feather>0 a rounded fill must emit a solid core (full-alpha vertices)
+// surrounded by a fringe that fades to premultiplied-transparent (0,0,0,0). The
+// fringe extrudes ~feather/2 beyond the nominal edge; the solid core stays
+// inside it. (feather==0 keeps the legacy no-fringe behavior — covered above.)
+static bool test_feathered_fill_has_fringe() {
+  Buffers b;
+  MeshSink s = make_sink(b);
+  const DrawRect r{0, 0, 200, 120};
+  const float radius = 24.f;
+  const Color fill{200, 200, 200, 255};
+  CHECK(tessellate_rect_fill(r, radius, fill, s, /*feather=*/1.f));
+
+  bool saw_full = false;  // a solid-core vertex at full fill alpha
+  bool saw_clear = false; // a fringe vertex faded to (0,0,0,0)
+  bool saw_outside = false; // fringe extrudes past the nominal left edge
+  for (int i = 0; i < s.vcount; ++i) {
+    const Vertex &v = s.verts[i];
+    if (v.color == fill)
+      saw_full = true;
+    if (v.color == (Color{0, 0, 0, 0})) {
+      saw_clear = true;
+      // every transparent vertex is part of the outer fringe ring.
+      if (v.x < r.x - 1e-3f || v.y < r.y - 1e-3f)
+        saw_outside = true;
+    }
+    // every FULL-alpha vertex stays within the (inset) nominal box.
+    if (v.color.a == 255) {
+      CHECK(v.x >= r.x - 1e-3f && v.x <= r.x + r.w + 1e-3f);
+      CHECK(v.y >= r.y - 1e-3f && v.y <= r.y + r.h + 1e-3f);
+    }
+  }
+  CHECK(saw_full);
+  CHECK(saw_clear);
+  CHECK(saw_outside);
+
+  // A square (radius<=eps) fill IGNORES feather — axis-aligned edges stay hard.
+  Buffers b2;
+  MeshSink s2 = make_sink(b2);
+  CHECK(tessellate_rect_fill(DrawRect{0, 0, 100, 40}, 0.f, fill, s2, 1.f));
+  CHECK(s2.vcount == 4 && s2.icount == 6);
+  for (int i = 0; i < s2.vcount; ++i)
+    CHECK(s2.verts[i].color == fill); // no transparent fringe verts
+  return true;
+}
+
+// --- anti-aliasing: feathered frame grows a transparent fringe -------------
+static bool test_feathered_frame_has_fringe() {
+  Buffers b;
+  MeshSink s = make_sink(b);
+  const DrawRect r{0, 0, 120, 60};
+  Border border{};
+  border.width = SideWidths{2, 2, 2, 2};
+  const Color bc{220, 90, 90, 255};
+  border.color = SideColors{bc, bc, bc, bc};
+  CHECK(tessellate_frame(r, /*radius=*/10.f, border, Outline{}, s, /*feather=*/1.f));
+  bool saw_full = false, saw_clear = false;
+  for (int i = 0; i < s.vcount; ++i) {
+    if (s.verts[i].color == bc)
+      saw_full = true;
+    if (s.verts[i].color == (Color{0, 0, 0, 0}))
+      saw_clear = true;
+  }
+  CHECK(saw_full);  // solid border core
+  CHECK(saw_clear); // feathered edges
+
+  // A SQUARE frame (radius<=eps) ignores feather: no transparent fringe verts.
+  Buffers b2;
+  MeshSink s2 = make_sink(b2);
+  CHECK(tessellate_frame(DrawRect{0, 0, 120, 60}, 0.f, border, Outline{}, s2, 1.f));
+  for (int i = 0; i < s2.vcount; ++i)
+    CHECK(s2.verts[i].color != (Color{0, 0, 0, 0}));
+  return true;
+}
+
+// --- anti-aliasing: feathered paths still fail cleanly on overflow ----------
+static bool test_feathered_overflow_returns_false() {
+  Vertex vbuf[8];
+  uint16_t ibuf[8];
+  MeshSink tight;
+  tight.verts = vbuf;
+  tight.vcap = 8;
+  tight.vcount = 0;
+  tight.idx = ibuf;
+  tight.icap = 8;
+  tight.icount = 0;
+  // A feathered rounded fill needs far more than 8 verts -> clean false.
+  CHECK(tessellate_rect_fill(DrawRect{0, 0, 200, 120}, 24.f,
+                             Color{1, 1, 1, 255}, tight, 1.f) == false);
+  return true;
+}
+
 int main() {
   bool ok = test_corner_segments() && test_square_is_two_triangles() &&
             test_rounded_corners_contained() && test_gradient_endpoints() &&
             test_shadow_skirt_fades_to_zero() && test_frame_emits_bands() &&
             test_overflow_returns_false() && test_gradient_midpoint() &&
-            test_paired_ring_regressions();
+            test_paired_ring_regressions() && test_feathered_fill_has_fringe() &&
+            test_feathered_frame_has_fringe() &&
+            test_feathered_overflow_returns_false();
   if (!ok) {
     fprintf(stderr, "ui_geometry_tests: FAIL\n");
     return 1;

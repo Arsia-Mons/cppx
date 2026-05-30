@@ -87,7 +87,7 @@ void render_text(SDL_Renderer *r, const ::ui::DrawCommandList &list,
 // multiplies the sampled (already-premultiplied) texel — so the premultiplied
 // tint multiplies straight through, which is the correct premultiplied tint.
 void render_image(SDL_Renderer *r, const ::ui::DrawCommand &c,
-                  TextureRegistry *textures, Scratch &s) {
+                  TextureRegistry *textures, Scratch &s, float feather) {
   if (!textures)
     return;
   const ::ui::ImageData &img = c.payload.image;
@@ -143,7 +143,8 @@ void render_image(SDL_Renderer *r, const ::ui::DrawCommand &c,
     // folded into per-vertex premultiplied color. The geometry module emits uv
     // 0; we re-derive uv from each vertex's position within the rect.
     ::ui::MeshSink sink{s.v, kVScratch, 0, s.i, kIScratch, 0};
-    if (!::ui::tessellate_rect_fill(c.rect, img.corner_radius, tint, sink))
+    if (!::ui::tessellate_rect_fill(c.rect, img.corner_radius, tint, sink,
+                                    feather))
       return;
     const float rx = c.rect.x, ry = c.rect.y;
     const float rw = c.rect.w > 0.f ? c.rect.w : 1.f;
@@ -191,6 +192,12 @@ void execute_draw_commands(SDL_Renderer *renderer,
   static Scratch scratch;
   SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND_PREMULTIPLIED);
 
+  // Anti-aliasing: feather curved silhouettes by one device pixel. Geometry is
+  // tessellated in UI points and (Phase 2) scaled to device pixels at submit, so
+  // the feather is authored as 1/scale points => exactly 1px. At scale 1 (the
+  // headless software path + goldens) that is 1.0.
+  const float feather = 1.0f;
+
   SDL_Rect clip_stack[16];
   int clip_depth = 0;
 
@@ -205,7 +212,7 @@ void execute_draw_commands(SDL_Renderer *renderer,
     case ::ui::DrawCommandKind::Rect:
       if (c.payload.rect.fill.a > 0) {
         ::ui::tessellate_rect_fill(c.rect, c.payload.rect.corner_radius,
-                                   c.payload.rect.fill, sink);
+                                   c.payload.rect.fill, sink, feather);
         submit(renderer, sink, scratch);
       }
       break;
@@ -216,14 +223,14 @@ void execute_draw_commands(SDL_Renderer *renderer,
       g.stop_count = gd.stop_count;
       for (int k = 0; k < gd.stop_count && k < ::ui::UI_MAX_GRADIENT_STOPS; ++k)
         g.stops[k] = list.grad_arena[gd.stop_off + k];
-      ::ui::gradient_fill_colors(c.rect, gd.corner_radius, g, sink);
+      ::ui::gradient_fill_colors(c.rect, gd.corner_radius, g, sink, feather);
       submit(renderer, sink, scratch);
       break;
     }
     case ::ui::DrawCommandKind::Border:
       ::ui::tessellate_frame(c.rect, c.payload.border.corner_radius,
                              c.payload.border.border, c.payload.border.outline,
-                             sink);
+                             sink, feather);
       submit(renderer, sink, scratch);
       break;
     case ::ui::DrawCommandKind::Shadow: {
@@ -240,7 +247,7 @@ void execute_draw_commands(SDL_Renderer *renderer,
       break;
     }
     case ::ui::DrawCommandKind::Image:
-      render_image(renderer, c, textures, scratch);
+      render_image(renderer, c, textures, scratch, feather);
       break;
     case ::ui::DrawCommandKind::Text:
       render_text(renderer, list, c, fonts);

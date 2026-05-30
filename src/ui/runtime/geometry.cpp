@@ -37,6 +37,39 @@ float clamp_radius(const DrawRect &r, float radius) {
   return radius;
 }
 
+// Grow (d>0) or inset (d<0) a rect by d on every side. Degenerate sizes clamp
+// to 0 (build_ring_seg + clamp_radius then collapse the corners safely). Used to
+// build the concentric core/fringe rings of a feathered silhouette.
+inline DrawRect grow_rect(const DrawRect &r, float d) {
+  DrawRect o;
+  o.x = r.x - d;
+  o.y = r.y - d;
+  o.w = r.w + 2.f * d;
+  o.h = r.h + 2.f * d;
+  if (o.w < 0.f)
+    o.w = 0.f;
+  if (o.h < 0.f)
+    o.h = 0.f;
+  return o;
+}
+
+// Half-feather, clamped so insetting a small shape by it cannot invert the core.
+// `room` is the largest safe per-side inset (half the limiting dimension/gap);
+// we keep ~10% of it as solid core in the worst case.
+inline float clamp_half_feather(float feather, float room) {
+  float half = feather * 0.5f;
+  const float cap = 0.45f * room;
+  if (half > cap)
+    half = cap;
+  if (half < 0.f)
+    half = 0.f;
+  return half;
+}
+
+// Premultiplied-transparent: the only fully-transparent color. Fringe vertices
+// fade to this so the GPU blends a coverage ramp across the 1px band.
+constexpr Color kClear{0, 0, 0, 0};
+
 // Lerp two premultiplied colors at parameter t in [0,1]. Premultiplied space:
 // every channel (including alpha) interpolates linearly and independently. We
 // do NOT divide out / re-multiply alpha — the inputs are already premultiplied.
@@ -131,12 +164,6 @@ int seg_for_radius(float radius) {
   return radius <= kRadiusEps ? 0 : corner_segments(radius);
 }
 
-// Single-ring builder for fills: picks its own seg from the (clamped) radius.
-int build_round_ring(const DrawRect &r, float radius, RingPt *out, int cap) {
-  const float cr = clamp_radius(r, radius);
-  return build_ring_seg(r, cr, seg_for_radius(cr), out, cap);
-}
-
 // Max ring points: 4 arcs * (max_seg + 1). corner_segments caps at 64.
 constexpr int kMaxRingPts = 4 * (64 + 1);
 
@@ -194,31 +221,71 @@ Color gradient_color(const Gradient &g, float t) {
 // ring. (A centroid fan is equivalent in coverage to "center quad + 4 corner
 // fans + 4 edge quads" — same triangles, just hubbed at the centroid so the
 // edge bands and corner fans share the one apex.)
+// Fan the interior of a ring from the rect centroid, each vertex shaded.
 template <class Shade>
-bool emit_fill(const DrawRect &r, float corner_radius, MeshSink &sink,
-               Shade shade) {
-  const float radius = clamp_radius(r, corner_radius);
-
-  if (radius <= kRadiusEps) {
-    // Single quad, two triangles. CCW with +y down: TL, TR, BR, BL.
-    const float x0 = r.x, y0 = r.y, x1 = r.x + r.w, y1 = r.y + r.h;
-    return sink.quad(vtx(x0, y0, shade(x0, y0)), vtx(x1, y0, shade(x1, y0)),
-                     vtx(x1, y1, shade(x1, y1)), vtx(x0, y1, shade(x0, y1)));
-  }
-
-  RingPt ring[kMaxRingPts];
-  const int count = build_round_ring(r, radius, ring, kMaxRingPts);
-  if (count < 3)
-    return false;
-
-  const float cx = r.x + r.w * 0.5f;
-  const float cy = r.y + r.h * 0.5f;
+bool fan_interior(const RingPt *ring, int count, float cx, float cy,
+                  MeshSink &sink, Shade shade) {
   const Vertex center = vtx(cx, cy, shade(cx, cy));
   for (int i = 0; i < count; ++i) {
     const RingPt &a = ring[i];
     const RingPt &b = ring[(i + 1) % count];
     if (!sink.tri(center, vtx(a.x, a.y, shade(a.x, a.y)),
                   vtx(b.x, b.y, shade(b.x, b.y))))
+      return false;
+  }
+  return true;
+}
+
+template <class Shade>
+bool emit_fill(const DrawRect &r, float corner_radius, MeshSink &sink,
+               Shade shade, float feather) {
+  const float radius = clamp_radius(r, corner_radius);
+
+  if (radius <= kRadiusEps) {
+    // Axis-aligned: hard quad, two triangles (NO feather — header rule). CCW
+    // with +y down: TL, TR, BR, BL.
+    const float x0 = r.x, y0 = r.y, x1 = r.x + r.w, y1 = r.y + r.h;
+    return sink.quad(vtx(x0, y0, shade(x0, y0)), vtx(x1, y0, shade(x1, y0)),
+                     vtx(x1, y1, shade(x1, y1)), vtx(x0, y1, shade(x0, y1)));
+  }
+
+  const int seg = seg_for_radius(radius); // shared by every concentric ring
+  const float cx = r.x + r.w * 0.5f;
+  const float cy = r.y + r.h * 0.5f;
+
+  if (feather <= 0.f) {
+    // Legacy path: single ring, centroid fan. Byte-for-byte unchanged.
+    RingPt ring[kMaxRingPts];
+    const int count = build_ring_seg(r, radius, seg, ring, kMaxRingPts);
+    if (count < 3)
+      return false;
+    return fan_interior(ring, count, cx, cy, sink, shade);
+  }
+
+  // Feathered path: a solid core inset by half-feather + a 1px transparent
+  // fringe extending half-feather outward, so the coverage ramp straddles the
+  // nominal edge. half is clamped so a small shape's core never inverts.
+  const float half_min = 0.5f * (r.w < r.h ? r.w : r.h);
+  const float half = clamp_half_feather(feather, half_min);
+
+  RingPt core[kMaxRingPts];
+  RingPt edge[kMaxRingPts];
+  const int nc =
+      build_ring_seg(grow_rect(r, -half), radius - half, seg, core, kMaxRingPts);
+  const int ne =
+      build_ring_seg(grow_rect(r, half), radius + half, seg, edge, kMaxRingPts);
+  if (nc < 3 || ne != nc)
+    return false;
+
+  if (!fan_interior(core, nc, cx, cy, sink, shade))
+    return false;
+  // Fringe: core (full shade) -> edge (premultiplied transparent).
+  for (int i = 0; i < nc; ++i) {
+    const int j = (i + 1) % nc;
+    if (!sink.quad(vtx(core[i].x, core[i].y, shade(core[i].x, core[i].y)),
+                   vtx(core[j].x, core[j].y, shade(core[j].x, core[j].y)),
+                   vtx(edge[j].x, edge[j].y, kClear),
+                   vtx(edge[i].x, edge[i].y, kClear)))
       return false;
   }
   return true;
@@ -299,9 +366,9 @@ int corner_segments(float radius) {
 // ---------------------------------------------------------------------------
 
 bool tessellate_rect_fill(const DrawRect &rect, float corner_radius, Color fill,
-                          MeshSink &sink) {
+                          MeshSink &sink, float feather) {
   return emit_fill(rect, corner_radius, sink,
-                   [fill](float, float) { return fill; });
+                   [fill](float, float) { return fill; }, feather);
 }
 
 // ---------------------------------------------------------------------------
@@ -309,7 +376,8 @@ bool tessellate_rect_fill(const DrawRect &rect, float corner_radius, Color fill,
 // ---------------------------------------------------------------------------
 
 bool gradient_fill_colors(const DrawRect &rect, float corner_radius,
-                          const Gradient &gradient, MeshSink &sink) {
+                          const Gradient &gradient, MeshSink &sink,
+                          float feather) {
   if (gradient.stop_count == 0)
     return true; // no gradient => emit nothing (not an error).
 
@@ -320,7 +388,8 @@ bool gradient_fill_colors(const DrawRect &rect, float corner_radius,
                    [&](float px, float py) {
                      const float t = gradient_t(rect, dx, dy, px, py);
                      return gradient_color(gradient, t);
-                   });
+                   },
+                   feather);
 }
 
 // ---------------------------------------------------------------------------
@@ -332,12 +401,29 @@ bool gradient_fill_colors(const DrawRect &rect, float corner_radius,
 // corner radius) and bridge them with quads, coloring each pair by the 45°
 // radial split. The inner radius shrinks with the (uniform-ish) inset so corner
 // curvature is preserved.
+// Bridge two equal-length rings into a quad strip, each vertex colored by a
+// position->color functor (the 45° side split for solid bands, kClear for a
+// transparent fringe edge). Ring `a` and ring `b` must share a point count.
+template <class CA, class CB>
+bool bridge_rings(const RingPt *a, const RingPt *b, int n, MeshSink &sink,
+                  CA color_a, CB color_b) {
+  for (int i = 0; i < n; ++i) {
+    const int j = (i + 1) % n;
+    if (!sink.quad(vtx(a[i].x, a[i].y, color_a(a[i].x, a[i].y)),
+                   vtx(a[j].x, a[j].y, color_a(a[j].x, a[j].y)),
+                   vtx(b[j].x, b[j].y, color_b(b[j].x, b[j].y)),
+                   vtx(b[i].x, b[i].y, color_b(b[i].x, b[i].y))))
+      return false;
+  }
+  return true;
+}
+
 static bool emit_band(const DrawRect &outer_rect, float outer_radius,
                       const DrawRect &inner_rect, float inner_radius,
-                      const SideColors &colors, MeshSink &sink) {
+                      const SideColors &colors, MeshSink &sink, float feather) {
   RingPt outer[kMaxRingPts];
   RingPt inner[kMaxRingPts];
-  // ONE shared seg (from the outer radius) so both rings have matching topology,
+  // ONE shared seg (from the outer radius) so every ring has matching topology,
   // even when the inner radius collapses (border width >= corner radius) or the
   // box is square. Without this, paired rings diverge and the strip is rejected.
   const int seg = seg_for_radius(clamp_radius(outer_rect, outer_radius));
@@ -348,26 +434,54 @@ static bool emit_band(const DrawRect &outer_rect, float outer_radius,
 
   const float cx = outer_rect.x + outer_rect.w * 0.5f;
   const float cy = outer_rect.y + outer_rect.h * 0.5f;
+  auto side = [&](float px, float py) {
+    return side_color_for(colors, cx, cy, px, py);
+  };
 
-  for (int i = 0; i < no; ++i) {
-    const int j = (i + 1) % no;
-    const RingPt &o0 = outer[i];
-    const RingPt &o1 = outer[j];
-    const RingPt &i0 = inner[i];
-    const RingPt &i1 = inner[j];
-    const Color c0 = side_color_for(colors, cx, cy, o0.x, o0.y);
-    const Color c1 = side_color_for(colors, cx, cy, o1.x, o1.y);
-    // Quad o0 -> o1 -> i1 -> i0 (outer edge to inner edge), per-vertex color.
-    if (!sink.quad(vtx(o0.x, o0.y, c0), vtx(o1.x, o1.y, c1),
-                   vtx(i1.x, i1.y, c1), vtx(i0.x, i0.y, c0)))
-      return false;
+  // Per-side band thickness (outer edge -> inner edge). The min gates feathering:
+  // a zero/near-zero gap means an unpainted side, so fall back to a hard band.
+  const float gl = inner_rect.x - outer_rect.x;
+  const float gt = inner_rect.y - outer_rect.y;
+  const float gr = (outer_rect.x + outer_rect.w) - (inner_rect.x + inner_rect.w);
+  const float gb = (outer_rect.y + outer_rect.h) - (inner_rect.y + inner_rect.h);
+  float min_gap = gl;
+  if (gt < min_gap) min_gap = gt;
+  if (gr < min_gap) min_gap = gr;
+  if (gb < min_gap) min_gap = gb;
+
+  const bool curved = clamp_radius(outer_rect, outer_radius) > kRadiusEps;
+  if (feather <= 0.f || !curved || min_gap <= 0.05f) {
+    // Hard band (legacy): outer ring -> inner ring, 45° side colors.
+    return bridge_rings(outer, inner, no, sink, side, side);
   }
+
+  // Feathered band: a solid core inset by half-feather on both edges, plus a
+  // 1px transparent fringe straddling each nominal edge. half is clamped to the
+  // thinnest side so the core never inverts.
+  const float half = clamp_half_feather(feather, min_gap);
+  RingPt co[kMaxRingPts], ci[kMaxRingPts], oe[kMaxRingPts], ie[kMaxRingPts];
+  const int nco = build_ring_seg(grow_rect(outer_rect, -half), outer_radius - half, seg, co, kMaxRingPts);
+  const int nci = build_ring_seg(grow_rect(inner_rect, half), inner_radius + half, seg, ci, kMaxRingPts);
+  const int noe = build_ring_seg(grow_rect(outer_rect, half), outer_radius + half, seg, oe, kMaxRingPts);
+  const int nie = build_ring_seg(grow_rect(inner_rect, -half), inner_radius - half, seg, ie, kMaxRingPts);
+  if (nco != no || nci != no || noe != no || nie != no)
+    return false;
+
+  auto clear = [](float, float) { return kClear; };
+  // Solid core, then outer fringe (transparent -> core) and inner fringe
+  // (core -> transparent). Regions tile (oe..co | co..ci | ci..ie); no overlap.
+  if (!bridge_rings(co, ci, no, sink, side, side))
+    return false;
+  if (!bridge_rings(oe, co, no, sink, clear, side))
+    return false;
+  if (!bridge_rings(ci, ie, no, sink, side, clear))
+    return false;
   return true;
 }
 
 bool tessellate_frame(const DrawRect &rect, float corner_radius,
                       const Border &border, const Outline &outline,
-                      MeshSink &sink) {
+                      MeshSink &sink, float feather) {
   const float radius = clamp_radius(rect, corner_radius);
 
   // --- Border bands -------------------------------------------------------
@@ -403,7 +517,8 @@ bool tessellate_frame(const DrawRect &rect, float corner_radius,
     float inner_radius = radius - max_w;
     if (inner_radius < 0.f)
       inner_radius = 0.f;
-    if (!emit_band(rect, radius, inner, inner_radius, border.color, sink))
+    if (!emit_band(rect, radius, inner, inner_radius, border.color, sink,
+                   feather))
       return false;
   }
 
@@ -445,7 +560,7 @@ bool tessellate_frame(const DrawRect &rect, float corner_radius,
     const SideColors ring_colors{outline.color, outline.color, outline.color,
                                  outline.color};
     if (!emit_band(ring_outer, ring_outer_radius, ring_inner, ring_inner_radius,
-                   ring_colors, sink))
+                   ring_colors, sink, feather))
       return false;
   }
 
