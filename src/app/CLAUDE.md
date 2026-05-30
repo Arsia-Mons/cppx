@@ -5,7 +5,7 @@ Owns process lifecycle and the per-frame loop. `app::App` constructs SDL, fonts,
 ## Files
 
 - `app.{h,cpp}` — `App::initialize/run/shutdown`. Owns every subsystem; nothing else creates one.
-- `game_loop.{h,cpp}` — `GameLoop::tick()`. Stateless except for per-frame transient flags (`previous_pointer_down_`).
+- `game_loop.{h,cpp}` — `GameLoop::tick()`. Per-frame transient flags (`previous_pointer_down_`) plus the active rounded-primitive AA strategy (`renderer::RenderMode`: SSAA / FringeAa / SDF), set from `UI_RENDER_MODE`, cycled with F2, and switchable headlessly via the control mailbox `render_mode` op. Owns the per-frame supersample policy (`supersample_for`) and passes the mode + SDF cache to `execute_draw_commands`. See `renderer/render_mode.h` and `docs/retained-ui/RENDER-MODES.md`.
 
 ## Hard rules
 

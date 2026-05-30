@@ -24,6 +24,11 @@ GameLoop::GameLoop(platform::sdl::Window &window, renderer::UiSurface &surface,
     if (renderer::render_mode_from_slug(env, &m))
       render_mode_ = m;
   }
+  // Expose the active mode in control-mailbox state replies (readback for
+  // headless tests). GameLoop owns the mode, so it registers the slug closure —
+  // platform/ never learns the RenderMode enum.
+  control_.set_render_mode_provider(
+      [this] { return renderer::render_mode_slug(render_mode_); });
   apply_window_title();
 }
 
@@ -132,7 +137,7 @@ void GameLoop::tick() {
     renderer::execute_draw_commands(
         surface_.sdl_renderer(),
         ui_pipeline_.client_ui().retained_command_list(), surface_.fonts(),
-        /*textures=*/nullptr, scale, render_mode_, surface_.sdf_cache());
+        /*textures=*/nullptr, scale, {render_mode_, surface_.sdf_cache()});
     surface_.resolve_frame();
     control_.capture_after_render(surface_.sdl_renderer(), ui_pipeline_);
     surface_.present();

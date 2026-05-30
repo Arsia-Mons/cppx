@@ -510,7 +510,7 @@ bool run_sdf_scene() {
   auto draw = [&](SDL_Renderer *r) {
     renderer::execute_draw_commands(r, list, /*fonts=*/nullptr,
                                     /*textures=*/nullptr, /*scale=*/1.0f,
-                                    renderer::RenderMode::Sdf, &cache);
+                                    {renderer::RenderMode::Sdf, &cache});
   };
 
   // Semantic probes (independent of the golden bytes).
@@ -568,6 +568,40 @@ bool run_sdf_scene() {
       &rep);
   if (!ok)
     fprintf(stderr, "renderer_golden_tests (sdf): %s\n", rep.message.c_str());
+  return ok;
+}
+
+// ---------------------------------------------------------------------------
+// Backward-compat lock: rendering scene 1 with an EXPLICIT RenderMode::FringeAa
+// at scale 1 must reproduce the pre-render-modes golden byte-for-byte. The other
+// scenes already prove this implicitly (they render through the RasterConfig
+// default, which IS FringeAa), but this pins the contract by name so a future
+// change to the default can't silently shift the legacy path.
+// ---------------------------------------------------------------------------
+bool run_fringe_legacy_compat() {
+  ui_test::GoldenContext ctx;
+  if (!ctx.init()) {
+    fprintf(stderr, "renderer_golden_tests: GoldenContext init failed\n");
+    return false;
+  }
+  const DrawCommandList &list = scene();
+  if (list.error_count != 0) {
+    fprintf(stderr, "renderer_golden_tests: legacy-compat scene overflowed\n");
+    return false;
+  }
+  auto draw = [&](SDL_Renderer *r) {
+    renderer::execute_draw_commands(r, list, /*fonts=*/nullptr,
+                                    /*textures=*/nullptr, /*scale=*/1.0f,
+                                    {renderer::RenderMode::FringeAa, nullptr});
+  };
+  ui_test::CompareReport rep;
+  // Same golden as run_scene(): explicit FringeAa == the default == legacy bytes.
+  const bool ok = ui_test::render_and_compare(
+      ctx, 128, 96, draw, "tests/fixtures/golden/new_ir_scene.bmp", kTolerance,
+      &rep);
+  if (!ok)
+    fprintf(stderr, "renderer_golden_tests (fringe-compat): %s\n",
+            rep.message.c_str());
   return ok;
 }
 
@@ -637,7 +671,8 @@ bool run_text_cache_checks() {
 
 int main() {
   if (!run_scene() || !run_image_scene() || !run_opacity_scene() ||
-      !run_scaled_scene() || !run_sdf_scene() || !run_text_cache_checks()) {
+      !run_scaled_scene() || !run_sdf_scene() || !run_fringe_legacy_compat() ||
+      !run_text_cache_checks()) {
     fprintf(stderr, "renderer_golden_tests: FAIL\n");
     return 1;
   }

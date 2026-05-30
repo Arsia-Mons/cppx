@@ -56,11 +56,18 @@ private:
   Entry entries_[kCap];
   uint64_t tick_ = 0;
 
-  SDL_Texture *acquire(SDL_Renderer *r, uint64_t key, int w, int h);
+  // Key lookup (LRU-touch on hit) and slot insert (free slot, else LRU-evict).
+  // The full device-pixel geometry is baked into `key`, so neither needs dims.
+  SDL_Texture *acquire(uint64_t key);
+  SDL_Texture *insert(uint64_t key, SDL_Texture *tex);
 };
 
 // Rounded solid fill via SDF. `rect`/`radius` in UI points; `scale` = device px
-// per point; `fill` premultiplied. Falls back to a plain rect if radius<=0.5.
+// per point; `fill` premultiplied. Falls back to a HARD rect when radius*scale
+// <= 0.75 DEVICE px (too small to round visibly) or when the device box exceeds
+// kMaxMaskDim per side (avoids an oversized mask alloc). Note: the executor only
+// routes radius>0.5 POINTS here, so the device-pixel fallback only triggers at
+// fractional scales — a deliberate fidelity/perf cutoff, not a missing case.
 void sdf_fill_rounded(SDL_Renderer *r, SdfMaskCache *cache,
                       const ui::DrawRect &rect, float radius, ui::Color fill,
                       float scale);

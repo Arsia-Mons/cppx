@@ -80,8 +80,22 @@ coverage lands on the nominal edge — same sub-pixel convention as the fringe b
 - Per-side **border colors/widths collapse to one ring** in SDF mode (uniform
   width = widest side, color = first non-transparent side). The theme uses
   uniform borders, so the live look is faithful. Per-side SDF is a future step.
-- Gradient masks are regenerated per frame (gradients are rare); fills/rings are
-  cached.
+- Gradient masks are regenerated per frame (gradients are rare); the backing
+  buffer is reused (a `static` scratch) so there is no per-frame heap alloc.
+  Fills/rings are cached as textures.
+- **Mask cache keys** quantize device-pixel radii to 1/4 px (`quant`) and pack
+  into a 56-bit key via `make_mask_key`, which `SDL_assert`s its field bounds
+  (mask dims < 8192, quantized radii < 16384) so an out-of-range geometry fails
+  loudly rather than silently colliding. Masks are capped at `kMaxMaskDim`
+  (4096) device px per side; larger fills fall back to a hard rect.
+- **SDF gradient vs cached fill precision:** gradient pixels are premultiplied in
+  float (`col*cov`), while cached fills/rings tint via SDL color/alpha-mod. These
+  can differ by ±1 per channel on edge pixels — absorbed by the golden tolerance
+  and imperceptible. Unifying them is a future nicety, not a correctness issue.
+- **SSAA at the viewport edge:** geometry lying exactly on the render-target
+  boundary is clipped by the rasterizer before the 2× buffer sees it, so it
+  can't be anti-aliased on resolve — an inherent SSAA trait. The analytic modes
+  (Fringe/SDF) don't have this; UI rarely extends to the very edge.
 - A null `SdfMaskCache` is legal everywhere (masks are then transient) — keeps
   the golden harness and any non-`UiSurface` caller simple.
 

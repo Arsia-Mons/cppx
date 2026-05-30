@@ -415,9 +415,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("render_mode")
     add_common(p)
+    # Aliases mirror render_mode_from_slug() in src/renderer/render_mode.h so the
+    # CLI accepts the same tokens the C++ layer does.
     p.add_argument("--mode", required=True,
-                   choices=["ssaa", "fringe", "sdf"],
-                   help="rounded-primitive AA strategy to switch to live")
+                   choices=["ssaa", "supersample", "ss",
+                            "fringe", "fringeaa", "fringe_aa", "feather",
+                            "sdf", "distance"],
+                   help="rounded-primitive AA strategy to switch to live "
+                        "(ssaa/supersample/ss, fringe/fringeaa/fringe_aa/feather, sdf/distance)")
     p.set_defaults(func=command_main)
 
     p = sub.add_parser("smoke")

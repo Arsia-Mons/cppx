@@ -159,7 +159,27 @@ ui::Color sample_gradient(const ui::Gradient &g, float t) {
   return g.stops[n - 1].color;
 }
 
+// Quantize a device-pixel length to 1/4-px units for cache keying. 1/4-px
+// granularity is a deliberate space/time tradeoff: geometries within 0.25px
+// share a mask (imperceptible, and they round to the same integer raster).
 inline uint64_t quant(float v) { return static_cast<uint64_t>(lroundf(v * 4.f)); }
+
+// Pack a mask cache key from a 2-bit kind tag + mask dims + up to two quantized
+// radii. Field widths (no overlap, total 56 bits):
+//   w  [0..12]  h [13..25]  q0 [26..39]  q1 [40..53]  kind [54..55]
+// Bounds: mask dims are capped at kMaxMaskDim (4096 -> 13 bits); a rounded
+// rect's radius/band is bounded by half its size, so for masks up to 4096px the
+// quantized value is <= ~8192 (14 bits). The asserts make any future
+// out-of-range geometry fail loudly instead of silently colliding (the bug the
+// previous hand-packed keys risked when a 12-bit field truncated large radii).
+inline uint64_t make_mask_key(uint64_t kind, int w, int h, uint64_t q0,
+                              uint64_t q1) {
+  SDL_assert(w >= 0 && w < (1 << 13) && h >= 0 && h < (1 << 13));
+  SDL_assert(q0 < (1u << 14) && q1 < (1u << 14));
+  return (static_cast<uint64_t>(w) & 0x1FFF) |
+         ((static_cast<uint64_t>(h) & 0x1FFF) << 13) | ((q0 & 0x3FFF) << 26) |
+         ((q1 & 0x3FFF) << 40) | ((kind & 0x3) << 54);
+}
 
 } // namespace
 
@@ -178,11 +198,7 @@ void SdfMaskCache::clear() {
   tick_ = 0;
 }
 
-SDL_Texture *SdfMaskCache::acquire(SDL_Renderer *r, uint64_t key, int w, int h) {
-  (void)r;
-  (void)w;
-  (void)h;
-  // Hit?
+SDL_Texture *SdfMaskCache::acquire(uint64_t key) {
   for (Entry &e : entries_) {
     if (e.live && e.key == key) {
       e.used = ++tick_;
@@ -192,17 +208,8 @@ SDL_Texture *SdfMaskCache::acquire(SDL_Renderer *r, uint64_t key, int w, int h) 
   return nullptr;
 }
 
-SDL_Texture *SdfMaskCache::fill_mask(SDL_Renderer *r, int w, int h,
-                                     float r_px) {
-  const uint64_t key = static_cast<uint64_t>(w) |
-                       (static_cast<uint64_t>(h) << 16) | (quant(r_px) << 32) |
-                       (static_cast<uint64_t>(1) << 56);
-  if (SDL_Texture *hit = acquire(r, key, w, h))
-    return hit;
-  SDL_Texture *tex = build_fill_mask(r, w, h, r_px);
-  if (!tex)
-    return nullptr;
-  // Insert into a free or LRU-evicted slot.
+SDL_Texture *SdfMaskCache::insert(uint64_t key, SDL_Texture *tex) {
+  // Free slot, else LRU-evict the least-recently-used live slot.
   Entry *slot = nullptr;
   for (Entry &e : entries_) {
     if (!e.live) {
@@ -221,34 +228,22 @@ SDL_Texture *SdfMaskCache::fill_mask(SDL_Renderer *r, int w, int h,
   return tex;
 }
 
+SDL_Texture *SdfMaskCache::fill_mask(SDL_Renderer *r, int w, int h,
+                                     float r_px) {
+  const uint64_t key = make_mask_key(1, w, h, quant(r_px), 0);
+  if (SDL_Texture *hit = acquire(key))
+    return hit;
+  SDL_Texture *tex = build_fill_mask(r, w, h, r_px);
+  return tex ? insert(key, tex) : nullptr;
+}
+
 SDL_Texture *SdfMaskCache::ring_mask(SDL_Renderer *r, int w, int h, float r_px,
                                      float band_px) {
-  const uint64_t key = static_cast<uint64_t>(w) |
-                       (static_cast<uint64_t>(h) << 16) |
-                       ((quant(r_px) & 0xFFF) << 32) |
-                       ((quant(band_px) & 0xFFF) << 44) |
-                       (static_cast<uint64_t>(2) << 56);
-  if (SDL_Texture *hit = acquire(r, key, w, h))
+  const uint64_t key = make_mask_key(2, w, h, quant(r_px), quant(band_px));
+  if (SDL_Texture *hit = acquire(key))
     return hit;
   SDL_Texture *tex = build_ring_mask(r, w, h, r_px, band_px);
-  if (!tex)
-    return nullptr;
-  Entry *slot = nullptr;
-  for (Entry &e : entries_) {
-    if (!e.live) {
-      slot = &e;
-      break;
-    }
-    if (!slot || e.used < slot->used)
-      slot = &e;
-  }
-  if (slot->live && slot->tex)
-    SDL_DestroyTexture(slot->tex);
-  slot->key = key;
-  slot->tex = tex;
-  slot->used = ++tick_;
-  slot->live = true;
-  return tex;
+  return tex ? insert(key, tex) : nullptr;
 }
 
 // ---------------------------------------------------------------------------
@@ -368,7 +363,12 @@ void sdf_gradient_rounded(SDL_Renderer *r, const ui::DrawRect &rect,
   }
   const float pspan = pmax - pmin;
 
-  std::vector<uint8_t> buf(static_cast<size_t>(mw) * mh * 4u, 0);
+  // Reused scratch (UI is single-threaded, like the executor's static Scratch):
+  // gradient masks are per-pixel/per-color so they can't be cached, but the
+  // backing buffer can be — this avoids a heap alloc+free per gradient per frame.
+  // grows monotonically to the largest gradient seen.
+  static std::vector<uint8_t> buf;
+  buf.assign(static_cast<size_t>(mw) * mh * 4u, 0);
   for (int y = 0; y < mh; ++y) {
     for (int x = 0; x < mw; ++x) {
       const float d =
@@ -377,7 +377,12 @@ void sdf_gradient_rounded(SDL_Renderer *r, const ui::DrawRect &rect,
       uint8_t *p = &buf[(static_cast<size_t>(y) * mw + x) * 4u];
       if (cov <= 0.f)
         continue;
-      // Pixel's point-space position -> gradient t -> premultiplied color.
+      // Sample the gradient at this pixel's CENTER in point space. Mask pixel x
+      // blits to device px (b.x0-1+x), whose center is (b.x0-1+x+0.5); /scale
+      // converts to points. The +0.5 (pixel-center, not pixel-edge) matches both
+      // the coverage SDF above (which also samples at +0.5) and the tessellated
+      // modes, where GPU fragment interpolation evaluates the gradient at the
+      // fragment center — so all three modes sample the ramp at the same place.
       const float ptx = (b.x0 + (x - 1) + 0.5f) / scale;
       const float pty = (b.y0 + (y - 1) + 0.5f) / scale;
       const float pr = ptx * dx + pty * dy;

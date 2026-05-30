@@ -32,7 +32,10 @@ private:
   bool &running_;
   bool previous_pointer_down_ = false;
   bool text_input_active_ = false;
-  renderer::RenderMode render_mode_ = renderer::RenderMode::Ssaa;
+  // Live default = FringeAa, matching the executor's RasterConfig default and
+  // the documented legacy path (1px analytic feather; at the theme's 8px radius
+  // it is visually indistinguishable from SDF). F2 cycles to SSAA and SDF.
+  renderer::RenderMode render_mode_ = renderer::RenderMode::FringeAa;
 };
 
 } // namespace app

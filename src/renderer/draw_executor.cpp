@@ -228,8 +228,7 @@ struct LayerSlot {
 void execute_draw_commands(SDL_Renderer *renderer,
                            const ::ui::DrawCommandList &list,
                            FontRegistry *fonts, TextureRegistry *textures,
-                           float scale, RenderMode mode,
-                           SdfMaskCache *sdf_cache) {
+                           float scale, const RasterConfig &raster) {
   if (!renderer)
     return;
   if (scale <= 0.f)
@@ -246,8 +245,10 @@ void execute_draw_commands(SDL_Renderer *renderer,
   //     full-scene supersample (UiSurface) do the anti-aliasing on resolve.
   //   Sdf      -> route rounded shapes to the analytic distance-field rasterizer;
   //     non-rounded shapes still take the hard-quad tessellation path.
-  const bool use_sdf = (mode == RenderMode::Sdf);
-  const float feather = (mode == RenderMode::FringeAa) ? (1.0f / scale) : 0.0f;
+  const bool use_sdf = (raster.mode == RenderMode::Sdf);
+  const float feather =
+      (raster.mode == RenderMode::FringeAa) ? (1.0f / scale) : 0.0f;
+  SdfMaskCache *const sdf_cache = raster.sdf_cache;
 
   SDL_Rect clip_stack[16];
   int clip_depth = 0;

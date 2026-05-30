@@ -17,6 +17,10 @@ public:
     bool init(const char *dir);
     bool active() const { return active_; }
     void set_game_state_json_provider(std::function<std::string()> provider);
+    // Optional readback of the active render-mode slug (e.g. "sdf"), surfaced in
+    // state/inspect replies so headless scripts can confirm a switch took. The
+    // mailbox stays renderer-agnostic — app/ supplies the slug via the closure.
+    void set_render_mode_provider(std::function<std::string()> provider);
 
     void poll(::ui::UiInputFrame &ui_input,
               bool &running,
@@ -67,6 +71,7 @@ private:
     std::filesystem::path replies_dir_;
     std::filesystem::path artifacts_dir_;
     std::function<std::string()> game_state_json_provider_ = {};
+    std::function<std::string()> render_mode_provider_ = {};
 
     bool pointer_override_ = false;
     float pointer_x_ = -1000.0f;

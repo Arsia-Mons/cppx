@@ -221,6 +221,11 @@ bool ControlMailbox::init(const char *dir) {
   return true;
 }
 
+void ControlMailbox::set_render_mode_provider(
+    std::function<std::string()> provider) {
+  render_mode_provider_ = std::move(provider);
+}
+
 void ControlMailbox::set_game_state_json_provider(
     std::function<std::string()> provider) {
   game_state_json_provider_ = std::move(provider);
@@ -277,6 +282,9 @@ std::string ControlMailbox::state_json(client::ui::UiPipeline &pipeline) {
        << "\"retained_focused_id\":" << retained_focused << ","
        << "\"retained_focus_source\":\""
        << retained_focus_source_name(retained_source) << "\","
+       << "\"render_mode\":\""
+       << json_escape(render_mode_provider_ ? render_mode_provider_() : "")
+       << "\","
        << "\"screens\":[";
   for (int i = 0; i < client_ui.screens().count(); ++i) {
     client::ui::UiScreen *screen = client_ui.screens().at(i);

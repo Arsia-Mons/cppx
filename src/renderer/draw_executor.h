@@ -24,20 +24,30 @@ class FontRegistry;
 class TextureRegistry;
 class SdfMaskCache;
 
-// `mode` selects how rounded vector primitives (fills, borders, gradients) are
-// rasterized (see render_mode.h). The default — FringeAa at scale 1 — is exactly
-// the legacy per-primitive feather path, so existing call sites and goldens are
-// unchanged. SSAA mode emits hard-edged geometry (its AA comes from a
-// full-scene supersample done by UiSurface, NOT here). SDF mode routes rounded
-// shapes through `sdf_cache` (a null cache still works — masks are then
-// generated transiently per call). Shadows, images, text, clips and layers are
-// mode-independent and shared across all three.
+// How rounded vector primitives (fills, borders, gradients) are rasterized.
+// `mode` and `sdf_cache` are coupled — the cache is only consulted when
+// mode==Sdf — so they travel together as one options object rather than two
+// loose positional parameters (and so the signature doesn't grow a parameter
+// per future mode-specific resource). A default-constructed RasterConfig is the
+// legacy path: FringeAa with no cache.
+struct RasterConfig {
+  // FringeAa at scale 1 is exactly the legacy per-primitive feather path, so a
+  // defaulted RasterConfig leaves existing call sites and goldens unchanged.
+  RenderMode mode = RenderMode::FringeAa;
+  // Only used when mode==Sdf. Null is valid — masks are then generated
+  // transiently per call (correct, just uncached); the golden harness uses null.
+  SdfMaskCache *sdf_cache = nullptr;
+};
+
+// Execute the IR. `scale` is device px per UI point (HiDPI / SSAA upsample).
+// SSAA mode emits hard-edged geometry (its AA comes from a full-scene
+// supersample done by UiSurface, NOT here). Shadows, images, text, clips and
+// layers are mode-independent and shared across all three modes.
 void execute_draw_commands(SDL_Renderer *renderer,
                            const ::ui::DrawCommandList &list,
                            FontRegistry *fonts,
                            TextureRegistry *textures = nullptr,
                            float scale = 1.0f,
-                           RenderMode mode = RenderMode::FringeAa,
-                           SdfMaskCache *sdf_cache = nullptr);
+                           const RasterConfig &raster = {});
 
 } // namespace renderer
