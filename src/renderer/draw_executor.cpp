@@ -23,12 +23,13 @@ struct Scratch {
   int si[kIScratch];
 };
 
-void submit(SDL_Renderer *r, const ::ui::MeshSink &sink, Scratch &s) {
+void submit(SDL_Renderer *r, const ::ui::MeshSink &sink, Scratch &s,
+            float scale) {
   if (sink.vcount <= 0 || sink.icount <= 0)
     return;
   for (int k = 0; k < sink.vcount; ++k) {
     const ::ui::Vertex &v = s.v[k];
-    s.sv[k].position = {v.x, v.y};
+    s.sv[k].position = {v.x * scale, v.y * scale}; // points -> device pixels
     s.sv[k].color = {v.color.r / 255.f, v.color.g / 255.f, v.color.b / 255.f,
                      v.color.a / 255.f}; // premultiplied
     s.sv[k].tex_coord = {v.u, v.v};
@@ -38,16 +39,16 @@ void submit(SDL_Renderer *r, const ::ui::MeshSink &sink, Scratch &s) {
   SDL_RenderGeometry(r, nullptr, s.sv, sink.vcount, s.si, sink.icount);
 }
 
-SDL_Rect round_out(const ::ui::DrawRect &r) {
-  const int x0 = static_cast<int>(floorf(r.x));
-  const int y0 = static_cast<int>(floorf(r.y));
-  const int x1 = static_cast<int>(ceilf(r.x + r.w));
-  const int y1 = static_cast<int>(ceilf(r.y + r.h));
+SDL_Rect round_out(const ::ui::DrawRect &r, float scale) {
+  const int x0 = static_cast<int>(floorf(r.x * scale));
+  const int y0 = static_cast<int>(floorf(r.y * scale));
+  const int x1 = static_cast<int>(ceilf((r.x + r.w) * scale));
+  const int y1 = static_cast<int>(ceilf((r.y + r.h) * scale));
   return {x0, y0, x1 - x0, y1 - y0};
 }
 
 void render_text(SDL_Renderer *r, const ::ui::DrawCommandList &list,
-                 const ::ui::DrawCommand &c, FontRegistry *fonts) {
+                 const ::ui::DrawCommand &c, FontRegistry *fonts, float scale) {
   if (!fonts || !fonts->default_font())
     return;
   const ::ui::TextData &t = c.payload.text;
@@ -59,15 +60,19 @@ void render_text(SDL_Renderer *r, const ::ui::DrawCommandList &list,
   buf[n] = '\0';
 
   TTF_Font *font = fonts->default_font();
+  // Rasterize the glyphs at DEVICE resolution (font_size * scale) so HiDPI text
+  // is crisp; the destination is positioned in device pixels and sized to the
+  // (already device-res) surface, so it lands 1:1 with no upscaling blur.
   if (t.font_size > 0)
-    TTF_SetFontSize(font, static_cast<float>(t.font_size));
+    TTF_SetFontSize(font, static_cast<float>(t.font_size) * scale);
   SDL_Color col = {t.color.r, t.color.g, t.color.b, t.color.a};
   SDL_Surface *surface = TTF_RenderText_Blended(font, buf, n, col);
   if (!surface)
     return;
   SDL_Texture *texture = SDL_CreateTextureFromSurface(r, surface);
   if (texture) {
-    SDL_FRect dst = {c.rect.x, c.rect.y, static_cast<float>(surface->w),
+    SDL_FRect dst = {c.rect.x * scale, c.rect.y * scale,
+                     static_cast<float>(surface->w),
                      static_cast<float>(surface->h)};
     SDL_RenderTexture(r, texture, nullptr, &dst);
     SDL_DestroyTexture(texture);
@@ -87,7 +92,8 @@ void render_text(SDL_Renderer *r, const ::ui::DrawCommandList &list,
 // multiplies the sampled (already-premultiplied) texel — so the premultiplied
 // tint multiplies straight through, which is the correct premultiplied tint.
 void render_image(SDL_Renderer *r, const ::ui::DrawCommand &c,
-                  TextureRegistry *textures, Scratch &s, float feather) {
+                  TextureRegistry *textures, Scratch &s, float feather,
+                  float scale) {
   if (!textures)
     return;
   const ::ui::ImageData &img = c.payload.image;
@@ -115,11 +121,14 @@ void render_image(SDL_Renderer *r, const ::ui::DrawCommand &c,
     const float dx0 = c.rect.x, dy0 = c.rect.y;
     const float dx1 = c.rect.x + c.rect.w, dy1 = c.rect.y + c.rect.h;
 
-    // Column x-edges (src then dst): [0, left, w-right, w].
+    // Column x-edges (src then dst): [0, left, w-right, w]. Source edges are
+    // texture-space (unscaled); dest edges are points -> device pixels (*scale).
     const float sx[4] = {0.f, sl, tw - sr, tw};
     const float sy[4] = {0.f, st, th - sb, th};
-    const float dx[4] = {dx0, dx0 + sl, dx1 - sr, dx1};
-    const float dy[4] = {dy0, dy0 + st, dy1 - sb, dy1};
+    const float dx[4] = {dx0 * scale, (dx0 + sl) * scale, (dx1 - sr) * scale,
+                         dx1 * scale};
+    const float dy[4] = {dy0 * scale, (dy0 + st) * scale, (dy1 - sb) * scale,
+                         dy1 * scale};
 
     for (int row = 0; row < 3; ++row) {
       for (int col = 0; col < 3; ++col) {
@@ -151,10 +160,10 @@ void render_image(SDL_Renderer *r, const ::ui::DrawCommand &c,
     const float rh = c.rect.h > 0.f ? c.rect.h : 1.f;
     for (int k = 0; k < sink.vcount; ++k) {
       const ::ui::Vertex &v = s.v[k];
-      s.sv[k].position = {v.x, v.y};
+      s.sv[k].position = {v.x * scale, v.y * scale}; // points -> device pixels
       s.sv[k].color = {v.color.r / 255.f, v.color.g / 255.f, v.color.b / 255.f,
                        v.color.a / 255.f}; // tint, premultiplied
-      s.sv[k].tex_coord = {(v.x - rx) / rw, (v.y - ry) / rh};
+      s.sv[k].tex_coord = {(v.x - rx) / rw, (v.y - ry) / rh}; // uv in point space
     }
     for (int k = 0; k < sink.icount; ++k)
       s.si[k] = static_cast<int>(s.i[k]);
@@ -165,7 +174,8 @@ void render_image(SDL_Renderer *r, const ::ui::DrawCommand &c,
   // Plain stretched textured rect.
   SDL_SetTextureColorMod(tex, tint.r, tint.g, tint.b);
   SDL_SetTextureAlphaMod(tex, tint.a);
-  SDL_FRect dst = {c.rect.x, c.rect.y, c.rect.w, c.rect.h};
+  SDL_FRect dst = {c.rect.x * scale, c.rect.y * scale, c.rect.w * scale,
+                   c.rect.h * scale};
   SDL_RenderTexture(r, tex, nullptr, &dst);
   SDL_SetTextureColorMod(tex, 255, 255, 255);
   SDL_SetTextureAlphaMod(tex, 255);
@@ -186,17 +196,20 @@ struct LayerSlot {
 
 void execute_draw_commands(SDL_Renderer *renderer,
                            const ::ui::DrawCommandList &list,
-                           FontRegistry *fonts, TextureRegistry *textures) {
+                           FontRegistry *fonts, TextureRegistry *textures,
+                           float scale) {
   if (!renderer)
     return;
+  if (scale <= 0.f)
+    scale = 1.0f;
   static Scratch scratch;
   SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND_PREMULTIPLIED);
 
-  // Anti-aliasing: feather curved silhouettes by one device pixel. Geometry is
-  // tessellated in UI points and (Phase 2) scaled to device pixels at submit, so
-  // the feather is authored as 1/scale points => exactly 1px. At scale 1 (the
+  // Anti-aliasing: feather curved silhouettes by one DEVICE pixel. Geometry is
+  // tessellated in UI points and scaled to device pixels at submit (* scale), so
+  // a feather authored as 1/scale points becomes exactly 1px. At scale 1 (the
   // headless software path + goldens) that is 1.0.
-  const float feather = 1.0f;
+  const float feather = 1.0f / scale;
 
   SDL_Rect clip_stack[16];
   int clip_depth = 0;
@@ -213,7 +226,7 @@ void execute_draw_commands(SDL_Renderer *renderer,
       if (c.payload.rect.fill.a > 0) {
         ::ui::tessellate_rect_fill(c.rect, c.payload.rect.corner_radius,
                                    c.payload.rect.fill, sink, feather);
-        submit(renderer, sink, scratch);
+        submit(renderer, sink, scratch, scale);
       }
       break;
     case ::ui::DrawCommandKind::Gradient: {
@@ -224,14 +237,14 @@ void execute_draw_commands(SDL_Renderer *renderer,
       for (int k = 0; k < gd.stop_count && k < ::ui::UI_MAX_GRADIENT_STOPS; ++k)
         g.stops[k] = list.grad_arena[gd.stop_off + k];
       ::ui::gradient_fill_colors(c.rect, gd.corner_radius, g, sink, feather);
-      submit(renderer, sink, scratch);
+      submit(renderer, sink, scratch, scale);
       break;
     }
     case ::ui::DrawCommandKind::Border:
       ::ui::tessellate_frame(c.rect, c.payload.border.corner_radius,
                              c.payload.border.border, c.payload.border.outline,
                              sink, feather);
-      submit(renderer, sink, scratch);
+      submit(renderer, sink, scratch, scale);
       break;
     case ::ui::DrawCommandKind::Shadow: {
       const ::ui::ShadowData &sd = c.payload.shadow;
@@ -242,18 +255,18 @@ void execute_draw_commands(SDL_Renderer *renderer,
         shadow.blur = sd.blur;
         shadow.spread = sd.spread;
         ::ui::tessellate_shadow(c.rect, sd.corner_radius, shadow, sink);
-        submit(renderer, sink, scratch);
+        submit(renderer, sink, scratch, scale);
       }
       break;
     }
     case ::ui::DrawCommandKind::Image:
-      render_image(renderer, c, textures, scratch, feather);
+      render_image(renderer, c, textures, scratch, feather, scale);
       break;
     case ::ui::DrawCommandKind::Text:
-      render_text(renderer, list, c, fonts);
+      render_text(renderer, list, c, fonts, scale);
       break;
     case ::ui::DrawCommandKind::ClipPush: {
-      SDL_Rect cr = round_out(c.rect);
+      SDL_Rect cr = round_out(c.rect, scale);
       if (clip_depth > 0)
         SDL_GetRectIntersection(&clip_stack[clip_depth - 1], &cr, &cr);
       if (clip_depth < 16)

@@ -47,3 +47,4 @@ tools/__pycache__/
 # golden test transient artifacts
 tests/fixtures/golden/*_actual.bmp
 tests/fixtures/golden/*_diff.bmp
+/prompt.md

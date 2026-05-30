@@ -376,10 +376,75 @@ bool run_opacity_scene() {
   return ok;
 }
 
+// ---------------------------------------------------------------------------
+// Scene 4: HiDPI device scale. Renders scene 1 at scale=2 into a 2x target
+// (256x192). The headless tests always run at density 1, so this is the only
+// coverage of the executor's point->device-pixel scaling. Two checks:
+//   (a) semantic probe — the blue rounded fill (points {8,8,48,32}) reaches
+//       device px ~(100,48), which is OUTSIDE the unscaled fill (right edge px
+//       56) and only lit when geometry is scaled 2x; a far point stays bg.
+//   (b) golden lock — pin the scaled raster so scaling regressions are caught.
+// ---------------------------------------------------------------------------
+bool run_scaled_scene() {
+  ui_test::GoldenContext ctx;
+  if (!ctx.init()) {
+    fprintf(stderr, "renderer_golden_tests: GoldenContext init failed\n");
+    return false;
+  }
+  const DrawCommandList &list = scene();
+  if (list.error_count != 0) {
+    fprintf(stderr, "renderer_golden_tests: scaled scene overflowed\n");
+    return false;
+  }
+  auto draw = [&](SDL_Renderer *r) {
+    renderer::execute_draw_commands(r, list, /*fonts=*/nullptr,
+                                    /*textures=*/nullptr, /*scale=*/2.0f);
+  };
+
+  {
+    ui_test::Image probe;
+    if (!ctx.render_to_image(256, 192, draw, &probe)) {
+      fprintf(stderr, "renderer_golden_tests (scaled): probe render failed\n");
+      return false;
+    }
+    // (a) device px (100,48): inside the 2x-scaled blue fill (x in [16,112]),
+    // but past the unscaled fill's right edge (56) — only blue if truly scaled.
+    uint8_t in[4];
+    probe.at(100, 48, in);
+    const bool blue = in[2] > 150 && in[0] < 110 && in[1] > 80 && in[1] < 170;
+    if (!blue) {
+      fprintf(stderr,
+              "renderer_golden_tests (scaled): expected scaled blue fill at "
+              "device px (100,48), got rgba(%d,%d,%d,%d) — geometry not scaled\n",
+              in[0], in[1], in[2], in[3]);
+      return false;
+    }
+    // far empty region stays background (between the top shapes and gradient).
+    uint8_t bg[4];
+    probe.at(130, 94, bg);
+    if (bg[0] > 20 || bg[1] > 20 || bg[2] > 20) {
+      fprintf(stderr,
+              "renderer_golden_tests (scaled): expected background at device px "
+              "(130,94), got rgba(%d,%d,%d,%d)\n",
+              bg[0], bg[1], bg[2], bg[3]);
+      return false;
+    }
+  }
+
+  ui_test::CompareReport rep;
+  const bool ok = ui_test::render_and_compare(
+      ctx, 256, 192, draw, "tests/fixtures/golden/new_ir_scaled.bmp", kTolerance,
+      &rep);
+  if (!ok)
+    fprintf(stderr, "renderer_golden_tests (scaled): %s\n", rep.message.c_str());
+  return ok;
+}
+
 } // namespace
 
 int main() {
-  if (!run_scene() || !run_image_scene() || !run_opacity_scene()) {
+  if (!run_scene() || !run_image_scene() || !run_opacity_scene() ||
+      !run_scaled_scene()) {
     fprintf(stderr, "renderer_golden_tests: FAIL\n");
     return 1;
   }

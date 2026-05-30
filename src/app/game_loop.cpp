@@ -78,7 +78,8 @@ void GameLoop::tick() {
     // initialize().
     renderer::execute_draw_commands(
         surface_.sdl_renderer(),
-        ui_pipeline_.client_ui().retained_command_list(), surface_.fonts());
+        ui_pipeline_.client_ui().retained_command_list(), surface_.fonts(),
+        /*textures=*/nullptr, window_.pixel_density());
     control_.capture_after_render(surface_.sdl_renderer(), ui_pipeline_);
     surface_.present();
   });

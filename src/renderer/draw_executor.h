@@ -6,6 +6,12 @@
 // SDL_BLENDMODE_BLEND_PREMULTIPLIED. `fonts` may be null (text is then skipped)
 // and `textures` may be null (Image commands are then skipped), which keeps
 // geometry goldens font- and texture-independent.
+//
+// `scale` is device pixels per UI point (the window's pixel density). The IR is
+// authored in points; the executor multiplies every emitted coordinate by
+// `scale` and renders glyphs / feathers at the scaled resolution, so the UI
+// fills the native-resolution backbuffer crisply (HiDPI). scale==1 reproduces
+// the legacy point==pixel path exactly (headless goldens are unaffected).
 
 #include "ui/runtime/draw_command.h"
 
@@ -19,6 +25,7 @@ class TextureRegistry;
 void execute_draw_commands(SDL_Renderer *renderer,
                            const ::ui::DrawCommandList &list,
                            FontRegistry *fonts,
-                           TextureRegistry *textures = nullptr);
+                           TextureRegistry *textures = nullptr,
+                           float scale = 1.0f);
 
 } // namespace renderer
