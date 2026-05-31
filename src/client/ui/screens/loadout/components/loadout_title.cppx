@@ -1,0 +1,15 @@
+#include "client/ui/screens/loadout/components/loadout_title.h"
+
+#include "client/ui/screens/loadout/loadout_tokens.h"
+#include "ui/components/text.h"
+
+namespace shooter {
+
+using ::ui::components::Text;
+using ::ui::components::TextProps;
+
+::ui::UiElement LoadoutTitle(const LoadoutTitleProps &props) {
+  return <Text key={props.key} value={props.value} layout={{.height = ::ui::Length::points(loadout::kTitleHeight)}} style={tokens::text_patch(tokens::kTextTitle, tokens::kFontScreenTitle)} />
+}
+
+} // namespace shooter

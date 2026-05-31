@@ -1,0 +1,66 @@
+#include "client/ui/screens/loadout/components/equipment_slot.h"
+
+#include <functional>
+#include <stdint.h>
+
+#include "client/ui/components/tokens.h"
+#include "client/ui/screens/loadout/hooks/use_loadout.h"
+#include "client/ui/screens/loadout/hooks/use_weapons.h"
+#include "ui/runtime/react.h"
+#include "ui/components/components.h"
+
+namespace shooter {
+
+using ::ui::children;
+using ::ui::components::Button;
+using ::ui::components::ButtonProps;
+using ::ui::components::Text;
+using ::ui::components::TextProps;
+
+::ui::UiElement EquipmentSlot(const EquipmentSlotProps &props) {
+  WeaponsValue weapons = use_weapons();
+  WeaponsValue::Weapon weapon = weapons.get_weapon(props.weapon_index);
+  if (!weapon.valid)
+    return ::ui::empty();
+
+  LoadoutValue loadout = use_loadout();
+  int selected_index = loadout.selected_weapon_tile;
+  std::function<void(int)> set_selected = loadout.set_selected_weapon_tile;
+  bool selected = selected_index == props.weapon_index;
+
+  const char *slot_text = use_text_storage(
+      "%s: %s", props.label, weapon.owned ? weapon.name : "empty");
+
+  std::function<void(const ::ui::FocusEvent &)> on_focus =
+      [set_selected,
+       weapon_index = props.weapon_index](const ::ui::FocusEvent &) {
+        if (set_selected)
+          set_selected(weapon_index);
+      };
+  std::function<void(const ::ui::ActivationEvent &)> on_activate =
+      [set_selected, weapon_index = props.weapon_index,
+       weapons](const ::ui::ActivationEvent &) {
+        if (set_selected)
+          set_selected(weapon_index);
+        weapons.select(weapon_index);
+      };
+
+  ::ui::LayoutStyle layout{
+      .align_items = ::ui::AlignItems::Start,
+      .justify_content = ::ui::JustifyContent::Center,
+      .width = ::ui::Length::points(232.0f),
+      .height = ::ui::Length::points(38.0f),
+      .padding = {10.0f, 10.0f, 8.0f, 8.0f},
+      .border_width = selected ? 2.0f : 1.0f,
+  };
+  auto label_style = tokens::text_patch({226, 238, 236, 255}, 14);
+
+  // Button paint comes from the theme button role; the selected state is
+  // conveyed by focus (autofocus=selected -> focus ring). Only layout fields
+  // live in .layout.
+  return <Button key={props.id} id={props.id} autofocus={selected} accessibility={{.label = slot_text}} onFocus={on_focus} label={slot_text} onActivate={on_activate} layout={layout}>
+    <Text key="label" value={slot_text} layout={{.height = ::ui::Length::points(16.0f)}} style={label_style} />
+  </Button>
+}
+
+} // namespace shooter

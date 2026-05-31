@@ -1,21 +1,28 @@
 # src/client/ui/screens/loadout/
 
-The loadout screen — the only screen complex enough to need its own components dir + a screen-local React-style provider. Treat this as the reference template for screens that grow beyond a single `<screen>_screen.{h,cpp}` file.
+The loadout screen — the most complex screen, fully decomposed into semantic components + a screen-local React-style provider. Treat this as the reference template for a feature module: a screen component, a private provider, public hooks, and a `components/` dir with one semantic component per file. Add screen-local `hooks/`, `providers/`, or `lib/` folders only when a concept needs that boundary inside the feature.
 
 ## Files
 
-- `loadout_screen.{h,cpp}` — `LoadoutScreen` class (no member fields; the class is just the `UiScreen` entry point) + `LoadoutScreenView` body + `use_push_loadout_screen`.
-- `loadout_state.{h,cpp}` — `LoadoutPendingAction` + `LoadoutContextValue` + the `LoadoutContext` provider (`use_loadout_context_value`, `loadout_provider_push/pop`) + hooks (`use_compare_enabled`, `use_set_compare_enabled`, `use_selected_weapon_tile`, `use_set_selected_weapon_tile`, `use_pending_loadout_action`, `use_set_pending_loadout_action`, `use_clear_pending_loadout_action`).
-- `components/weapon_tile.{h,cpp}` — `WeaponTile` + tab constants (`LOADOUT_TAB_WEAPONS`, `LOADOUT_TAB_GEAR`) + helpers.
-- `components/equipment_slot.{h,cpp}` — `EquipmentSlot`.
-- `components/confirm_dialog.{h,cpp}` — `LoadoutConfirmDialog` (no props; reads pending state from `LoadoutContext`).
+- `loadout_screen.{h,cppx}` — the screen entry point and screen component. Keep the class wrapper free of member UI state; the component wraps descendants in `LoadoutProvider` and keeps the provider-child content component local to the screen file.
+- `providers/loadout_provider.{h,cpp}` — `LoadoutProvider`, its private `LoadoutContext`, the `use_state` slots, and setter implementations. The context value struct stays private to this file.
+- `hooks/use_loadout.h` — the `use_loadout()` consumer hook. It returns a `LoadoutValue` object with read fields (`compare_enabled`, `selected_weapon_tile`, `pending`) plus setter callbacks.
+- `loadout_tokens.h` — `shooter::loadout` feature-local tokens (root dialog bg, tab/grid/details geometry); reuses the shared `shooter::tokens` builders.
+- `components/loadout_screen_frame.{hx,cppx}` — `LoadoutScreenFrame` (root `Dialog`, owns `modal=!confirm_open`).
+- `components/loadout_title.{hx,cppx}`, `loadout_tabs.{hx,cppx}` (`LoadoutTabs` + compound `LoadoutTabs::Tab`, role=Tab internal), `loadout_body.{hx,cppx}`, `loadout_weapon_grid.{hx,cppx}` (reproduces the per-tab grid rows), `loadout_details.{hx,cppx}` (`Panel` Sunken + the frozen ordered action/slot children).
+- `components/weapon_tile.{h,cppx}` — `WeaponTile` + tab constants (`LOADOUT_TAB_WEAPONS`, `LOADOUT_TAB_GEAR`, `WEAPON_TILE_CONTROL_ID`) + helpers; returns a JSX `Button` with two `Text` children (bespoke tile geometry). Plain helper fns (`weapon_tile_key`, `weapon_in_tab`, `first_weapon_for_tab`) live alongside the component in the `.cppx`.
+- `components/equipment_slot.{h,cppx}` — `EquipmentSlot` (JSX `Button` + one `Text` child).
+- `components/confirm_dialog.{h,cppx}` — `LoadoutConfirmDialog` (reads pending state from `LoadoutContext`) + the keyed `LoadoutConfirmDialogBody` (JSX `Dialog` tree).
+- `hooks/use_weapons.{h,cpp}` — loadout-local aggregate weapon hook over `ShooterGame`; returns count, indexed read fields, and deferred `select`/`buy`/`equip` actions.
+
+All renderable components in this folder are authored as `.cppx` returning JSX. Their `.h` headers stay plain hand-written declaration files (same split as `loadout_screen.{h,cppx}`); only the `.cppx` is transpiled. `weapon_tile`/`equipment_slot` root on `Button`, which is JSX-able because `ui::components::ButtonProps` declares `children` **last** (after `layout`/`style`, matching `Box`/`Dialog`), so JSX child-tag lowering — which always appends `.children` last — satisfies `-Werror=reorder-init-list`. Keep that field last if you ever edit `ButtonProps`.
 
 ## Conventions for screen-local state
 
-- **Don't** store screen-local UI state as a member on the screen class. Hold it inside `build_ui()` with `use_state<T>` and expose it through a provider.
-- The pattern: `LoadoutScreen::build_ui` declares `use_state<bool>(...)` / `use_state<int>(...)` / `use_state<LoadoutPendingAction>({})` slots, builds a context value with `use_loadout_context_value(...)`, wraps the body with `loadout_provider_push(&ctx)` / `loadout_provider_pop()`, then renders `LoadoutScreenView()`.
-- Descendant components consume state via the typed hooks (`use_compare_enabled()`, `use_selected_weapon_tile()`, `use_pending_loadout_action()`) and mutate it via the setter hooks. Don't add a back-channel that reaches into the screen class.
-- Setters returned from `use_set_*` hooks already schedule deferred UI mutations — so they're safe to call from inside Clay layout (button `on_confirm`, focus `on_focus`, etc.). Keep the low-level mutation sink inside `loadout_state.cpp`.
+- **Don't** store screen-local UI state as a member on the screen class. Hold it inside the provider component with `use_state<T>` and expose it through hooks.
+- The pattern: the screen component renders `LoadoutProvider`, and `LoadoutProvider` declares the `use_state<bool>(...)` / `use_state<int>(...)` / `use_state<LoadoutValue::PendingAction>({})` slots before returning the private `LoadoutContext` provider.
+- Descendant components consume state via `use_loadout()` and mutate through the setter callbacks on the returned `LoadoutValue`. Don't add a back-channel that reaches into the screen class.
+- Setters returned from `use_loadout()` already schedule deferred UI mutations — so they're safe to call from retained control callbacks (`on_activate`, `on_focus`, etc.). Keep the low-level mutation sink inside `providers/loadout_provider.cpp`.
 - Focus handlers (`on_focus`) must only mutate UI state. Game-state mutations (e.g. `select_weapon`, `buy_weapon`, `equip_weapon`) belong on confirm flows, not on focus traversal.
 
 ## When to graduate a component to the parent dir

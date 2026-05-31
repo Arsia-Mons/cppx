@@ -1,0 +1,4 @@
+interface:
+  display_name: "CPPX Authoring"
+  short_description: "Write idiomatic retained UI .cppx code."
+  default_prompt: "Use $cppx-authoring before editing retained UI .cppx or .hx files in this repo."

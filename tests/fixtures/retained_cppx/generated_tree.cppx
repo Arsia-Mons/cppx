@@ -1,0 +1,15 @@
+#include "tests/fixtures/retained_cppx/retained_components.h"
+
+using namespace ui;
+using namespace ui::components;
+
+UiElement BuildGeneratedRetainedTree(int write) {
+  return <Box
+    key="generated"
+    layout={LayoutStyle{.align_items = AlignItems::Start, .width = Length::points(240.0f), .height = Length::points(120.0f), .padding = EdgeSizes{4.0f, 4.0f, 8.0f, 8.0f}, .gap = 6.0f}}
+  >
+    <Text key="title" value="Generated" />
+    <Button key="confirm" id="ConfirmButton" label="Confirm" />
+    <StatefulProbe key="probe" slot={0} write={write} />
+  </Box>
+}

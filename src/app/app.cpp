@@ -1,10 +1,12 @@
 #include "app.h"
 
 #include "game_loop.h"
-#include "../react.h"
-#include "../client/ui/providers/app_shell.h"
-#include "../client/ui/providers/shooter_provider.h"
-#include "../client/ui/screens/main_menu/main_menu_screen.h"
+#include "../ui/runtime/react.h"
+#include "../renderer/text_measure_impl.h"
+#include "../client/ui/providers/app_provider.h"
+#include "../client/ui/providers/server_provider.h"
+#include "client/ui/app_theme.h"
+#include "client/ui/screens/main_menu/main_menu_screen.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
@@ -62,10 +64,6 @@ static std::string shooter_state_json(const shooter::ShooterGame &game) {
     return out.str();
 }
 
-void App::on_clay_error(Clay_ErrorData err) {
-    fprintf(stderr, "clay: %.*s\n", (int)err.errorText.length, err.errorText.chars);
-}
-
 App::App()  = default;
 App::~App() { shutdown(); }
 
@@ -89,31 +87,26 @@ bool App::initialize(const AppOptions &options) {
     if (!fonts_.initialize(window_.renderer())) {
         return false;
     }
-    if (!clay_render_.initialize(window_.renderer(), fonts_)) {
+    // Install the ONE SDL_ttf-backed text measurer (design §10.1). It is used by
+    // BOTH the Yoga measure shim and the draw-list transcriber, so layout and
+    // paint measure identically. ui/ stays SDL-free; this is the only seam.
+    renderer::install_text_measurer(&fonts_);
+    if (!surface_.initialize(window_.renderer(), fonts_)) {
         return false;
     }
 
-    uint32_t clay_mem_size = Clay_MinMemorySize();
-    clay_arena_mem_ = SDL_malloc(clay_mem_size);
-    Clay_Arena arena = Clay_CreateArenaWithCapacityAndMemory(clay_mem_size, clay_arena_mem_);
-    int win_w = options.width, win_h = options.height;
-    window_.size(&win_w, &win_h);
-    clay_ctx_ = Clay_Initialize(
-        arena,
-        Clay_Dimensions{ (float)win_w, (float)win_h },
-        Clay_ErrorHandler{ on_clay_error, 0 });
-    Clay_SetMeasureTextFunction(renderer::FontRegistry::measure_thunk, &fonts_);
+    react_init_runtime();
 
-    react_init(clay_ctx_);
-
-    ui_pipeline_.set_frame_provider([this](const std::function<void()> &build) {
-        shooter::ShooterContextValue        game_ctx { .game = &shooter_game_ };
-        client::ui::AppShellContextValue    shell_ctx { .request_quit = [this] { running_ = false; } };
-        shooter::shooter_provider_push(&game_ctx);
-        client::ui::app_shell_provider_push(&shell_ctx);
-        build();
-        client::ui::app_shell_provider_pop();
-        shooter::shooter_provider_pop();
+    ui_pipeline_.set_frame_provider([this](::ui::UiElement child) {
+        shooter::ServerProviderValue        server_ctx { .game = &shooter_game_ };
+        client::ui::AppProviderValue        app_ctx { .quit = [this] { running_ = false; } };
+        return client::ui::ThemeProvider(::ui::children({
+            shooter::ServerProvider(
+                server_ctx,
+                ::ui::children({
+                    client::ui::AppProvider(app_ctx, ::ui::children({child})),
+                })),
+        }));
     });
 
     ui_pipeline_.client_ui().push_screen(std::make_unique<shooter::MainMenuScreen>());
@@ -131,7 +124,7 @@ bool App::initialize(const AppOptions &options) {
 
 int App::run() {
     if (!initialized_) return 1;
-    GameLoop loop(window_, clay_render_, ui_pipeline_, control_, running_);
+    GameLoop loop(window_, surface_, ui_pipeline_, control_, running_);
     while (running_) {
         loop.tick();
     }
@@ -142,10 +135,7 @@ void App::shutdown() {
     if (!initialized_) return;
     control_.shutdown();
     react_shutdown();
-    if (clay_arena_mem_) {
-        SDL_free(clay_arena_mem_);
-        clay_arena_mem_ = nullptr;
-    }
+    surface_.shutdown(); // free the supersample target before the renderer dies
     fonts_.shutdown();
     window_.shutdown();
     TTF_Quit();

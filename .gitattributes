@@ -1,0 +1,2 @@
+*.cppx text eol=lf diff=cpp linguist-language=C++
+*.hx text eol=lf diff=cpp linguist-language=C++

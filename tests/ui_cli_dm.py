@@ -21,7 +21,7 @@ def main() -> int:
     repo_root = Path(__file__).resolve().parents[1]
     ui_cli = load_ui_cli(repo_root)
 
-    with tempfile.TemporaryDirectory(prefix="sdl3-clay-dm-test-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="sdl3-retained-dm-test-") as tmp:
         root = Path(tmp)
         artifact = root / "shot.png"
         artifact.write_bytes(b"\x89PNG\r\n\x1a\n")
@@ -39,13 +39,13 @@ def main() -> int:
             "BUN": os.environ.get("BUN"),
             "DISCORD_DM_SEND": os.environ.get("DISCORD_DM_SEND"),
             "FAKE_DM_LOG": os.environ.get("FAKE_DM_LOG"),
-            "SDL3_CLAY_UI_CLI_DM": os.environ.get("SDL3_CLAY_UI_CLI_DM"),
+            "SDL3_RETAINED_UI_CLI_DM": os.environ.get("SDL3_RETAINED_UI_CLI_DM"),
         }
         try:
             os.environ["BUN"] = sys.executable
             os.environ["DISCORD_DM_SEND"] = str(fake_send)
             os.environ["FAKE_DM_LOG"] = str(log)
-            os.environ["SDL3_CLAY_UI_CLI_DM"] = "1"
+            os.environ["SDL3_RETAINED_UI_CLI_DM"] = "1"
 
             result = ui_cli.send_artifacts_to_discord(
                 [artifact],

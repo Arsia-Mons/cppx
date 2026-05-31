@@ -1,4 +1,0 @@
-interface:
-  display_name: "UI Architecture Implementation"
-  short_description: "Implement the repo's React-style Clay UI architecture."
-  default_prompt: "Use this skill when implementing or correcting the sdl3-clay UI stack from game loop through ClientUi, screens, hooks, focus, and primitives."

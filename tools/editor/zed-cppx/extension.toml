@@ -1,0 +1,11 @@
+id = "cppx"
+name = "CPPX"
+description = "Syntax highlighting for C++ JSX-authored UI files (.cppx, .hx)"
+version = "0.0.1"
+schema_version = 1
+authors = ["Henry Ventura"]
+repository = "https://github.com/hvent90/cppx-zed"
+
+[grammars.cppx]
+repository = "file:///Users/hv/.cache/zed-cppx-grammar"
+rev = "cea99a0a6160de2f27e57037e380d629354cf92e"

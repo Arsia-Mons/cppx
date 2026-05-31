@@ -115,7 +115,7 @@ def discord_send_script() -> Path | None:
 
 
 def dm_disabled_by_env() -> bool:
-    value = os.environ.get("SDL3_CLAY_UI_CLI_DM", "1").strip().lower()
+    value = os.environ.get("SDL3_RETAINED_UI_CLI_DM", "1").strip().lower()
     return value in {"0", "false", "no", "off"}
 
 
@@ -217,6 +217,8 @@ def command_main(args: argparse.Namespace) -> int:
     payload: dict = {}
     if op == "key":
         payload = {"key": args.key, "action": args.action}
+    elif op == "text":
+        payload = {"text": args.text}
     elif op == "gamepad":
         payload = {"button": args.button, "action": args.action}
     elif op == "pointer":
@@ -248,21 +250,23 @@ def command_main(args: argparse.Namespace) -> int:
         payload = {"out": args.out}
     elif op == "capture_frames":
         payload = {"out_dir": args.out_dir, "count": args.count}
+    elif op == "render_mode":
+        payload = {"mode": args.mode}
     reply = send_command(control_dir, wire_op, payload, args.timeout)
     if op == "screenshot":
         out = Path(reply.get("result", {}).get("out", args.out))
         reply = maybe_attach_dm_result(
-            reply, args, [out], f"sdl3-clay UI screenshot: {out.name}")
+            reply, args, [out], f"sdl3-retained UI screenshot: {out.name}")
     elif op == "capture_frames":
         frames = [Path(path) for path in reply.get("result", {}).get("frames", [])]
         reply = maybe_attach_dm_result(
-            reply, args, frames, f"sdl3-clay UI frame capture: {len(frames)} frame(s)")
+            reply, args, frames, f"sdl3-retained UI frame capture: {len(frames)} frame(s)")
     print(json.dumps(reply, sort_keys=True))
     return 0
 
 
 def smoke(args: argparse.Namespace) -> int:
-    control_dir = Path(args.control_dir) if args.control_dir else Path(tempfile.mkdtemp(prefix="sdl3-clay-ui-"))
+    control_dir = Path(args.control_dir) if args.control_dir else Path(tempfile.mkdtemp(prefix="sdl3-retained-ui-"))
     control_dir.mkdir(parents=True, exist_ok=True)
     out = Path(args.out) if args.out else control_dir / "smoke.bmp"
     capture_dir = Path(args.capture_dir) if args.capture_dir else control_dir / "capture"
@@ -324,7 +328,7 @@ def smoke(args: argparse.Namespace) -> int:
             paths = [Path(result["screenshot"]), *[Path(path) for path in frame_paths]]
             result["discord_dm"] = send_artifacts_to_discord(
                 paths,
-                args.dm_message or "sdl3-clay UI smoke proof",
+                args.dm_message or "sdl3-retained UI smoke proof",
                 args.dm_timeout,
                 args.require_dm,
             )
@@ -355,6 +359,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--action", choices=["press", "down", "up", "release"], default="press")
     p.set_defaults(func=command_main)
 
+    p = sub.add_parser("text")
+    add_common(p)
+    p.add_argument("--text", required=True)
+    p.set_defaults(func=command_main)
+
     p = sub.add_parser("gamepad")
     add_common(p)
     p.add_argument("--button", required=True)
@@ -370,7 +379,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--target-id", type=int,
                    help="numeric focusable element id from inspect output")
     p.add_argument("--index", type=int,
-                   help="Clay id offset for indexed focusables, such as WeaponTile --index 3")
+                   help="control offset for indexed focusables, such as WeaponTile --index 3")
     p.add_argument("--action", choices=["move", "press", "release", "click"], default="move")
     p.set_defaults(func=command_main)
 
@@ -402,6 +411,18 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--out-dir", required=True)
     p.add_argument("--count", type=int, default=3)
     add_dm_options(p)
+    p.set_defaults(func=command_main)
+
+    p = sub.add_parser("render_mode")
+    add_common(p)
+    # Aliases mirror render_mode_from_slug() in src/renderer/render_mode.h so the
+    # CLI accepts the same tokens the C++ layer does.
+    p.add_argument("--mode", required=True,
+                   choices=["ssaa", "supersample", "ss",
+                            "fringe", "fringeaa", "fringe_aa", "feather",
+                            "sdf", "distance"],
+                   help="rounded-primitive AA strategy to switch to live "
+                        "(ssaa/supersample/ss, fringe/fringeaa/fringe_aa/feather, sdf/distance)")
     p.set_defaults(func=command_main)
 
     p = sub.add_parser("smoke")

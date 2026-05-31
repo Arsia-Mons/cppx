@@ -1,34 +1,43 @@
 # src/ui/
 
-The generic Clay-based UI toolkit. **This directory must not know which game is being built** — no weapons, no loadout, no shooter vocabulary, no replicated game state.
+The generic UI toolkit. **This directory must not know which game is being built** — no weapons, no loadout, no shooter vocabulary, no replicated game state.
 
 ## Layout today
 
 ```text
-focus/       UiFocusRuntime: scopes, navigation rules, focus intents
-primitives/  Button, Toggle, Focusable, Selectable, Clay text helper, visual state
+input.h      UI-shaped input frame shared by app/client/runtime code
+span.h       tiny non-owning span used by framework containers
+components/  generic element-returning UI components
+runtime/     UiTree, UiElement/reconciler, flex layout, focus, draw commands
 ```
 
-The `architecture.md` shows a richer aspirational shape (`runtime/`, `design/`, `layout/`). Today only `focus/` and `primitives/` exist — add new subdirectories when they have multiple files, not preemptively.
+The retained runtime is the app path. Add new subdirectories only when they
+have multiple files, not preemptively.
 
 ## What belongs here
 
 - Layout helpers (Box/Row/Column/Spacer/Divider) once we need them.
-- Visual primitives generic enough to drop into any Clay app.
+- Visual primitives generic enough to drop into any retained UI app.
 - Focus and input routing in **UI coordinates**, never SDL coordinates.
-- Design tokens (colors, typography) — none yet; introduce a `design/` folder when needed.
+- The theme **mechanism** — `style/` (`Theme`/`RoleStyle` types, `ThemeContext`, `use_theme()`, `resolve()`, `StylePatch`/`StyleStatePatch`, the `patch()` builder) and a **neutral** `default_theme()` fallback. Primitives accept a per-instance `StyleStatePatch style` (paint, with per-interaction-state slots) plus a `LayoutStyle layout`; `resolve()` layers the override's per-state patches OVER the matching theme-role state (never a dense full-`VisualStyle` override). A bare `StylePatch` implicitly becomes the base-only form of `style`.
 
 ## What does NOT belong here
 
 - Anything that names a shooter concept (weapon, loadout, HUD, round).
+- An authored *product* theme (a concrete palette/values). The theme mechanism lives here, but the values are a **client** concern, installed via a `ThemeProvider` over `ThemeContext`.
 - SDL types or `<SDL.h>` includes — `platform/` adapts those into UI-shaped input.
 - References to `client::ui` or `game::ui` — dependency flows the other way.
 - Screen-level layout. Screens live in `client/ui/` and game-specific dirs.
 
-## Hooks
+## Composition
 
-Primitives are React-style hook components — see `../../react.h`. Each primitive returns a small handle (focusable token, button result) and uses `REACT_COMPONENT_BEGIN` for stable IDs. Reorderable lists must use `REACT_COMPONENT_BEGIN_KEY` with a stable key.
+The target authoring model is returned `UiElement` descriptions committed by
+the reconciler in `runtime/element.*`. Generic UI components that return
+element descriptions live in `components/`, one component per file, with the
+umbrella include at `components/components.h`. New generic runtime work should
+move toward `UiElement` factories, provider elements, and reconciler-owned hook
+entry/exit. Reorderable lists must use stable keys.
 
 ## Testing
 
-`ui_focus_tests` and `ui_primitives_tests` cover this directory (see `../../CMakeLists.txt:104,122`). They compile against the hook runtime and Clay only — keep it that way. If a new primitive needs SDL, it doesn't belong here.
+Retained runtime coverage lives in `retained_ui_*_tests`. If a new primitive needs SDL, it doesn't belong here.

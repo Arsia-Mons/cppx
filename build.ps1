@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-# Easy Windows build entry point for the SDL3/Clay UI reference app.
+# Easy Windows build entry point for the SDL3 retained UI reference app.
 #
 # Usage:
 #   ./build.ps1                    # build Debug hello; configure only if needed

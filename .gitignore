@@ -28,7 +28,8 @@ Makefile
 *.dSYM/
 
 # IDE / editor
-.vscode/
+.vscode/*
+!.vscode/settings.json
 .idea/
 .cache/
 *.swp
@@ -42,3 +43,11 @@ compile_commands.json
 .DS_Store
 Thumbs.db
 tools/__pycache__/
+
+# golden test transient artifacts
+tests/fixtures/golden/*_actual.bmp
+tests/fixtures/golden/*_diff.bmp
+/prompt.md
+
+# transient ScheduleWakeup lock (runtime, not source)
+.claude/scheduled_tasks.lock

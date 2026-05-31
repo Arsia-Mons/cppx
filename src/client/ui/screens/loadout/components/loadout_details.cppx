@@ -1,0 +1,26 @@
+#include "client/ui/screens/loadout/components/loadout_details.h"
+
+#include "client/ui/components/actions/app_button.h"
+#include "client/ui/components/actions/app_checkbox.h"
+#include "client/ui/components/surfaces/panel.h"
+#include "client/ui/components/text/body_text.h"
+#include "client/ui/screens/loadout/components/equipment_slot.h"
+
+namespace shooter {
+
+using ::ui::children;
+
+::ui::UiElement LoadoutDetails(const LoadoutDetailsProps &props) {
+  return <Panel key={props.key} variant={PanelVariant::Sunken}>
+    <BodyText key="summary" variant={BodyTextVariant::Summary} value={props.summary} />
+    <AppCheckbox key="compare" controlId="CompareToggle" checked={props.compare_enabled} label="Compare" onChange={props.on_compare_change} />
+    <AppButton key="buy" controlId="BuyWeaponButton" disabled={!props.can_buy} label="Buy" onPress={props.on_buy} />
+    <AppButton key="equip" controlId="EquipWeaponButton" disabled={!props.can_equip} label="Equip" onPress={props.on_equip} />
+    <AppButton key="back" controlId="BackFromLoadoutButton" label="Back" onPress={props.on_back} />
+    <BodyText key="slots-title" variant={BodyTextVariant::Body} tone={BodyTextTone::Muted} value="Equipment Slots" />
+    <EquipmentSlot key="PrimarySlot" id="PrimarySlot" label="Primary" weaponIndex={0} />
+    <EquipmentSlot key="GearSlot" id="GearSlot" label="Gear" weaponIndex={3} />
+  </Panel>
+}
+
+} // namespace shooter

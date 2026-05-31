@@ -1,0 +1,46 @@
+#include "client/ui/screens/loadout/components/loadout_weapon_grid.h"
+
+#include "client/ui/screens/loadout/components/weapon_tile.h"
+#include "client/ui/screens/loadout/loadout_tokens.h"
+#include "ui/components/box.h"
+#include "ui/components/components.h"
+
+namespace shooter {
+
+using ::ui::children;
+using ::ui::components::Box;
+using ::ui::components::BoxProps;
+
+// Same row keys, tiles per row, and per-tab branch as the original monolith:
+// tiles use key=weapon_tile_key(i), index=i so fiber identity is preserved.
+::ui::UiElement LoadoutWeaponGrid(const LoadoutWeaponGridProps &props) {
+  ::ui::LayoutStyle grid_layout{
+      .width = ::ui::Length::points(loadout::kGridWidth),
+      .gap = loadout::kGridGap,
+  };
+  ::ui::LayoutStyle row_layout{
+      .direction = ::ui::FlexDirection::Row,
+      .align_items = ::ui::AlignItems::Start,
+      .gap = loadout::kGridRowGap,
+  };
+
+  if (props.active_tab == LOADOUT_TAB_GEAR) {
+    return <Box key={props.key} layout={grid_layout}>
+      <Box key="gear-row" layout={row_layout}>
+        <WeaponTile key={weapon_tile_key(3)} index={3} />
+      </Box>
+    </Box>
+  }
+
+  return <Box key={props.key} layout={grid_layout}>
+    <Box key="weapon-row-0" layout={row_layout}>
+      <WeaponTile key={weapon_tile_key(0)} index={0} />
+      <WeaponTile key={weapon_tile_key(1)} index={1} />
+    </Box>
+    <Box key="weapon-row-1" layout={row_layout}>
+      <WeaponTile key={weapon_tile_key(2)} index={2} />
+    </Box>
+  </Box>
+}
+
+} // namespace shooter

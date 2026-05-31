@@ -1,19 +1,31 @@
-# SDL3 Clay Reference
+# SDL3 Retained UI Reference
 
-Gold-standard reference implementation for using [Clay](https://github.com/nicbarker/clay) as a composable UI layer inside a C++ SDL3 game shell.
+Reference implementation for a retained game UI inside a C++20 / SDL3 game
+shell. The UI uses a small React-style hook runtime, a retained tree, Yoga for
+flex layout, retained focus/event routing, and SDL render-command output.
 
 The app demonstrates:
 
-- Main menu navigation.
-- Options sections for controls, audio, and video.
-- Login/connect flow with username and password focus handling.
-- Lobby with chat, server select, character select, game creation, and play entry.
-- Simple game screen with a return path back to the menu.
-- Responsive flex layouts, scroll containers, stable Clay IDs, component variants, and a renderer boundary.
+- Main menu, options, pause, in-game HUD, and loadout screens.
+- Retained panels, text, buttons, toggles, selectables, generic focusable
+  containers, and scroll containers.
+- Keyboard/gamepad/pointer focus navigation over retained layout boxes.
+- Deferred UI mutations so game and screen state are not changed during the
+  declaration pass.
+- Deterministic CLI control through the mailbox protocol used by smoke tests.
+- JSX-like `.cppx` / `.hx` generated C++ fixtures for retained components.
 
 ## Build
 
-On Windows, use the wrapper:
+On macOS/Linux:
+
+```sh
+./build.sh
+./build.sh --run
+./build.sh --tests
+```
+
+On Windows:
 
 ```powershell
 ./build.ps1
@@ -21,17 +33,17 @@ On Windows, use the wrapper:
 ./build.ps1 -Tests
 ```
 
-The wrapper finds Visual Studio, uses `VCPKG_ROOT` when available, configures
-`cmake-build-debug`, and builds the `hello` target by default. SDL3 and
-SDL3_ttf are fetched when needed.
+The wrappers configure `cmake-build-debug` by default, build the `hello` target,
+and can run the full CTest suite. SDL3 and SDL3_ttf are fetched when needed.
 
 ## Structure
 
-- `src/app`: application state, navigation, event loop, and SDL-owned runtime setup.
-- `src/rendering`: renderer adapters for Clay render commands.
-- `src/ui/core`: Clay lifecycle, design tokens, actions, and primitives.
-- `src/ui/components`: reserved for larger reusable composed widgets.
-- `src/ui/screens`: screen-level compositions.
-- `docs/references.md`: source references and integration decisions.
+- `src/app`: process lifecycle and the per-frame loop.
+- `src/client/ui`: screen stack, providers, hooks, components, and screens.
+- `src/ui/runtime`: hook runtime (`react.{h,cpp}`), retained tree, focus, layout, and draw commands.
+- `src/ui/components`: generic element-returning UI components.
+- `src/renderer`: SDL renderer and font ownership.
+- `src/platform`: SDL adapters and CLI control mailbox.
+- `src/game`: game rules and state.
 
-See `docs/architecture.md` for the implementation model and extension points.
+See `architecture.md` for the implementation model and extension points.

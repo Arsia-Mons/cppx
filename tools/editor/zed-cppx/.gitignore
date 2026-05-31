@@ -1,0 +1,3 @@
+# Zed clones the grammar repo into this directory on dev-extension install.
+# It's reproducible from `grammar-source/` via install.sh.
+/grammars/

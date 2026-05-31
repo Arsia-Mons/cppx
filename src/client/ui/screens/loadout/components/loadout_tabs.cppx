@@ -1,0 +1,42 @@
+#include "client/ui/screens/loadout/components/loadout_tabs.h"
+
+#include "client/ui/screens/loadout/loadout_tokens.h"
+#include "ui/components/box.h"
+#include "ui/components/button.h"
+
+namespace shooter {
+
+using ::ui::children;
+using ::ui::components::Box;
+using ::ui::components::BoxProps;
+using ::ui::components::Button;
+using ::ui::components::ButtonProps;
+
+::ui::UiElement LoadoutTabs::Tab(const TabProps &props) {
+  // Wrap the no-arg semantic on_select into the event-taking ui callback; the
+  // activation event is intentionally ignored (the screen owns the 3-action
+  // closure; the 2 deferred writes are the contract).
+  std::function<void(const ::ui::ActivationEvent &)> on_activate = {};
+  if (props.on_select) {
+    on_activate = [on_select = props.on_select](const ::ui::ActivationEvent &) {
+      on_select();
+    };
+  }
+  ::ui::LayoutStyle layout{
+      .align_items = ::ui::AlignItems::Center,
+      .justify_content = ::ui::JustifyContent::Center,
+      .width = ::ui::Length::points(loadout::kTabWidth),
+      .height = ::ui::Length::points(loadout::kTabHeight),
+      .padding = {loadout::kTabPadX, loadout::kTabPadX, loadout::kTabPadY,
+                  loadout::kTabPadY},
+  };
+  return <Button key={props.key} id={props.control_id} accessibility={{.role = ::ui::SemanticRole::Tab}} label={props.label} onActivate={on_activate} layout={layout} />
+}
+
+::ui::UiElement LoadoutTabs(const LoadoutTabsProps &props) {
+  return <Box key={props.key} layout={{.direction = ::ui::FlexDirection::Row, .align_items = ::ui::AlignItems::Start, .gap = loadout::kTabsGap}}>
+    {props.children}
+  </Box>
+}
+
+} // namespace shooter

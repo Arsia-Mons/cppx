@@ -13,7 +13,7 @@ Game truth: rules, state, simulation. This is the shooter — health, armor, cre
 
 ## Hard rules
 
-- **No Clay, SDL, or UI headers.** If you have to include one, the file is in the wrong directory.
+- **No SDL or UI headers.** If you have to include one, the file is in the wrong directory.
 - **No per-frame timing or rendering concerns.** Game functions accept the inputs they need and return state changes; `app/GameLoop` decides when to call them.
 - UI state (selected tab, compare panel toggle, hover, modal visibility) does NOT live here. That's `client/ui/screens/<screen>/`.
 - The façade pattern on `ShooterGame` is for stability of UI call sites. Direct callers (eventually `app/`, server-side simulation) can use the decomposed types directly — `player_state`, `inventory`, `economy`.

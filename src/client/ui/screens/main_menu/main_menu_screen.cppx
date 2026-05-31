@@ -1,0 +1,101 @@
+#include "main_menu_screen.h"
+
+#include <functional>
+#include <memory>
+#include <stdio.h>
+
+#include "client/ui/callback_deps.h"
+#include "client/ui/components/actions/actions.h"
+#include "client/ui/components/layout/layout.h"
+#include "client/ui/components/surfaces/surfaces.h"
+#include "client/ui/components/text/text.h"
+#include "client/ui/hooks/use_app.h"
+#include "client/ui/hooks/use_navigation.h"
+#include "client/ui/hooks/use_server.h"
+#include "client/ui/screens/in_game/in_game_screen.h"
+#include "client/ui/screens/options/options_screen.h"
+#include "ui/runtime/react.h"
+
+namespace shooter {
+
+using ::ui::children;
+
+struct MainMenuScreenProps {
+  uint32_t unused = 0;
+};
+
+static const char *screen_entry_key(const char *prefix,
+                                    client::ui::UiScreenEntryId entry_id) {
+  char key[64] = {};
+  snprintf(key, sizeof(key), "%s-%u", prefix, entry_id);
+  return ::ui::copy_string(key);
+}
+
+static ::ui::UiElement MainMenuScreenView(const MainMenuScreenProps &props) {
+  (void)props;
+  client::ui::AppValue app = client::ui::use_app();
+  client::ui::Navigation navigation = client::ui::use_navigation();
+  ServerValue server = use_server();
+  std::function<void()> start_match = use_callback(
+      [navigation, server] {
+        if (server.actions.reset_match)
+          server.actions.reset_match();
+        if (navigation.reset_to)
+          navigation.reset_to(std::make_unique<ShooterGameScreen>());
+      },
+      client::ui::callback_deps(
+          navigation.current_entry_id,
+          client::ui::callback_deps_ptr(server.game)));
+  std::function<void()> open_options = use_callback(
+      [navigation] {
+        if (navigation.push)
+          navigation.push(std::make_unique<OptionsScreen>());
+      },
+      client::ui::callback_deps(navigation.current_entry_id));
+
+  // Yield the frame when an overlay (Options) is pushed on top. Visible screens
+  // build top-first, so a base screen that keeps rendering paints OVER the
+  // overlay above it. Every other screen follows this same guard.
+  if (!navigation.is_top)
+    return ::ui::empty();
+
+  return <ScreenLayout key="root" variant={ScreenLayoutVariant::Menu}>
+    <Panel key="panel" variant={PanelVariant::Hero}>
+      <ScreenTitle key="title" variant={ScreenTitleVariant::Hero} value="Reference Shooter" />
+      <ScreenSubtitle key="subtitle" value="SDL3 / retained UI flow" />
+      <AppButton
+        key="start"
+        controlId="StartMatchButton"
+        label="Start Match"
+        onPress={start_match}
+      />
+      <AppButton
+        key="options"
+        controlId="OpenOptionsFromMainMenuButton"
+        label="Options"
+        onPress={open_options}
+      />
+      <AppButton
+        key="quit"
+        controlId="QuitButton"
+        disabled={!app.can_quit}
+        label="Quit"
+        onPress={app.quit}
+      />
+    </Panel>
+  </ScreenLayout>
+}
+
+bool MainMenuScreen::build_element(::ui::UiElementFrame &frame,
+                                   ::ui::UiElement *out) {
+  if (!out)
+    return false;
+  *out = ::ui::component("MainMenuScreen", MainMenuScreenProps{},
+                         MainMenuScreenView,
+                         screen_entry_key("main-menu", entry_id()));
+  return true;
+}
+
+void MainMenuScreen::build_ui() {}
+
+} // namespace shooter

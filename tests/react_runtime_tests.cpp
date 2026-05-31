@@ -1,10 +1,7 @@
-#include "react.h"
-
-#include <clay.h>
+#include "ui/runtime/react.h"
 
 #include <stddef.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #define CHECK(expr)                                                            \
@@ -16,47 +13,11 @@
         }                                                                      \
     } while (0)
 
-static Clay_Context *g_clay = nullptr;
-static void *g_clay_memory = nullptr;
-
-static void on_clay_error(Clay_ErrorData error) {
-    fprintf(stderr, "clay: %.*s\n", (int)error.errorText.length,
-            error.errorText.chars);
-}
-
-static Clay_Dimensions measure_text(Clay_StringSlice text,
-                                    Clay_TextElementConfig *, void *) {
-    return Clay_Dimensions{ (float)text.length * 8.0f, 16.0f };
-}
-
-static bool init_clay_once(void) {
-    if (g_clay)
-        return true;
-
-    uint32_t clay_memory_size = Clay_MinMemorySize();
-    g_clay_memory = malloc(clay_memory_size);
-    CHECK(g_clay_memory != nullptr);
-
-    Clay_Arena arena =
-        Clay_CreateArenaWithCapacityAndMemory(clay_memory_size, g_clay_memory);
-    g_clay = Clay_Initialize(arena, Clay_Dimensions{ 640, 480 },
-                             Clay_ErrorHandler{ on_clay_error, nullptr });
-    CHECK(g_clay != nullptr);
-    Clay_SetMeasureTextFunction(measure_text, nullptr);
-    return true;
-}
-
 template <typename Build>
-static Clay_RenderCommandArray run_frame(Build build) {
+static void run_frame(Build build) {
     react_begin_frame();
-    Clay_SetLayoutDimensions(Clay_Dimensions{ 640, 480 });
-    Clay_BeginLayout();
-    CLAY({ .id = CLAY_ID("TestRoot") }) {
-        build();
-    }
-    Clay_RenderCommandArray commands = Clay_EndLayout();
+    build();
     react_end_frame();
-    return commands;
 }
 
 static int g_probe_values[2] = {};
@@ -84,7 +45,7 @@ static void KeyedStateProbe(int key, int initial, int write_value) {
 }
 
 static bool positional_siblings_keep_distinct_state(void) {
-    react_init(g_clay);
+    react_init_runtime();
     g_probe_values[0] = 0;
     g_probe_values[1] = 0;
 
@@ -107,7 +68,7 @@ static bool positional_siblings_keep_distinct_state(void) {
 }
 
 static bool keyed_siblings_keep_state_across_reorder(void) {
-    react_init(g_clay);
+    react_init_runtime();
     g_probe_values[0] = 0;
     g_probe_values[1] = 0;
 
@@ -123,6 +84,40 @@ static bool keyed_siblings_keep_state_across_reorder(void) {
         KeyedStateProbe(1, 99, -1);
         KeyedStateProbe(0, 99, -1);
     });
+    CHECK(react_error_count() == 0);
+    CHECK(g_probe_values[0] == 10);
+    CHECK(g_probe_values[1] == 20);
+    return true;
+}
+
+static void ComponentStateProbe(int key, int initial, int write_value) {
+    REACT_COMPONENT_BEGIN_KEY("ComponentStateProbe", key) {
+        int *value = use_state_int(initial);
+        if (write_value >= 0) {
+            *value = write_value;
+        }
+        g_probe_values[key] = *value;
+    }
+    REACT_COMPONENT_END();
+}
+
+static bool components_use_hooks_without_layout_backend(void) {
+    react_init_runtime();
+    g_probe_values[0] = 0;
+    g_probe_values[1] = 0;
+
+    react_begin_frame();
+    ComponentStateProbe(0, 1, 10);
+    ComponentStateProbe(1, 2, 20);
+    react_end_frame();
+    CHECK(react_error_count() == 0);
+    CHECK(g_probe_values[0] == 10);
+    CHECK(g_probe_values[1] == 20);
+
+    react_begin_frame();
+    ComponentStateProbe(1, 99, -1);
+    ComponentStateProbe(0, 99, -1);
+    react_end_frame();
     CHECK(react_error_count() == 0);
     CHECK(g_probe_values[0] == 10);
     CHECK(g_probe_values[1] == 20);
@@ -171,7 +166,7 @@ static void ProviderWithChildProbe(int slot, int initial, int write_value) {
 }
 
 static bool transparent_providers_use_instance_identity(void) {
-    react_init(g_clay);
+    react_init_runtime();
     g_provider_values[0] = 0;
     g_provider_values[1] = 0;
 
@@ -191,7 +186,7 @@ static bool transparent_providers_use_instance_identity(void) {
     CHECK(g_provider_values[0] == 10);
     CHECK(g_provider_values[1] == 20);
 
-    react_init(g_clay);
+    react_init_runtime();
     g_provider_values[0] = 0;
     g_provider_values[1] = 0;
 
@@ -211,7 +206,7 @@ static bool transparent_providers_use_instance_identity(void) {
     CHECK(g_provider_values[0] == 10);
     CHECK(g_provider_values[1] == 20);
 
-    react_init(g_clay);
+    react_init_runtime();
     g_provider_child_values[0] = 0;
     g_provider_child_values[1] = 0;
 
@@ -234,62 +229,44 @@ static bool transparent_providers_use_instance_identity(void) {
 }
 
 static int g_scratch_cleanups = 0;
+static const char *g_scratch_text[2] = {};
 
 static void cleanup_text_scratch(void *user) {
     g_scratch_cleanups++;
     delete[] static_cast<char *>(user);
 }
 
-static void TextScratchProbe(int value) {
+static void TextScratchProbe(int slot, int value) {
     REACT_COMPONENT_BEGIN("TextScratchProbe") {
         void **scratch_ref = use_ref(nullptr);
         if (!*scratch_ref) {
             *scratch_ref = new char[64];
         }
         char *scratch = static_cast<char *>(*scratch_ref);
-        int len = snprintf(scratch, 64, "Value:%d", value);
+        snprintf(scratch, 64, "Value:%d", value);
         use_effect(nullptr, cleanup_text_scratch, scratch, 0);
-        Clay_String text = { false, len, scratch };
-        CLAY_TEXT(text, CLAY_TEXT_CONFIG({ .fontSize = 12 }));
+        g_scratch_text[slot] = scratch;
     }
     REACT_COMPONENT_END();
 }
 
 static bool text_scratch_is_instance_owned(void) {
-    react_init(g_clay);
+    react_init_runtime();
     g_scratch_cleanups = 0;
+    g_scratch_text[0] = nullptr;
+    g_scratch_text[1] = nullptr;
 
-    Clay_RenderCommandArray commands = run_frame([] {
-        TextScratchProbe(10);
-        TextScratchProbe(20);
+    run_frame([] {
+        TextScratchProbe(0, 10);
+        TextScratchProbe(1, 20);
     });
 
-    bool saw_10 = false;
-    bool saw_20 = false;
-    const char *ptr_10 = nullptr;
-    const char *ptr_20 = nullptr;
-
-    for (int32_t i = 0; i < commands.length; i++) {
-        Clay_RenderCommand *command = Clay_RenderCommandArray_Get(&commands, i);
-        if (!command || command->commandType != CLAY_RENDER_COMMAND_TYPE_TEXT)
-            continue;
-        Clay_StringSlice text = command->renderData.text.stringContents;
-        if (text.length == 8 && memcmp(text.chars, "Value:10", 8) == 0) {
-            saw_10 = true;
-            ptr_10 = text.chars;
-        }
-        if (text.length == 8 && memcmp(text.chars, "Value:20", 8) == 0) {
-            saw_20 = true;
-            ptr_20 = text.chars;
-        }
-    }
-
     CHECK(react_error_count() == 0);
-    CHECK(saw_10);
-    CHECK(saw_20);
-    CHECK(ptr_10 != nullptr);
-    CHECK(ptr_20 != nullptr);
-    CHECK(ptr_10 != ptr_20);
+    CHECK(g_scratch_text[0] != nullptr);
+    CHECK(g_scratch_text[1] != nullptr);
+    CHECK(strcmp(g_scratch_text[0], "Value:10") == 0);
+    CHECK(strcmp(g_scratch_text[1], "Value:20") == 0);
+    CHECK(g_scratch_text[0] != g_scratch_text[1]);
 
     react_shutdown();
     CHECK(g_scratch_cleanups == 2);
@@ -299,13 +276,9 @@ static bool text_scratch_is_instance_owned(void) {
 static int g_effect_mounts = 0;
 static int g_effect_cleanups = 0;
 
-static void on_mount(void *) {
-    g_effect_mounts++;
-}
+static void on_mount(void *) { g_effect_mounts++; }
 
-static void on_unmount(void *) {
-    g_effect_cleanups++;
-}
+static void on_unmount(void *) { g_effect_cleanups++; }
 
 static void EffectProbe(void) {
     REACT_COMPONENT_BEGIN("EffectProbe") {
@@ -315,7 +288,7 @@ static void EffectProbe(void) {
 }
 
 static bool remounts_reuse_unmounted_fibers(void) {
-    react_init(g_clay);
+    react_init_runtime();
     g_effect_mounts = 0;
     g_effect_cleanups = 0;
 
@@ -331,7 +304,7 @@ static bool remounts_reuse_unmounted_fibers(void) {
 }
 
 static bool shutdown_cleans_live_effects(void) {
-    react_init(g_clay);
+    react_init_runtime();
     g_effect_mounts = 0;
     g_effect_cleanups = 0;
 
@@ -374,7 +347,7 @@ static void CountDriftProbe(void) {
 }
 
 static bool hook_drift_is_diagnosed(void) {
-    react_init(g_clay);
+    react_init_runtime();
     g_use_ref_for_kind_probe = false;
     run_frame([] { KindDriftProbe(); });
     CHECK(react_error_count() == 0);
@@ -383,7 +356,7 @@ static bool hook_drift_is_diagnosed(void) {
     run_frame([] { KindDriftProbe(); });
     CHECK(react_error_count() == 1);
 
-    react_init(g_clay);
+    react_init_runtime();
     g_extra_hook_for_count_probe = false;
     run_frame([] { CountDriftProbe(); });
     CHECK(react_error_count() == 0);
@@ -434,11 +407,11 @@ static void BoolStateProbe(int slot, bool initial, bool write,
 }
 
 static bool use_state_template_persists_typed_values(void) {
-    react_init(g_clay);
+    react_init_runtime();
 
-    PodState init0 = { 1, 1.5f, 'a' };
-    PodState init1 = { 2, 2.5f, 'b' };
-    PodState updated = { 99, 9.5f, 'z' };
+    PodState init0 = {1, 1.5f, 'a'};
+    PodState init1 = {2, 2.5f, 'b'};
+    PodState updated = {99, 9.5f, 'z'};
 
     run_frame([&] {
         PodStateProbe(0, init0, true, updated);
@@ -459,7 +432,7 @@ static bool use_state_template_persists_typed_values(void) {
     bool *first_bool_ptr_0 = g_bool_ptr[0];
 
     // Second frame: initial values are ignored; pointer identity preserved.
-    PodState noop = { 0, 0.0f, '?' };
+    PodState noop = {0, 0.0f, '?'};
     run_frame([&] {
         PodStateProbe(0, noop, false, noop);
         PodStateProbe(1, noop, false, noop);
@@ -491,7 +464,7 @@ static bool g_overaligned_state_was_null = false;
 
 static void OverAlignedStateProbe(void) {
     REACT_COMPONENT_BEGIN("OverAlignedStateProbe") {
-        OverAlignedState *value = use_state<OverAlignedState>({ 7 });
+        OverAlignedState *value = use_state<OverAlignedState>({7});
         g_overaligned_state_was_null = value == nullptr;
     }
     REACT_COMPONENT_END();
@@ -502,7 +475,7 @@ static bool use_state_template_reports_unavailable_storage(void) {
         return true;
     }
 
-    react_init(g_clay);
+    react_init_runtime();
     g_overaligned_state_was_null = false;
 
     run_frame([] { OverAlignedStateProbe(); });
@@ -529,7 +502,7 @@ static void LegacyIntProbe(int slot, int initial, int write_value) {
 }
 
 static bool use_state_int_still_works(void) {
-    react_init(g_clay);
+    react_init_runtime();
     run_frame([] {
         LegacyIntProbe(0, 5, 42);
         LegacyIntProbe(1, 7, -1);
@@ -568,8 +541,8 @@ static std::function<void()> *g_callback_slot[2] = {};
 
 static void CallbackProbe(int slot, uint64_t deps, int capture) {
     REACT_COMPONENT_BEGIN_KEY("CallbackProbe", slot) {
-        std::function<void()> &fn =
-            use_callback([capture] { g_callback_invocations += capture; }, deps);
+        std::function<void()> &fn = use_callback(
+            [capture] { g_callback_invocations += capture; }, deps);
         g_callback_slot[slot] = &fn;
         fn();
     }
@@ -577,7 +550,7 @@ static void CallbackProbe(int slot, uint64_t deps, int capture) {
 }
 
 static bool use_callback_is_stable_across_frames(void) {
-    react_init(g_clay);
+    react_init_runtime();
     g_callback_invocations = 0;
 
     // Frame 1: cold — function is constructed once per slot.
@@ -632,7 +605,7 @@ static void TextStorageProbe(int key, int value) {
 }
 
 static bool use_text_storage_is_per_instance_and_stable(void) {
-    react_init(g_clay);
+    react_init_runtime();
 
     run_frame([] {
         TextStorageProbe(0, 10);
@@ -666,12 +639,11 @@ static bool use_text_storage_is_per_instance_and_stable(void) {
 }
 
 int main(void) {
-    if (!init_clay_once())
-        return 1;
-
     if (!positional_siblings_keep_distinct_state())
         return 1;
     if (!keyed_siblings_keep_state_across_reorder())
+        return 1;
+    if (!components_use_hooks_without_layout_backend())
         return 1;
     if (!transparent_providers_use_instance_identity())
         return 1;
@@ -695,6 +667,5 @@ int main(void) {
         return 1;
 
     react_shutdown();
-    free(g_clay_memory);
     return 0;
 }

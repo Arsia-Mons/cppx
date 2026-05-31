@@ -1,0 +1,19 @@
+{
+  "name": "tree-sitter-cppx",
+  "version": "0.0.1",
+  "description": "Tree-sitter grammar for CPPX (C++ with JSX-like tags)",
+  "tree-sitter": [
+    {
+      "scope": "source.cppx",
+      "file-types": ["cppx", "hx"],
+      "injection-regex": "^cppx$"
+    }
+  ],
+  "devDependencies": {
+    "tree-sitter-cli": "^0.22.0"
+  },
+  "scripts": {
+    "generate": "tree-sitter generate",
+    "test": "tree-sitter test"
+  }
+}
