@@ -15,7 +15,10 @@ struct AppButtonProps {
   const char *key = nullptr;
   const char *control_id = nullptr;
   int control_offset = 0;
-  AppButtonVariant variant = AppButtonVariant::Primary;
+  // Default Secondary == the theme's slate button (empty patch), so existing
+  // call sites that omit `variant` keep the baseline look. Primary (accent
+  // fill) is opt-in for prominent/primary actions.
+  AppButtonVariant variant = AppButtonVariant::Secondary;
   AppButtonSize size = AppButtonSize::Md;
   bool disabled = false;
   bool selected = false;

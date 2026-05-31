@@ -38,7 +38,7 @@ float panel_size_width(PanelSize size) {
 
 ::ui::UiElement Panel(const PanelProps &props) {
   ::ui::Style style{};
-  ::ui::StylePatch override{};
+  ::ui::StylePatch overlay{};
 
   switch (props.variant) {
   case PanelVariant::Hero:
@@ -50,8 +50,8 @@ float panel_size_width(PanelSize size) {
         .gap = 14.0f,
         .border_width = tokens::kBorderWidth,
     };
-    override = tokens::panel_patch(tokens::kSurfaceHeroPanel,
-                                   tokens::kBorderHeroPanel);
+    overlay = tokens::panel_patch(tokens::kSurfaceHeroPanel,
+                                  tokens::kBorderHeroPanel);
     break;
   case PanelVariant::Overlay:
     style = ::ui::Style{
@@ -62,7 +62,7 @@ float panel_size_width(PanelSize size) {
         .gap = 12.0f,
         .border_width = tokens::kBorderWidth,
     };
-    override = tokens::panel_patch(tokens::kSurfacePanel, tokens::kBorderPanel);
+    overlay = tokens::panel_patch(tokens::kSurfacePanel, tokens::kBorderPanel);
     break;
   case PanelVariant::Sunken:
     style = ::ui::Style{
@@ -73,7 +73,7 @@ float panel_size_width(PanelSize size) {
         .gap = 10.0f,
         .border_width = 0.0f,
     };
-    override = tokens::fill_patch(kSunkenBg);
+    overlay = tokens::fill_patch(kSunkenBg);
     break;
   }
 
@@ -81,7 +81,7 @@ float panel_size_width(PanelSize size) {
     style.width = ::ui::Length::points(panel_size_width(props.size));
   }
 
-  return <Box key={props.key} style={style} style_override={override}>
+  return <Box key={props.key} style={style} style_override={overlay}>
     {props.children}
   </Box>
 }

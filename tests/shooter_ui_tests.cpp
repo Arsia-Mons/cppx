@@ -3,6 +3,7 @@
 #include "client/ui/app_theme.h"
 #include "client/ui/providers/shooter_provider.h"
 #include "ui/style/theme.h"
+#include "ui/style/resolve.h"
 #include "client/ui/screens/in_game/in_game_screen.h"
 #include "client/ui/components/actions/app_button_variant.h"
 #include "client/ui/screens/loadout/components/weapon_tile.h"
@@ -512,6 +513,49 @@ private:
   bool *observed_quit_present_;
 };
 
+// Reads use_theme() inside the retained frame and reports the resolved Button
+// base gradient stop_count, so a test can prove the installed ThemeProvider
+// actually delivers app_theme() (slate) rather than the neutral fallback.
+struct ThemeReadProbeProps {
+  const char *key = nullptr;
+  int *observed_button_gradient_stops = nullptr;
+};
+
+static ::ui::UiElement ThemeReadProbeView(const ThemeReadProbeProps &props) {
+  if (props.observed_button_gradient_stops) {
+    *props.observed_button_gradient_stops =
+        ::ui::use_theme().button.base.gradient.stop_count;
+  }
+  return ::ui::empty();
+}
+
+class ThemeReadProbeScreen final : public client::ui::UiScreen {
+public:
+  explicit ThemeReadProbeScreen(int *observed_button_gradient_stops)
+      : observed_button_gradient_stops_(observed_button_gradient_stops) {}
+
+  const char *debug_name() const override { return "ThemeReadProbe"; }
+
+  bool build_element(::ui::UiElementFrame &frame,
+                     ::ui::UiElement *out) override {
+    (void)frame;
+    if (!out)
+      return false;
+    *out = ::ui::component(
+        "ThemeReadProbeView",
+        ThemeReadProbeProps{.observed_button_gradient_stops =
+                                observed_button_gradient_stops_},
+        ThemeReadProbeView,
+        screen_entry_key("theme-read-probe", entry_id()));
+    return true;
+  }
+
+  void build_ui() override {}
+
+private:
+  int *observed_button_gradient_stops_;
+};
+
 } // namespace
 
 static bool root_level_providers_reach_screens_without_per_screen_wrap(void) {
@@ -567,6 +611,43 @@ static bool test_app_button_variants_distinct(void) {
   // Secondary is the theme default (empty patch):
   CHECK(!shooter::app_button_variant_patch(shooter::AppButtonVariant::Secondary)
              .background.set);
+
+  // Resolved through the slate Button base, the variants must still differ and
+  // Secondary must collapse to the bare base (proves the patch wins over base).
+  const ::ui::InteractionState rest{};
+  const ::ui::RoleStyle &btn = client::ui::app_theme().button;
+  const ::ui::VisualStyle primary = ::ui::resolve(
+      btn, shooter::app_button_variant_patch(shooter::AppButtonVariant::Primary),
+      rest);
+  const ::ui::VisualStyle danger = ::ui::resolve(
+      btn, shooter::app_button_variant_patch(shooter::AppButtonVariant::Danger),
+      rest);
+  const ::ui::VisualStyle secondary = ::ui::resolve(
+      btn,
+      shooter::app_button_variant_patch(shooter::AppButtonVariant::Secondary),
+      rest);
+  CHECK(primary.background != danger.background);
+  CHECK(secondary.background == btn.base.background);
+  return true;
+}
+
+static bool test_theme_provider_delivers_slate(void) {
+  // End-to-end: a component reading use_theme() UNDER the installed
+  // ThemeProvider (run_pipeline_frame wraps the tree in it, exactly like
+  // production app.cpp) must see app_theme() (slate, gradient stop_count != 0),
+  // NOT the provider-less neutral fallback (0). Guards against the provider
+  // silently failing to push the theme context.
+  react_init_runtime();
+  shooter::ShooterGame game;
+  TestFrameProviders providers{.game = &game, .request_quit = [] {}};
+  int observed_stops = -1;
+  client::ui::UiPipeline pipeline;
+  CHECK(pipeline.client_ui().push_screen(
+      std::make_unique<ThemeReadProbeScreen>(&observed_stops)));
+  run_pipeline_frame(pipeline, providers);
+  CHECK(observed_stops ==
+        client::ui::app_theme().button.base.gradient.stop_count);
+  CHECK(observed_stops != 0);
   return true;
 }
 
@@ -574,6 +655,8 @@ int main(void) {
   if (!test_theme_ownership())
     return 1;
   if (!test_app_button_variants_distinct())
+    return 1;
+  if (!test_theme_provider_delivers_slate())
     return 1;
   if (!shooter_game_buy_and_equip_are_real_state_writes())
     return 1;

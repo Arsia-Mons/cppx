@@ -50,6 +50,11 @@ using ::ui::components::DialogProps;
     </Dialog>
   }
   if (props.variant == ScreenLayoutVariant::CenteredOverlay) {
+    // A transparent full-screen centering container (the centered Panel paints
+    // itself). An un-patched Dialog would now resolve theme.dialog.base — an
+    // OPAQUE slate panel — so explicitly clear background + border to preserve
+    // the prior empty-visual look. modal=true (Dialog default) is kept for the
+    // focus trap.
     return <Dialog
       key={props.key}
       style={::ui::Style{
@@ -59,6 +64,11 @@ using ::ui::components::DialogProps;
         .width = ::ui::Length::percent(100.0f),
         .height = ::ui::Length::percent(100.0f),
       }}
+      style_override={::ui::patch()
+        .background({0, 0, 0, 0})
+        .border(::ui::Border{{0.0f, 0.0f, 0.0f, 0.0f},
+                             {{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0},
+                              {0, 0, 0, 0}}})}
     >
       {props.children}
     </Dialog>

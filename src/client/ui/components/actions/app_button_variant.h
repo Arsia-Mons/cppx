@@ -52,6 +52,13 @@ inline ::ui::Style app_button_layout(AppButtonSize size, bool /*selected*/) {
 // layer on top (intended). Each fill sets a FLAT 2-stop gradient (top==bottom)
 // so the slate base gradient does not bleed through the new solid fill.
 //
+// CONSEQUENCE of base/variant-only override: on hover/press/disabled the
+// theme's slate interaction deltas re-apply on top, so a hovered Ghost reverts
+// to the slate hover chrome (not transparent), and Primary/Danger fills are
+// tinted by the slate hover gradient. Keeping a variant transparent/branded
+// across interaction states would need a per-variant RoleStyle — deferred (no
+// screen uses Ghost/Danger yet).
+//
 // Secondary returns {} on purpose: the empty patch IS the theme default slate
 // button, so a plain AppButton with no variant work needed paints unchanged.
 inline ::ui::StylePatch app_button_variant_patch(AppButtonVariant variant) {

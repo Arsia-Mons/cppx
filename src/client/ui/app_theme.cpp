@@ -134,6 +134,11 @@ const Theme &app_theme() {
 }
 
 ::ui::UiElement ThemeProvider(::ui::UiChildren children) {
+  // app_theme() is a function-local `static const Theme` with program-duration
+  // lifetime and a stable address, and use_theme() only ever reads it back as
+  // const — so we hand the context a pointer to it directly. This intentionally
+  // supersedes the spec's copy_value() suggestion: no per-frame copy of the
+  // (large) Theme into the element arena is needed when the value is static.
   return ::ui::provider("ThemeProvider", &::ui::ThemeContext,
                         const_cast<::ui::Theme *>(&app_theme()), children);
 }
