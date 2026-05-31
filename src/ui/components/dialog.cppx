@@ -10,7 +10,7 @@ namespace ui::components {
     id={props.id}
     idOffset={props.id_offset}
     style={props.style}
-    visual={props.visual}
+    visual={::ui::resolve(::ui::use_theme().dialog, props.style_override, {})}
     interaction={interaction}
     accessibility={detail::accessibility_from_props(props, ::ui::SemanticRole::Dialog)}
     callbacks={detail::callbacks_from_props(props)}

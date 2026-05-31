@@ -28,7 +28,7 @@ using ::ui::components::DialogProps;
         .padding = {24.0f, 24.0f, 24.0f, 24.0f},
         .gap = 18.0f,
       }}
-      visual={tokens::fill_visual(tokens::kSurfaceGame)}
+      style_override={tokens::fill_patch(tokens::kSurfaceGame)}
     >
       {props.children}
     </Box>
@@ -44,7 +44,7 @@ using ::ui::components::DialogProps;
         .padding = {24.0f, 24.0f, 24.0f, 24.0f},
         .gap = 12.0f,
       }}
-      visual={tokens::fill_visual(tokens::kSurfaceOverlay)}
+      style_override={tokens::fill_patch(tokens::kSurfaceOverlay)}
     >
       {props.children}
     </Dialog>
@@ -73,7 +73,7 @@ using ::ui::components::DialogProps;
       .height = ::ui::Length::percent(100.0f),
       .padding = {36.0f, 36.0f, 36.0f, 36.0f},
     }}
-    visual={tokens::fill_visual(tokens::kSurfaceMenu)}
+    style_override={tokens::fill_patch(tokens::kSurfaceMenu)}
   >
     {props.children}
   </Box>

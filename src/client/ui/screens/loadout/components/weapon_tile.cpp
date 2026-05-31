@@ -84,7 +84,7 @@ const char *weapon_tile_key(int index) {
                               {
                                   .height = ::ui::Length::points(18.0f),
                               },
-                          .visual = tokens::text_visual({238, 246, 244, 255}, 16),
+                          .style_override = tokens::text_patch({238, 246, 244, 255}, 16),
                       },
                       components::Text),
                   ::ui::component(
@@ -96,7 +96,7 @@ const char *weapon_tile_key(int index) {
                               {
                                   .height = ::ui::Length::points(16.0f),
                               },
-                          .visual = tokens::text_visual(
+                          .style_override = tokens::text_patch(
                               disabled ? ::ui::Color{142, 148, 150, 255}
                                        : ::ui::Color{184, 204, 204, 255},
                               12),

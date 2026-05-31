@@ -16,8 +16,9 @@ namespace {
 ::ui::UiElement Button(const ButtonProps &props) {
   // Resolve dense paint from theme + this component's live interaction; commit
   // as .visual. The renderer consumes it once P3 flips the builder.
-  const ::ui::VisualStyle visual = ::ui::resolve(
-      ::ui::use_theme().button, {}, detail::interaction_state(props.disabled));
+  const ::ui::VisualStyle visual =
+      ::ui::resolve(::ui::use_theme().button, props.style_override,
+                    detail::interaction_state(props.disabled));
   return <detail.Host
     kind={::ui::HostKind::Button}
     key={props.key}

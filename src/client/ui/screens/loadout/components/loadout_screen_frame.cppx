@@ -17,7 +17,7 @@ using ::ui::components::DialogProps;
                   loadout::kFramePadding, loadout::kFramePadding},
       .gap = loadout::kFrameGap,
   };
-  return <Dialog key={props.key} modal={!props.confirm_open} style={style} visual={tokens::fill_visual(loadout::kRootBg)}>
+  return <Dialog key={props.key} modal={!props.confirm_open} style={style} style_override={tokens::fill_patch(loadout::kRootBg)}>
     {props.children}
   </Dialog>
 }

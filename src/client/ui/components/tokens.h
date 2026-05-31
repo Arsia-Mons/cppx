@@ -10,6 +10,7 @@
 // the IR premultiplies at emit. Header-only (constexpr + inline), not transpiled.
 
 #include "ui/components/common.h"
+#include "ui/style/style_patch.h"
 
 #include <cstdint>
 
@@ -56,32 +57,28 @@ constexpr uint16_t kFontDetail = 12;
 constexpr float kBorderWidth = 1.0f;
 constexpr float kBorderWidthSelected = 2.0f;
 
-// ---- Visual builders (verbatim semantics from the former per-screen theme) ----
+// ---- Patch builders (sparse overrides; verbatim semantics from the former
+// per-screen theme, now emitting StylePatch instead of dense VisualStyle) ----
 
 // Solid-fill surface (no border).
-inline ::ui::VisualStyle fill_visual(::ui::Color background) {
-  ::ui::VisualStyle v{};
-  v.background = background;
-  return v;
+inline ::ui::StylePatch fill_patch(::ui::Color background) {
+  return ::ui::patch().background(background);
 }
 
 // Solid-fill surface with a uniform border (width feeds layout via
 // Style.border_width; the color is carried here on all four sides).
-inline ::ui::VisualStyle panel_visual(::ui::Color background, ::ui::Color border,
-                                      float border_width = kBorderWidth) {
-  ::ui::VisualStyle v{};
-  v.background = background;
-  v.border.width = {border_width, border_width, border_width, border_width};
-  v.border.color = {border, border, border, border};
-  return v;
+inline ::ui::StylePatch panel_patch(::ui::Color background, ::ui::Color border,
+                                    float border_width = kBorderWidth) {
+  return ::ui::patch()
+      .background(background)
+      .border(::ui::Border{
+          {border_width, border_width, border_width, border_width},
+          {border, border, border, border}});
 }
 
 // Text paint (color + size). align/wrap/line_height stay defaults.
-inline ::ui::VisualStyle text_visual(::ui::Color color, uint16_t font_size) {
-  ::ui::VisualStyle v{};
-  v.text.color = color;
-  v.text.font_size = font_size;
-  return v;
+inline ::ui::StylePatch text_patch(::ui::Color color, uint16_t font_size) {
+  return ::ui::patch().text(::ui::TextVisual{.color = color, .font_size = font_size});
 }
 
 } // namespace shooter::tokens

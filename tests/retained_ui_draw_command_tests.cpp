@@ -74,24 +74,20 @@ static bool button_emits_fill_and_border(void) {
               .gap = 6.0f,
               .border_width = 1.0f,
           },
-      .visual =
-          {
-              .background = {18, 27, 32, 245},
-              .border = {{1.0f, 1.0f, 1.0f, 1.0f},
-                         {{83, 108, 118, 255},
-                          {83, 108, 118, 255},
-                          {83, 108, 118, 255},
-                          {83, 108, 118, 255}}},
-          },
+      .style_override =
+          ::ui::patch()
+              .background({18, 27, 32, 245})
+              .border({{1.0f, 1.0f, 1.0f, 1.0f},
+                       {{83, 108, 118, 255},
+                        {83, 108, 118, 255},
+                        {83, 108, 118, 255},
+                        {83, 108, 118, 255}}}),
       .children = ::ui::children({
           Text({
               .key = "title",
               .value = "Title",
-              .visual =
-                  {
-                      .text = {.color = {235, 246, 242, 255},
-                               .font_size = 24},
-                  },
+              .style_override = ::ui::patch().text(
+                  {.color = {235, 246, 242, 255}, .font_size = 24}),
           }),
           Button({
               .key = "confirm",
@@ -135,24 +131,20 @@ static bool button_emits_fill_and_border(void) {
               .gap = 6.0f,
               .border_width = 1.0f,
           },
-      .visual =
-          {
-              .background = {18, 27, 32, 245},
-              .border = {{1.0f, 1.0f, 1.0f, 1.0f},
-                         {{83, 108, 118, 255},
-                          {83, 108, 118, 255},
-                          {83, 108, 118, 255},
-                          {83, 108, 118, 255}}},
-          },
+      .style_override =
+          ::ui::patch()
+              .background({18, 27, 32, 245})
+              .border({{1.0f, 1.0f, 1.0f, 1.0f},
+                       {{83, 108, 118, 255},
+                        {83, 108, 118, 255},
+                        {83, 108, 118, 255},
+                        {83, 108, 118, 255}}}),
       .children = ::ui::children({
           Text({
               .key = "title",
               .value = "Title",
-              .visual =
-                  {
-                      .text = {.color = {235, 246, 242, 255},
-                               .font_size = 24},
-                  },
+              .style_override = ::ui::patch().text(
+                  {.color = {235, 246, 242, 255}, .font_size = 24}),
           }),
           Button({
               .key = "confirm",
@@ -373,10 +365,11 @@ static bool default_text_color_is_premultiplied(void) {
   UiElementFrame frame;
   UiElementFrameScope frame_scope(frame);
 
-  // A bare Text node with no style: the transcriber falls back to the default
-  // text fill (226,234,242,255). At full alpha premultiply is a no-op, so to
-  // genuinely exercise scaling we assert on the half-alpha selection elsewhere
-  // and here on the opaque default identity.
+  // A bare Text node with no style_override: it resolves theme.text.base from
+  // the default (provider-less) theme, whose text fill is (210,210,214,255) at
+  // font_size 14. At full alpha premultiply is a no-op, so to genuinely
+  // exercise scaling we assert on the half-alpha selection elsewhere and here
+  // on the opaque default identity.
   UiElement root = Box({
       .key = "root",
       .style =
@@ -409,8 +402,8 @@ static bool default_text_color_is_premultiplied(void) {
       find_command(list, label, DrawCommandKind::Text);
   CHECK(label_text != nullptr);
   CHECK(arena_text_matches(list, label_text->payload.text, "Hi"));
-  CHECK(same_color(label_text->payload.text.color, premul({226, 234, 242, 255})));
-  CHECK(label_text->payload.text.font_size == 15);
+  CHECK(same_color(label_text->payload.text.color, premul({210, 210, 214, 255})));
+  CHECK(label_text->payload.text.font_size == 14);
   return true;
 }
 

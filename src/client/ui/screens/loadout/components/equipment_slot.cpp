@@ -61,7 +61,7 @@ namespace shooter {
                           {
                               .height = ::ui::Length::points(16.0f),
                           },
-                      .visual = tokens::text_visual({226, 238, 236, 255}, 14),
+                      .style_override = tokens::text_patch({226, 238, 236, 255}, 14),
                   },
                   components::Text),
           }),

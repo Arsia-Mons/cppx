@@ -213,8 +213,9 @@ void publish_change(const std::function<void(const std::string &)> &on_change,
     state->composition_length = event.length;
   };
 
-  const ::ui::VisualStyle visual = ::ui::resolve(
-      ::ui::use_theme().input, {}, detail::interaction_state(props.disabled));
+  const ::ui::VisualStyle visual =
+      ::ui::resolve(::ui::use_theme().input, props.style_override,
+                    detail::interaction_state(props.disabled));
 
   return <detail.Host
     kind={::ui::HostKind::Input}

@@ -20,7 +20,7 @@ struct TextProps {
   std::function<void(const ::ui::TextEditingEvent &)> on_text_editing = {};
   const char *value = nullptr;
   ::ui::Style style = {};
-  ::ui::VisualStyle visual = {}; // caller-supplied dense paint (dual-path)
+  ::ui::StylePatch style_override = {}; // sparse paint overlay over theme.text
 };
 
 ::ui::UiElement Text(const TextProps &props);

@@ -36,8 +36,8 @@ namespace {
   // renderer consumes .visual once P3 flips the builder).
   const ::ui::Theme &theme = ::ui::use_theme();
   // The body does NOT react to `checked` (only the mark does).
-  const ::ui::VisualStyle box_visual =
-      ::ui::resolve(theme.checkbox, {}, detail::interaction_state(props.disabled));
+  const ::ui::VisualStyle box_visual = ::ui::resolve(
+      theme.checkbox, props.style_override, detail::interaction_state(props.disabled));
   const ::ui::VisualStyle mark_visual = ::ui::resolve(
       theme.checkbox_mark, {}, detail::interaction_state(props.disabled, props.checked));
 
@@ -53,7 +53,7 @@ namespace {
     accessibility={detail::accessibility_from_props(props, ::ui::SemanticRole::Checkbox)}
     callbacks={callbacks}
   >
-    <Box key="mark" style={checkbox_mark_style()} visual={mark_visual} />
+    <detail.Host kind={::ui::HostKind::Box} key="mark" style={checkbox_mark_style()} visual={mark_visual} />
     {props.label}
   </detail.Host>
 }

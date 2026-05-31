@@ -26,7 +26,7 @@ namespace shooter {
                 {
                     .height = ::ui::Length::points(22.0f),
                 },
-            .visual = tokens::text_visual({224, 238, 236, 255}, 18),
+            .style_override = tokens::text_patch({224, 238, 236, 255}, 18),
         },
         components::Text);
   };
@@ -45,7 +45,7 @@ namespace shooter {
                   .gap = 18.0f,
                   .border_width = 1.0f,
               },
-          .visual = tokens::panel_visual({18, 24, 28, 245}, {82, 106, 118, 255}),
+          .style_override = tokens::panel_patch({18, 24, 28, 245}, {82, 106, 118, 255}),
           .children = ::ui::children({
               hud_text("health", health),
               hud_text("armor", armor),

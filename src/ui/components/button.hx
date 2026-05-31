@@ -27,6 +27,7 @@ struct ButtonProps {
       .height = ::ui::Length::points(38.0f),
       .padding = {14.0f, 14.0f, 8.0f, 8.0f},
   };
+  ::ui::StylePatch style_override = {}; // sparse paint overlay over theme.button
 };
 
 ::ui::UiElement Button(const ButtonProps &props);

@@ -29,6 +29,7 @@ struct InputProps {
       .height = ::ui::Length::points(36.0f),
       .padding = {8.0f, 8.0f, 8.0f, 8.0f},
   };
+  ::ui::StylePatch style_override = {}; // sparse paint overlay over theme.input
 };
 
 ::ui::UiElement Input(const InputProps &props);

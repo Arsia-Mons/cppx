@@ -19,7 +19,7 @@ struct BoxProps {
   std::function<void(const ::ui::TextInputEvent &)> on_text_input = {};
   std::function<void(const ::ui::TextEditingEvent &)> on_text_editing = {};
   ::ui::Style style = {};
-  ::ui::VisualStyle visual = {}; // caller-supplied dense paint (dual-path)
+  ::ui::StylePatch style_override = {}; // sparse paint overlay over theme.box
   ::ui::UiChildren children = {};
 };
 

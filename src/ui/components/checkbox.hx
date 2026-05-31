@@ -30,6 +30,7 @@ struct CheckboxProps {
       .padding = {10.0f, 10.0f, 8.0f, 8.0f},
       .gap = 10.0f,
   };
+  ::ui::StylePatch style_override = {}; // sparse paint overlay over theme.checkbox (body)
 };
 
 ::ui::UiElement Checkbox(const CheckboxProps &props);
