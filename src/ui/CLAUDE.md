@@ -19,7 +19,7 @@ have multiple files, not preemptively.
 - Layout helpers (Box/Row/Column/Spacer/Divider) once we need them.
 - Visual primitives generic enough to drop into any retained UI app.
 - Focus and input routing in **UI coordinates**, never SDL coordinates.
-- The theme **mechanism** — `style/` (`Theme`/`RoleStyle` types, `ThemeContext`, `use_theme()`, `resolve()`, `StylePatch`, the `patch()` builder) and a **neutral** `default_theme()` fallback. Primitives accept a per-instance `StylePatch style_override`, merged over the theme role by `resolve()` (never a dense full-`VisualStyle` override).
+- The theme **mechanism** — `style/` (`Theme`/`RoleStyle` types, `ThemeContext`, `use_theme()`, `resolve()`, `StylePatch`/`StyleStatePatch`, the `patch()` builder) and a **neutral** `default_theme()` fallback. Primitives accept a per-instance `StyleStatePatch style` (paint, with per-interaction-state slots) plus a `LayoutStyle layout`; `resolve()` layers the override's per-state patches OVER the matching theme-role state (never a dense full-`VisualStyle` override). A bare `StylePatch` implicitly becomes the base-only form of `style`.
 
 ## What does NOT belong here
 

@@ -319,7 +319,7 @@ UiElement UiElementFrame::box(const HostProps &props) {
 }
 
 UiElement UiElementFrame::text(const char *value, const char *key,
-                               const Style &style) {
+                               const LayoutStyle &style) {
   return host(HostKind::Text, {
                                   .key = key,
                                   .style = style,
@@ -427,7 +427,7 @@ UiElement box(const HostProps &props) {
   return frame ? frame->box(props) : UiElement{};
 }
 
-UiElement text(const char *value, const char *key, const Style &style) {
+UiElement text(const char *value, const char *key, const LayoutStyle &style) {
   UiElementFrame *frame = require_current_element_frame("text");
   return frame ? frame->text(value, key, style) : UiElement{};
 }

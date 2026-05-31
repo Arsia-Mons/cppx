@@ -21,7 +21,7 @@ namespace {
     return ::ui::children({
         ::ui::components::elements::Box({
             .key = "gear-row",
-            .style =
+            .layout =
                 {
                     .direction = ::ui::FlexDirection::Row,
                     .align_items = ::ui::AlignItems::Start,
@@ -42,7 +42,7 @@ namespace {
   return ::ui::children({
       ::ui::components::elements::Box({
           .key = "weapon-row-0",
-          .style =
+          .layout =
               {
                   .direction = ::ui::FlexDirection::Row,
                   .align_items = ::ui::AlignItems::Start,
@@ -65,7 +65,7 @@ namespace {
       }),
       ::ui::components::elements::Box({
           .key = "weapon-row-1",
-          .style =
+          .layout =
               {
                   .direction = ::ui::FlexDirection::Row,
                   .align_items = ::ui::AlignItems::Start,
@@ -86,7 +86,7 @@ namespace {
 } // namespace
 
 ::ui::UiElement LoadoutWeaponGrid(const LoadoutWeaponGridProps &props) {
-  return <Box key={props.key} style={{.width = ::ui::Length::points(loadout::kGridWidth), .gap = loadout::kGridGap}}>
+  return <Box key={props.key} layout={{.width = ::ui::Length::points(loadout::kGridWidth), .gap = loadout::kGridGap}}>
     {weapon_grid_rows(props.active_tab)}
   </Box>
 }

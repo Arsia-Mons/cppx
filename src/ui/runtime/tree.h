@@ -228,7 +228,7 @@ struct Rect {
   ComputedEdgeSizes padding = {};
 };
 
-struct Style {
+struct LayoutStyle {
   // Yoga v3.2.1 style fields, mirrored through repo-owned types so app code
   // stays independent from Yoga headers.
   LayoutDirection layout_direction = LayoutDirection::Inherit;
@@ -389,7 +389,7 @@ struct NodeSnapshot {
   SemanticRole semantic_role = SemanticRole::Auto;
   NodeInteraction interaction = {};
   TextEditMetadata text_edit = {};
-  Style style = {};
+  LayoutStyle style = {};
   Rect layout = {};
   int child_count = 0;
   bool has_measure = false;
@@ -410,9 +410,9 @@ public:
   void begin_frame(float width, float height);
   bool end_frame();
 
-  NodeId begin_node(const char *type, const Style &style = {});
+  NodeId begin_node(const char *type, const LayoutStyle &style = {});
   NodeId begin_keyed_node(const char *type, const char *key,
-                          const Style &style = {});
+                          const LayoutStyle &style = {});
   bool end_node();
 
   bool set_cleanup(NodeId id, CleanupFn cleanup, void *user);
@@ -489,7 +489,7 @@ private:
     std::function<void(const KeyEvent &)> on_key = {};
     std::function<void(const TextInputEvent &)> on_text_input = {};
     std::function<void(const TextEditingEvent &)> on_text_editing = {};
-    Style style = {};
+    LayoutStyle style = {};
     Rect layout = {};
     CleanupFn cleanup = nullptr;
     void *cleanup_user = nullptr;
@@ -503,7 +503,7 @@ private:
   Node *find_mutable(NodeId id);
   const Node *find(NodeId id) const;
   Node *ensure_node(NodeId id, NodeId parent_id, const char *type,
-                    const char *key, const Style &style);
+                    const char *key, const LayoutStyle &style);
   void destroy_node(Node &node);
   NodeId make_child_id(NodeId parent_id, const char *type, const char *key,
                        uint32_t sibling_index, bool keyed) const;

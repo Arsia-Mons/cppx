@@ -117,7 +117,7 @@ static bool unmounted_nodes_run_cleanup_once(void) {
 
 static bool style_layout_and_child_count_are_retained(void) {
   UiTree tree;
-  Style panel_style = {};
+  LayoutStyle panel_style = {};
   panel_style.width = Length::points(320.0f);
   panel_style.height = Length::grow();
   panel_style.direction = FlexDirection::Row;

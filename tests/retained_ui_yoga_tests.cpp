@@ -27,16 +27,16 @@ static bool near(float actual, float expected) {
 static bool yoga_computes_column_gap_and_grow(void) {
   UiTree tree;
 
-  Style panel = {};
+  LayoutStyle panel = {};
   panel.width = Length::points(300.0f);
   panel.height = Length::points(200.0f);
   panel.direction = FlexDirection::Column;
   panel.gap = 10.0f;
 
-  Style fixed = {};
+  LayoutStyle fixed = {};
   fixed.height = Length::points(50.0f);
 
-  Style growing = {};
+  LayoutStyle growing = {};
   growing.height = Length::grow(1.0f);
 
   tree.begin_frame(300.0f, 200.0f);
@@ -70,15 +70,15 @@ static bool yoga_computes_column_gap_and_grow(void) {
 static bool yoga_computes_row_percent_and_grow(void) {
   UiTree tree;
 
-  Style row = {};
+  LayoutStyle row = {};
   row.width = Length::points(400.0f);
   row.height = Length::points(100.0f);
   row.direction = FlexDirection::Row;
 
-  Style half = {};
+  LayoutStyle half = {};
   half.width = Length::percent(50.0f);
 
-  Style grow = {};
+  LayoutStyle grow = {};
   grow.width = Length::grow(1.0f);
 
   tree.begin_frame(400.0f, 100.0f);
@@ -112,12 +112,12 @@ static bool yoga_computes_row_percent_and_grow(void) {
 static bool yoga_applies_padding_to_child_layout(void) {
   UiTree tree;
 
-  Style panel = {};
+  LayoutStyle panel = {};
   panel.width = Length::points(120.0f);
   panel.height = Length::points(80.0f);
   panel.padding = {8.0f, 4.0f, 6.0f, 2.0f};
 
-  Style child = {};
+  LayoutStyle child = {};
   child.width = Length::points(20.0f);
   child.height = Length::points(10.0f);
 
@@ -148,24 +148,24 @@ static bool yoga_applies_padding_to_child_layout(void) {
 static bool yoga_applies_margins_min_max_and_absolute_positioning(void) {
   UiTree tree;
 
-  Style row = {};
+  LayoutStyle row = {};
   row.width = Length::points(220.0f);
   row.height = Length::points(90.0f);
   row.direction = FlexDirection::Row;
   row.align_items = AlignItems::Start;
 
-  Style first = {};
+  LayoutStyle first = {};
   first.width = Length::points(40.0f);
   first.height = Length::points(20.0f);
   first.margin = {10.0f, 5.0f, 0.0f, 0.0f};
 
-  Style clamped = {};
+  LayoutStyle clamped = {};
   clamped.width = Length::points(200.0f);
   clamped.height = Length::points(10.0f);
   clamped.max_width = Length::points(90.0f);
   clamped.min_height = Length::points(24.0f);
 
-  Style absolute = {};
+  LayoutStyle absolute = {};
   absolute.position = PositionType::Absolute;
   absolute.position_inset = {120.0f, 0.0f, 35.0f, 0.0f};
   absolute.width = Length::points(20.0f);
@@ -209,7 +209,7 @@ static bool yoga_applies_margins_min_max_and_absolute_positioning(void) {
 static bool yoga_applies_wrap_and_row_gap(void) {
   UiTree tree;
 
-  Style row = {};
+  LayoutStyle row = {};
   row.width = Length::points(100.0f);
   row.height = Length::points(80.0f);
   row.direction = FlexDirection::Row;
@@ -218,7 +218,7 @@ static bool yoga_applies_wrap_and_row_gap(void) {
   row.align_content = AlignItems::Start;
   row.row_gap = 6.0f;
 
-  Style child = {};
+  LayoutStyle child = {};
   child.width = Length::points(60.0f);
   child.height = Length::points(20.0f);
 
@@ -252,7 +252,7 @@ static bool yoga_applies_wrap_and_row_gap(void) {
 static bool yoga_applies_percent_auto_edges_gap_and_layout_readback(void) {
   UiTree tree;
 
-  Style panel = {};
+  LayoutStyle panel = {};
   panel.width = Length::points(200.0f);
   panel.height = Length::points(100.0f);
   panel.direction = FlexDirection::Row;
@@ -263,7 +263,7 @@ static bool yoga_applies_percent_auto_edges_gap_and_layout_readback(void) {
   panel.border_widths.top = StyleValue::points(3.0f);
   panel.gap = StyleValue::percent(10.0f);
 
-  Style child = {};
+  LayoutStyle child = {};
   child.width = Length::points(20.0f);
   child.height = Length::points(10.0f);
 
@@ -298,19 +298,19 @@ static bool yoga_applies_percent_auto_edges_gap_and_layout_readback(void) {
 static bool yoga_applies_auto_margin_and_percent_position(void) {
   UiTree tree;
 
-  Style row = {};
+  LayoutStyle row = {};
   row.width = Length::points(100.0f);
   row.height = Length::points(40.0f);
   row.direction = FlexDirection::Row;
   row.align_items = AlignItems::Start;
 
-  Style centered = {};
+  LayoutStyle centered = {};
   centered.width = Length::points(20.0f);
   centered.height = Length::points(10.0f);
   centered.margin.left = StyleValue::auto_value();
   centered.margin.right = StyleValue::auto_value();
 
-  Style absolute = {};
+  LayoutStyle absolute = {};
   absolute.position = PositionType::Absolute;
   absolute.position_inset.left = StyleValue::percent(50.0f);
   absolute.position_inset.top = StyleValue::percent(25.0f);
@@ -348,26 +348,26 @@ static bool yoga_applies_auto_margin_and_percent_position(void) {
 static bool yoga_applies_direction_box_sizing_flex_and_aspect_ratio(void) {
   UiTree tree;
 
-  Style row = {};
+  LayoutStyle row = {};
   row.layout_direction = LayoutDirection::Rtl;
   row.width = Length::points(120.0f);
   row.height = Length::points(40.0f);
   row.direction = FlexDirection::Row;
   row.align_items = AlignItems::Start;
 
-  Style fixed = {};
+  LayoutStyle fixed = {};
   fixed.width = Length::points(40.0f);
   fixed.height = Length::points(20.0f);
 
-  Style flexible = {};
+  LayoutStyle flexible = {};
   flexible.flex = 1.0f;
   flexible.height = Length::points(20.0f);
 
-  Style aspect = {};
+  LayoutStyle aspect = {};
   aspect.width = Length::points(30.0f);
   aspect.aspect_ratio = 2.0f;
 
-  Style content_box = {};
+  LayoutStyle content_box = {};
   content_box.box_sizing = BoxSizing::ContentBox;
   content_box.width = Length::points(100.0f);
   content_box.height = Length::points(20.0f);
@@ -413,24 +413,24 @@ static bool yoga_applies_direction_box_sizing_flex_and_aspect_ratio(void) {
 static bool yoga_applies_flex_shrink_and_reports_overflow(void) {
   UiTree tree;
 
-  Style shrink_row = {};
+  LayoutStyle shrink_row = {};
   shrink_row.width = Length::points(100.0f);
   shrink_row.height = Length::points(30.0f);
   shrink_row.direction = FlexDirection::Row;
   shrink_row.align_items = AlignItems::Start;
 
-  Style shrinking = {};
+  LayoutStyle shrinking = {};
   shrinking.width = Length::points(80.0f);
   shrinking.height = Length::points(10.0f);
   shrinking.flex_shrink = 1.0f;
 
-  Style overflow_row = {};
+  LayoutStyle overflow_row = {};
   overflow_row.width = Length::points(50.0f);
   overflow_row.height = Length::points(30.0f);
   overflow_row.direction = FlexDirection::Row;
   overflow_row.align_items = AlignItems::Start;
 
-  Style wide = {};
+  LayoutStyle wide = {};
   wide.width = Length::points(80.0f);
   wide.height = Length::points(10.0f);
   wide.flex_shrink = 0.0f;
@@ -479,18 +479,18 @@ static bool yoga_uses_retained_baseline_function_and_node_flags(void) {
   float low_baseline = 10.0f;
   float high_baseline = 20.0f;
 
-  Style row = {};
+  LayoutStyle row = {};
   row.width = Length::points(100.0f);
   row.height = Length::points(40.0f);
   row.direction = FlexDirection::Row;
   row.align_items = AlignItems::Baseline;
 
-  Style low = {};
+  LayoutStyle low = {};
   low.width = Length::points(20.0f);
   low.height = Length::points(30.0f);
   low.node_type = LayoutNodeType::Text;
 
-  Style high = {};
+  LayoutStyle high = {};
   high.width = Length::points(20.0f);
   high.height = Length::points(20.0f);
   high.is_reference_baseline = true;
@@ -531,13 +531,13 @@ static bool yoga_uses_retained_baseline_function_and_node_flags(void) {
 static bool yoga_adapter_accepts_layout_config(void) {
   UiTree tree;
 
-  Style row = {};
+  LayoutStyle row = {};
   row.width = Length::points(100.0f);
   row.height = Length::points(40.0f);
   row.direction = FlexDirection::Row;
   row.align_items = AlignItems::Start;
 
-  Style child = {};
+  LayoutStyle child = {};
   child.width = Length::points(20.0f);
   child.height = Length::points(10.0f);
 
@@ -584,7 +584,7 @@ static bool yoga_uses_retained_measure_function(void) {
   UiTree tree;
   MeasureProbe probe = {};
 
-  Style panel = {};
+  LayoutStyle panel = {};
   panel.width = Length::points(160.0f);
   panel.height = Length::points(80.0f);
   panel.align_items = AlignItems::Start;

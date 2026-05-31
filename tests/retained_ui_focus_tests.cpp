@@ -48,7 +48,7 @@ static bool layout_tree(FocusTree *out, bool show_modal = false) {
   UiElement modal = show_modal
                         ? Dialog({
                               .key = "modal",
-                              .style =
+                              .layout =
                                   {
                                       .align_items = AlignItems::Start,
                                       .width = Length::points(180.0f),
@@ -67,7 +67,7 @@ static bool layout_tree(FocusTree *out, bool show_modal = false) {
 
   UiElement root = Box({
       .key = "root",
-      .style =
+      .layout =
           {
               .align_items = AlignItems::Start,
               .width = Length::points(320.0f),

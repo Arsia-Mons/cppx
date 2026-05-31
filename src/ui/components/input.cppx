@@ -214,7 +214,7 @@ void publish_change(const std::function<void(const std::string &)> &on_change,
   };
 
   const ::ui::VisualStyle visual =
-      ::ui::resolve(::ui::use_theme().input, props.style_override,
+      ::ui::resolve(::ui::use_theme().input, props.style,
                     detail::interaction_state(props.disabled));
 
   return <detail.Host
@@ -222,7 +222,7 @@ void publish_change(const std::function<void(const std::string &)> &on_change,
     key={props.key}
     id={props.id}
     idOffset={props.id_offset}
-    style={detail::control_layout_style(props.style)}
+    style={detail::control_layout_style(props.layout)}
     visual={visual}
     text={::ui::HostTextProps{.value = props.value}}
     interaction={detail::interaction_from_props(props, true)}

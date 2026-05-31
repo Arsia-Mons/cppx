@@ -43,14 +43,14 @@ const char *confirm_body_key(uint32_t generation) {
       "Dialog",
       components::DialogProps{
           .key = "scrim",
-          .style =
+          .layout =
               {
                   .align_items = ::ui::AlignItems::Center,
                   .justify_content = ::ui::JustifyContent::Center,
                   .width = ::ui::Length::percent(100.0f),
                   .height = ::ui::Length::percent(100.0f),
               },
-          .style_override = tokens::fill_patch({0, 0, 0, 160}),
+          .style = tokens::fill_patch({0, 0, 0, 160}),
           .children =
               ::ui::children(
                   {
@@ -58,14 +58,14 @@ const char *confirm_body_key(uint32_t generation) {
                           "Box",
                           components::BoxProps{
                               .key = "panel",
-                              .style =
+                              .layout =
                                   {
                                       .width = ::ui::Length::points(360.0f),
                                       .padding = {18.0f, 18.0f, 18.0f, 18.0f},
                                       .gap = 12.0f,
                                       .border_width = 1.0f,
                                   },
-                              .style_override = tokens::panel_patch({18, 26, 32, 255},
+                              .style = tokens::panel_patch({18, 26, 32, 255},
                                                             {92, 116, 126, 255}),
                               .children = ::ui::children(
                                   {
@@ -74,13 +74,13 @@ const char *confirm_body_key(uint32_t generation) {
                                           components::TextProps{
                                               .key = "title",
                                               .value = title,
-                                              .style =
+                                              .layout =
                                                   {
                                                       .height =
                                                           ::ui::Length::points(
                                                               24.0f),
                                                   },
-                                              .style_override = tokens::text_patch(
+                                              .style = tokens::text_patch(
                                                   {240, 248, 244, 255}, 22),
                                           },
                                           components::Text),
@@ -89,13 +89,13 @@ const char *confirm_body_key(uint32_t generation) {
                                           components::TextProps{
                                               .key = "message",
                                               .value = message,
-                                              .style =
+                                              .layout =
                                                   {
                                                       .height =
                                                           ::ui::Length::points(
                                                               18.0f),
                                                   },
-                                              .style_override = tokens::text_patch(
+                                              .style = tokens::text_patch(
                                                   {202, 218, 216, 255}, 15),
                                           },
                                           components::Text),
@@ -103,7 +103,7 @@ const char *confirm_body_key(uint32_t generation) {
                                           "Box",
                                           components::BoxProps{
                                               .key = "actions",
-                                              .style =
+                                              .layout =
                                                   {
                                                       .direction =
                                                           ::ui::FlexDirection::

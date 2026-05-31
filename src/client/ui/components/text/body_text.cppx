@@ -50,7 +50,7 @@ using ::ui::components::TextProps;
     color = tokens::kTextWeaponDetailOff;
     break;
   }
-  return <Text key={props.key} value={props.value} style={{.height = ::ui::Length::points(height)}} style_override={tokens::text_patch(color, font)} />
+  return <Text key={props.key} value={props.value} layout={{.height = ::ui::Length::points(height)}} style={tokens::text_patch(color, font)} />
 }
 
 } // namespace shooter

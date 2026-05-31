@@ -15,7 +15,11 @@ namespace ui {
 
 constexpr int UI_RETAINED_MAX_ELEMENTS = 384;
 constexpr int UI_RETAINED_MAX_CHILD_ELEMENTS = 384;
-constexpr int UI_RETAINED_ELEMENT_ARENA_BYTES = 65536;
+// Per-frame arena for copied component-prop records. Each props struct now
+// embeds a StyleStatePatch `style` (seven StylePatch slots), so a single record
+// is ~2.3 KB; a complex screen (the loadout) instantiates dozens, so the arena
+// is sized to hold them with headroom rather than the former 64 KB.
+constexpr int UI_RETAINED_ELEMENT_ARENA_BYTES = 262144;
 constexpr int UI_RETAINED_MAX_ELEMENT_DESTRUCTORS = 512;
 constexpr int UI_RETAINED_STRING_ARENA_BYTES = 8192;
 
@@ -68,7 +72,7 @@ struct HostProps {
   const char *key = nullptr;
   const char *id = nullptr;
   int id_offset = 0;
-  Style style = {};
+  LayoutStyle style = {};
   VisualStyle visual = {}; // dense resolved paint (dual-path; see styling design)
   HostTextProps text = {};
   NodeInteraction interaction = {};
@@ -151,7 +155,7 @@ public:
   UiElement host(HostKind kind, const HostProps &props);
   UiElement box(const HostProps &props);
   UiElement text(const char *value, const char *key = nullptr,
-                 const Style &style = {});
+                 const LayoutStyle &style = {});
   UiElement provider(const char *name, ReactContext *context, void *value,
                      UiChildren children, const char *key = nullptr);
 
@@ -267,7 +271,7 @@ UiElement fragment(UiChildren children);
 UiElement host(HostKind kind, const HostProps &props);
 UiElement box(const HostProps &props);
 UiElement text(const char *value, const char *key = nullptr,
-               const Style &style = {});
+               const LayoutStyle &style = {});
 UiElement provider(const char *name, ReactContext *context, void *value,
                    UiChildren children, const char *key = nullptr);
 const char *copy_string(const char *value);

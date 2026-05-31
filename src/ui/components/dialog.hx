@@ -19,8 +19,8 @@ struct DialogProps {
   std::function<void(const ::ui::TextInputEvent &)> on_text_input = {};
   std::function<void(const ::ui::TextEditingEvent &)> on_text_editing = {};
   bool modal = true;
-  ::ui::Style style = {};
-  ::ui::StylePatch style_override = {}; // sparse paint overlay over theme.dialog
+  ::ui::LayoutStyle layout = {};
+  ::ui::StyleStatePatch style = {}; // per-state paint overlay over theme.dialog
   ::ui::UiChildren children = {};
 };
 

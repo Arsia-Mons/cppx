@@ -594,23 +594,35 @@ static bool test_theme_ownership(void) {
 }
 
 static bool test_app_button_variants_distinct(void) {
-  // The cva variant table must paint each non-default variant distinctly, and
-  // leave Secondary as the empty patch (== the theme's default slate button).
+  // The cva variant table must paint each non-default variant distinctly via its
+  // OWN base slot, and leave Secondary as the empty patch (== the theme's
+  // default slate button).
   CHECK(shooter::app_button_variant_patch(shooter::AppButtonVariant::Danger)
-            .background.set);
+            .base.background.set);
   CHECK(shooter::app_button_variant_patch(shooter::AppButtonVariant::Primary)
-            .background.set);
+            .base.background.set);
   CHECK(shooter::app_button_variant_patch(shooter::AppButtonVariant::Primary)
-            .background.value !=
+            .base.background.value !=
         shooter::app_button_variant_patch(shooter::AppButtonVariant::Danger)
-            .background.value);
+            .base.background.value);
   CHECK(shooter::app_button_variant_patch(shooter::AppButtonVariant::Ghost)
-                .background.set &&
+                .base.background.set &&
         shooter::app_button_variant_patch(shooter::AppButtonVariant::Ghost)
-                .background.value.a == 0);
+                .base.background.value.a == 0);
   // Secondary is the theme default (empty patch):
   CHECK(!shooter::app_button_variant_patch(shooter::AppButtonVariant::Secondary)
-             .background.set);
+             .base.background.set);
+
+  // Each non-Secondary variant OWNS its hover slot so it no longer reverts to
+  // the slate hover chrome (the whole point of the state-aware patch).
+  CHECK(shooter::app_button_variant_patch(shooter::AppButtonVariant::Primary)
+            .hover.background.set);
+  CHECK(shooter::app_button_variant_patch(shooter::AppButtonVariant::Danger)
+            .hover.background.set);
+  CHECK(shooter::app_button_variant_patch(shooter::AppButtonVariant::Ghost)
+            .hover.background.set);
+  CHECK(!shooter::app_button_variant_patch(shooter::AppButtonVariant::Secondary)
+             .hover.background.set);
 
   // Resolved through the slate Button base, the variants must still differ and
   // Secondary must collapse to the bare base (proves the patch wins over base).
@@ -628,6 +640,35 @@ static bool test_app_button_variants_distinct(void) {
       rest);
   CHECK(primary.background != danger.background);
   CHECK(secondary.background == btn.base.background);
+
+  // On hover, each branded variant keeps its OWN look (the variant's hover
+  // patch wins over the theme's slate hover delta).
+  const ::ui::InteractionState hovered{.hovered = true};
+  const ::ui::VisualStyle primary_hover = ::ui::resolve(
+      btn, shooter::app_button_variant_patch(shooter::AppButtonVariant::Primary),
+      hovered);
+  const ::ui::VisualStyle ghost_hover = ::ui::resolve(
+      btn, shooter::app_button_variant_patch(shooter::AppButtonVariant::Ghost),
+      hovered);
+  // Primary hover != Primary base (it lightens) and != the slate hover a plain
+  // Secondary would show.
+  const ::ui::VisualStyle secondary_hover = ::ui::resolve(
+      btn,
+      shooter::app_button_variant_patch(shooter::AppButtonVariant::Secondary),
+      hovered);
+  CHECK(primary_hover.background != primary.background);
+  CHECK(primary_hover.background != secondary_hover.background);
+  // Ghost hover paints its own subtle wash rather than the slate hover fill.
+  // The GRADIENT is the fill (draw_command_builder.cpp:258), so assert on it,
+  // not on background: a bare-background wash would leave the theme's slate
+  // hover gradient intact and silently fail to fix the revert-to-slate bug.
+  CHECK(ghost_hover.gradient.stop_count > 0);
+  CHECK(ghost_hover.gradient.stops[0].color == (::ui::Color{255, 255, 255, 18}));
+  CHECK(ghost_hover.gradient.stops[0].color !=
+        secondary_hover.gradient.stops[0].color);
+  // ...and a hovered Ghost stays borderless (no slate hover border leaks in).
+  CHECK(ghost_hover.border.width.top == 0.0f);
+  CHECK(secondary_hover.border.width.top != 0.0f);
   return true;
 }
 

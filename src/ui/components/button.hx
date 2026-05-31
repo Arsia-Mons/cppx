@@ -20,14 +20,14 @@ struct ButtonProps {
   const char *label = nullptr;
   std::function<void(const ::ui::ActivationEvent &)> on_activate = {};
   ::ui::UiChildren children = {};
-  ::ui::Style style = {
+  ::ui::LayoutStyle layout = {
       .align_items = ::ui::AlignItems::Center,
       .justify_content = ::ui::JustifyContent::Center,
       .width = ::ui::Length::points(132.0f),
       .height = ::ui::Length::points(38.0f),
       .padding = {14.0f, 14.0f, 8.0f, 8.0f},
   };
-  ::ui::StylePatch style_override = {}; // sparse paint overlay over theme.button
+  ::ui::StyleStatePatch style = {}; // per-state paint overlay over theme.button
 };
 
 ::ui::UiElement Button(const ButtonProps &props);

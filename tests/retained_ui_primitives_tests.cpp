@@ -44,7 +44,7 @@ static bool html_primitives_write_semantic_metadata_and_layout(void) {
 
   UiElement root = Box({
       .key = "root",
-      .style =
+      .layout =
           {
               .align_items = AlignItems::Start,
               .width = Length::points(360.0f),
@@ -73,12 +73,12 @@ static bool html_primitives_write_semantic_metadata_and_layout(void) {
               .key = "card",
               .id = "ComposedCard",
               .focusable = true,
-              .style =
+              .layout =
                   {
                       .width = Length::points(120.0f),
                       .height = Length::points(44.0f),
                   },
-              .style_override = ::ui::patch().background({20, 28, 32, 255}),
+              .style = ::ui::patch().background({20, 28, 32, 255}),
               .children = ::ui::children({
                   Text({
                       .key = "label",

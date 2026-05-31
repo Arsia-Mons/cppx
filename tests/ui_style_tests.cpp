@@ -57,15 +57,6 @@ static bool test_apply_only_set_fields() {
   return true;
 }
 
-static bool test_merge_src_wins() {
-  StylePatch dst = patch().background({1, 1, 1, 255}).corner_radius(4.f);
-  StylePatch src = patch().background({2, 2, 2, 255});
-  merge(dst, src);
-  CHECK(dst.background.set && dst.background.value == (Color{2, 2, 2, 255}));
-  CHECK(dst.corner_radius.set && dst.corner_radius.value == 4.f); // untouched
-  return true;
-}
-
 static bool test_patch_builder() {
   StylePatch p = patch().background({5, 6, 7, 255}).corner_radius(6.f);
   CHECK(p.background.set && p.corner_radius.set);
@@ -108,8 +99,8 @@ static bool test_default_theme() {
 
 int main() {
   bool ok = test_opt_presence() && test_apply_only_set_fields() &&
-            test_merge_src_wins() && test_patch_builder() &&
-            test_measurer_store() && test_default_theme();
+            test_patch_builder() && test_measurer_store() &&
+            test_default_theme();
   if (!ok) {
     fprintf(stderr, "ui_style_tests: FAIL\n");
     return 1;

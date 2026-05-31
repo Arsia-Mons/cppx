@@ -65,7 +65,7 @@ static bool button_emits_fill_and_border(void) {
 
   UiElement root = Box({
       .key = "root",
-      .style =
+      .layout =
           {
               .align_items = AlignItems::Start,
               .width = Length::points(320.0f),
@@ -74,7 +74,7 @@ static bool button_emits_fill_and_border(void) {
               .gap = 6.0f,
               .border_width = 1.0f,
           },
-      .style_override =
+      .style =
           ::ui::patch()
               .background({18, 27, 32, 245})
               .border({{1.0f, 1.0f, 1.0f, 1.0f},
@@ -86,7 +86,7 @@ static bool button_emits_fill_and_border(void) {
           Text({
               .key = "title",
               .value = "Title",
-              .style_override = ::ui::patch().text(
+              .style = ::ui::patch().text(
                   {.color = {235, 246, 242, 255}, .font_size = 24}),
           }),
           Button({
@@ -122,7 +122,7 @@ static bool button_emits_fill_and_border(void) {
   frame.reset();
   root = Box({
       .key = "root",
-      .style =
+      .layout =
           {
               .align_items = AlignItems::Start,
               .width = Length::points(320.0f),
@@ -131,7 +131,7 @@ static bool button_emits_fill_and_border(void) {
               .gap = 6.0f,
               .border_width = 1.0f,
           },
-      .style_override =
+      .style =
           ::ui::patch()
               .background({18, 27, 32, 245})
               .border({{1.0f, 1.0f, 1.0f, 1.0f},
@@ -143,7 +143,7 @@ static bool button_emits_fill_and_border(void) {
           Text({
               .key = "title",
               .value = "Title",
-              .style_override = ::ui::patch().text(
+              .style = ::ui::patch().text(
                   {.color = {235, 246, 242, 255}, .font_size = 24}),
           }),
           Button({
@@ -298,7 +298,7 @@ static bool focused_button_emits_focus_ring_outline(void) {
 
   UiElement root = Box({
       .key = "root",
-      .style =
+      .layout =
           {
               .align_items = AlignItems::Start,
               .width = Length::points(320.0f),
@@ -365,14 +365,14 @@ static bool default_text_color_is_premultiplied(void) {
   UiElementFrame frame;
   UiElementFrameScope frame_scope(frame);
 
-  // A bare Text node with no style_override: it resolves theme.text.base from
+  // A bare Text node with no style override: it resolves theme.text.base from
   // the default (provider-less) theme, whose text fill is (210,210,214,255) at
   // font_size 14. At full alpha premultiply is a no-op, so to genuinely
   // exercise scaling we assert on the half-alpha selection elsewhere and here
   // on the opaque default identity.
   UiElement root = Box({
       .key = "root",
-      .style =
+      .layout =
           {
               .width = Length::points(200.0f),
               .height = Length::points(80.0f),
@@ -514,7 +514,7 @@ static bool wrapped_text_emits_one_command_per_line(void) {
   // content width (~140px => 20 chars at 7px/char).
   UiElement root = Box({
       .key = "root",
-      .style =
+      .layout =
           {
               .align_items = AlignItems::Start,
               .width = Length::points(140.0f),
@@ -588,7 +588,7 @@ static bool input_caret_uses_measured_advance(void) {
 
   UiElement root = Box({
       .key = "root",
-      .style =
+      .layout =
           {
               .width = Length::points(320.0f),
               .height = Length::points(80.0f),
@@ -617,7 +617,7 @@ static bool input_caret_uses_measured_advance(void) {
   frame.reset();
   root = Box({
       .key = "root",
-      .style =
+      .layout =
           {
               .width = Length::points(320.0f),
               .height = Length::points(80.0f),
@@ -688,7 +688,7 @@ static bool shadow_and_image_emit_in_paint_order(void) {
 
   UiElement root = Box({
       .key = "root",
-      .style =
+      .layout =
           {
               .align_items = AlignItems::Start,
               .width = Length::points(200.0f),
@@ -773,7 +773,7 @@ static bool no_shadow_no_image_when_absent(void) {
 
   UiElement root = Box({
       .key = "root",
-      .style = {.align_items = AlignItems::Start,
+      .layout = {.align_items = AlignItems::Start,
                 .width = Length::points(120.0f),
                 .height = Length::points(80.0f)},
       .children = ::ui::children({
@@ -827,7 +827,7 @@ static bool group_opacity_emits_balanced_layer_brackets(void) {
 
   UiElement root = Box({
       .key = "root",
-      .style = {.align_items = AlignItems::Start,
+      .layout = {.align_items = AlignItems::Start,
                 .width = Length::points(120.0f),
                 .height = Length::points(80.0f)},
       .children = ::ui::children({
@@ -925,7 +925,7 @@ static bool full_opacity_emits_no_layer(void) {
 
   UiElement root = Box({
       .key = "root",
-      .style = {.align_items = AlignItems::Start,
+      .layout = {.align_items = AlignItems::Start,
                 .width = Length::points(120.0f),
                 .height = Length::points(80.0f)},
       .children = ::ui::children({
@@ -975,7 +975,7 @@ static bool hidden_node_emits_nothing(void) {
 
   UiElement root = Box({
       .key = "root",
-      .style = {.align_items = AlignItems::Start,
+      .layout = {.align_items = AlignItems::Start,
                 .width = Length::points(120.0f),
                 .height = Length::points(80.0f)},
       .children = ::ui::children({

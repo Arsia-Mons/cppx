@@ -22,14 +22,14 @@ struct InputProps {
   std::function<void(const ::ui::TextEditingEvent &)> on_text_editing = {};
   const char *value = "";
   std::function<void(const std::string &)> on_change = {};
-  ::ui::Style style = {
+  ::ui::LayoutStyle layout = {
       .align_items = ::ui::AlignItems::Stretch,
       .justify_content = ::ui::JustifyContent::Center,
       .width = ::ui::Length::points(220.0f),
       .height = ::ui::Length::points(36.0f),
       .padding = {8.0f, 8.0f, 8.0f, 8.0f},
   };
-  ::ui::StylePatch style_override = {}; // sparse paint overlay over theme.input
+  ::ui::StyleStatePatch style = {}; // per-state paint overlay over theme.input
 };
 
 ::ui::UiElement Input(const InputProps &props);

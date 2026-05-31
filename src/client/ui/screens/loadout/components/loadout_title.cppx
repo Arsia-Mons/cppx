@@ -9,7 +9,7 @@ using ::ui::components::Text;
 using ::ui::components::TextProps;
 
 ::ui::UiElement LoadoutTitle(const LoadoutTitleProps &props) {
-  return <Text key={props.key} value={props.value} style={{.height = ::ui::Length::points(loadout::kTitleHeight)}} style_override={tokens::text_patch(tokens::kTextTitle, tokens::kFontScreenTitle)} />
+  return <Text key={props.key} value={props.value} layout={{.height = ::ui::Length::points(loadout::kTitleHeight)}} style={tokens::text_patch(tokens::kTextTitle, tokens::kFontScreenTitle)} />
 }
 
 } // namespace shooter

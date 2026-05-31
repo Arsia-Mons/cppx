@@ -37,12 +37,12 @@ float panel_size_width(PanelSize size) {
 } // namespace
 
 ::ui::UiElement Panel(const PanelProps &props) {
-  ::ui::Style style{};
+  ::ui::LayoutStyle layout{};
   ::ui::StylePatch overlay{};
 
   switch (props.variant) {
   case PanelVariant::Hero:
-    style = ::ui::Style{
+    layout = ::ui::LayoutStyle{
         .direction = ::ui::FlexDirection::Column,
         .align_items = ::ui::AlignItems::Center,
         .width = ::ui::Length::points(340.0f),
@@ -54,7 +54,7 @@ float panel_size_width(PanelSize size) {
                                   tokens::kBorderHeroPanel);
     break;
   case PanelVariant::Overlay:
-    style = ::ui::Style{
+    layout = ::ui::LayoutStyle{
         .direction = ::ui::FlexDirection::Column,
         .align_items = ::ui::AlignItems::Center,
         .width = ::ui::Length::points(220.0f),
@@ -65,7 +65,7 @@ float panel_size_width(PanelSize size) {
     overlay = tokens::panel_patch(tokens::kSurfacePanel, tokens::kBorderPanel);
     break;
   case PanelVariant::Sunken:
-    style = ::ui::Style{
+    layout = ::ui::LayoutStyle{
         .direction = ::ui::FlexDirection::Column,
         .align_items = ::ui::AlignItems::Stretch,
         .width = ::ui::Length::points(260.0f),
@@ -78,10 +78,10 @@ float panel_size_width(PanelSize size) {
   }
 
   if (props.size != PanelSize::Auto) {
-    style.width = ::ui::Length::points(panel_size_width(props.size));
+    layout.width = ::ui::Length::points(panel_size_width(props.size));
   }
 
-  return <Box key={props.key} style={style} style_override={overlay}>
+  return <Box key={props.key} layout={layout} style={overlay}>
     {props.children}
   </Box>
 }

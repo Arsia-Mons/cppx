@@ -11,7 +11,7 @@
 # Invariants enforced here (a regression in any of these breaks the design):
 #   1. Opt<T> is the {bool set; T value;} shape.
 #   2. Every StylePatch member is an Opt<...> (no bare-value fields used as sentinels).
-#   3. apply() and merge() gate every field on `.set` ONLY — no value-equality
+#   3. apply() gates every field on `.set` ONLY — no value-equality
 #      presence test (no `==`/`!=` against a sentinel) decides whether to write a field.
 #
 # Structural, comment-stripped scan; no compiler needed.
@@ -101,10 +101,9 @@ def main() -> int:
                     "— authoring presence must be Opt<T>::set, never a value sentinel"
                 )
 
-    # 3. apply()/merge() gate fields on `.set` only — no value-equality presence test.
+    # 3. apply() gates fields on `.set` only — no value-equality presence test.
     for fn_regex, fn_name in (
         (r"\bapply\s*\(\s*VisualStyle", "apply"),
-        (r"\bmerge\s*\(\s*StylePatch", "merge"),
     ):
         fn_body = body_of(code, fn_regex)
         if not fn_body:

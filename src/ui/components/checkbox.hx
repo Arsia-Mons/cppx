@@ -21,7 +21,7 @@ struct CheckboxProps {
   bool checked = false;
   const char *label = nullptr;
   std::function<void(bool)> on_change = {};
-  ::ui::Style style = {
+  ::ui::LayoutStyle layout = {
       .direction = ::ui::FlexDirection::Row,
       .align_items = ::ui::AlignItems::Center,
       .justify_content = ::ui::JustifyContent::Start,
@@ -30,7 +30,7 @@ struct CheckboxProps {
       .padding = {10.0f, 10.0f, 8.0f, 8.0f},
       .gap = 10.0f,
   };
-  ::ui::StylePatch style_override = {}; // sparse paint overlay over theme.checkbox (body)
+  ::ui::StyleStatePatch style = {}; // per-state paint overlay over theme.checkbox (body)
 };
 
 ::ui::UiElement Checkbox(const CheckboxProps &props);

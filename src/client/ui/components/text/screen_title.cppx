@@ -35,7 +35,7 @@ using ::ui::components::TextProps;
     height = 24.0f;
     break;
   }
-  return <Text key={props.key} value={props.value} style={{.height = ::ui::Length::points(height)}} style_override={tokens::text_patch(color, font)} />
+  return <Text key={props.key} value={props.value} layout={{.height = ::ui::Length::points(height)}} style={tokens::text_patch(color, font)} />
 }
 
 } // namespace shooter

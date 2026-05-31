@@ -80,11 +80,11 @@ const char *weapon_tile_key(int index) {
                       components::TextProps{
                           .key = "name",
                           .value = weapon.name,
-                          .style =
+                          .layout =
                               {
                                   .height = ::ui::Length::points(18.0f),
                               },
-                          .style_override = tokens::text_patch({238, 246, 244, 255}, 16),
+                          .style = tokens::text_patch({238, 246, 244, 255}, 16),
                       },
                       components::Text),
                   ::ui::component(
@@ -92,11 +92,11 @@ const char *weapon_tile_key(int index) {
                       components::TextProps{
                           .key = "detail",
                           .value = detail,
-                          .style =
+                          .layout =
                               {
                                   .height = ::ui::Length::points(16.0f),
                               },
-                          .style_override = tokens::text_patch(
+                          .style = tokens::text_patch(
                               disabled ? ::ui::Color{142, 148, 150, 255}
                                        : ::ui::Color{184, 204, 204, 255},
                               12),
@@ -105,8 +105,8 @@ const char *weapon_tile_key(int index) {
               }),
           // Button paint comes from the theme button role (resolved as .visual
           // inside Button); selected/disabled states are conveyed by focus and
-          // the disabled interaction. Only layout fields live in .style.
-          .style =
+          // the disabled interaction. Only layout fields live in .layout.
+          .layout =
               {
                   .align_items = ::ui::AlignItems::Start,
                   .justify_content = ::ui::JustifyContent::Start,

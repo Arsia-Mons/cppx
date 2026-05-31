@@ -22,7 +22,7 @@ struct HostProps {
   const char *key = nullptr;
   const char *id = nullptr;
   int id_offset = 0;
-  ::ui::Style style = {};
+  ::ui::LayoutStyle style = {};
   ::ui::VisualStyle visual = {};
   ::ui::HostTextProps text = {};
   ::ui::NodeInteraction interaction = {};
@@ -100,12 +100,12 @@ inline ::ui::InteractionState interaction_state(bool disabled,
   return st;
 }
 
-// Layout-only seed for a control's Style: reserves the 1px border box in Yoga
-// (style.border_width feeds YGNodeStyleSetBorder) WITHOUT seeding any paint.
-// Controls resolve their paint from the theme as .visual; the renderer reads
-// node.visual exclusively, while this preserves the control's laid-out content
-// box.
-inline ::ui::Style control_layout_style(::ui::Style style = {}) {
+// Layout-only seed for a control's LayoutStyle: reserves the 1px border box in
+// Yoga (style.border_width feeds YGNodeStyleSetBorder) WITHOUT seeding any
+// paint. Controls resolve their paint from the theme as .visual; the renderer
+// reads node.visual exclusively, while this preserves the control's laid-out
+// content box.
+inline ::ui::LayoutStyle control_layout_style(::ui::LayoutStyle style = {}) {
   if (style.border_width <= 0.0f)
     style.border_width = 1.0f;
   return style;

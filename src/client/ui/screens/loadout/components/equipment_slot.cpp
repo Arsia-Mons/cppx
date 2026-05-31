@@ -57,18 +57,18 @@ namespace shooter {
                   components::TextProps{
                       .key = "label",
                       .value = slot_text,
-                      .style =
+                      .layout =
                           {
                               .height = ::ui::Length::points(16.0f),
                           },
-                      .style_override = tokens::text_patch({226, 238, 236, 255}, 14),
+                      .style = tokens::text_patch({226, 238, 236, 255}, 14),
                   },
                   components::Text),
           }),
           // Button paint comes from the theme button role (resolved as .visual
           // inside Button); the selected state is conveyed by focus (autofocus=
-          // selected -> focus ring). Only layout fields live in .style.
-          .style =
+          // selected -> focus ring). Only layout fields live in .layout.
+          .layout =
               {
                   .align_items = ::ui::AlignItems::Start,
                   .justify_content = ::ui::JustifyContent::Center,

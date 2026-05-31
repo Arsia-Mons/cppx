@@ -112,7 +112,7 @@ static bool box_text_and_dialog_elements_return_host_nodes(void) {
 
   UiElement root = Dialog({
       .key = "dialog",
-      .style =
+      .layout =
           {
               .width = Length::points(200.0f),
               .height = Length::points(80.0f),

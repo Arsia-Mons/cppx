@@ -3,7 +3,8 @@
 // StylePatch: the ONE sparse authoring overlay over VisualStyle.
 // Presence is ALWAYS Opt<T>::set — never a value-space sentinel. See design §3.
 // apply(): overlay a patch onto a dense VisualStyle (last-write-wins layering).
-// merge(): overlay a patch onto another patch (src wins, mutates dst).
+// StyleStatePatch: a per-instance override mirroring RoleStyle's state slots; a
+// bare StylePatch implicitly becomes its base-only form.
 
 #include "visual_style.h"
 
@@ -61,29 +62,22 @@ constexpr void apply(VisualStyle &dst, const StylePatch &p) {
     dst.text = p.text.value;
 }
 
-// Overlay src's set fields onto dst. src wins; dst is mutated in place.
-constexpr void merge(StylePatch &dst, const StylePatch &src) {
-  if (src.background.set)
-    dst.background = src.background;
-  if (src.corner_radius.set)
-    dst.corner_radius = src.corner_radius;
-  if (src.border.set)
-    dst.border = src.border;
-  if (src.outline.set)
-    dst.outline = src.outline;
-  if (src.gradient.set)
-    dst.gradient = src.gradient;
-  if (src.image.set)
-    dst.image = src.image;
-  if (src.shadow.set)
-    dst.shadow = src.shadow;
-  if (src.opacity.set)
-    dst.opacity = src.opacity;
-  if (src.hidden.set)
-    dst.hidden = src.hidden;
-  if (src.text.set)
-    dst.text = src.text;
-}
+// Per-instance override with the same interaction-state slots as RoleStyle.
+// resolve() layers each active slot OVER the corresponding theme-role slot. A
+// bare StylePatch implicitly converts to a base-only StyleStatePatch.
+struct StyleStatePatch {
+  StylePatch base{};
+  StylePatch hover{};
+  StylePatch focus_visible{};
+  StylePatch pressed{};
+  StylePatch checked{};
+  StylePatch active{};
+  StylePatch disabled{};
+  StyleStatePatch() = default;
+  StyleStatePatch(StylePatch b) : base(b) {}
+};
+
+static_assert(std::is_trivially_copyable_v<StyleStatePatch>);
 
 // Fluent builder so the set-flag is impossible to forget at authoring sites.
 struct StylePatchBuilder {
@@ -129,6 +123,10 @@ struct StylePatchBuilder {
     return *this;
   }
   operator StylePatch() const { return p; }
+  // Also convert straight to a base-only StyleStatePatch so a builder can be
+  // assigned to a per-instance `style` (paint) prop without an intermediate
+  // StylePatch (C++ forbids chaining two user-defined conversions).
+  operator StyleStatePatch() const { return StyleStatePatch(p); }
 };
 
 inline StylePatchBuilder patch() { return {}; }

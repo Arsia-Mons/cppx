@@ -7,7 +7,7 @@ namespace {
 // Layout-only mark style: the mark's paint (fill on checked, border) is resolved
 // from theme.checkbox_mark as .visual; only the box metrics live here. The 1px
 // border_width reserves the Yoga border box (parity with the prior look).
-::ui::Style checkbox_mark_style() {
+::ui::LayoutStyle checkbox_mark_style() {
   return {
       .width = ::ui::Length::points(18.0f),
       .height = ::ui::Length::points(18.0f),
@@ -37,7 +37,7 @@ namespace {
   const ::ui::Theme &theme = ::ui::use_theme();
   // The body does NOT react to `checked` (only the mark does).
   const ::ui::VisualStyle box_visual = ::ui::resolve(
-      theme.checkbox, props.style_override, detail::interaction_state(props.disabled));
+      theme.checkbox, props.style, detail::interaction_state(props.disabled));
   const ::ui::VisualStyle mark_visual = ::ui::resolve(
       theme.checkbox_mark, {}, detail::interaction_state(props.disabled, props.checked));
 
@@ -46,7 +46,7 @@ namespace {
     key={props.key}
     id={props.id}
     idOffset={props.id_offset}
-    style={detail::control_layout_style(props.style)}
+    style={detail::control_layout_style(props.layout)}
     visual={box_visual}
     text={::ui::HostTextProps{.value = props.label}}
     interaction={interaction}

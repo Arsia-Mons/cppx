@@ -30,10 +30,21 @@ constexpr ::ui::Color kBorderHeroPanel = {83, 108, 118, 255};
 constexpr ::ui::Color kBorderHudBand = {82, 106, 118, 255};
 
 // ---- Accent / semantic action colors (AppButton variant fills) ----
+// Each variant owns a base + hover (lighter) + pressed (darker) on-palette
+// triple so the AppButton variant patch can supply its own interaction states
+// rather than reverting to the theme's slate hover/pressed deltas.
 constexpr ::ui::Color kAccent = {96, 165, 250, 255};        // slate accent blue
 constexpr ::ui::Color kAccentBorder = {130, 188, 255, 255}; // brighter accent edge
+constexpr ::ui::Color kAccentHover = {124, 184, 255, 255};  // lighter on hover
+constexpr ::ui::Color kAccentHoverBorder = {158, 206, 255, 255};
+constexpr ::ui::Color kAccentPressed = {72, 138, 222, 255}; // darker on press
+constexpr ::ui::Color kAccentPressedBorder = {110, 168, 235, 255};
 constexpr ::ui::Color kDanger = {220, 60, 60, 255};         // destructive red
 constexpr ::ui::Color kDangerBorder = {240, 110, 110, 255}; // brighter danger edge
+constexpr ::ui::Color kDangerHover = {236, 84, 84, 255};    // lighter on hover
+constexpr ::ui::Color kDangerHoverBorder = {250, 134, 134, 255};
+constexpr ::ui::Color kDangerPressed = {190, 44, 44, 255};  // darker on press
+constexpr ::ui::Color kDangerPressedBorder = {220, 92, 92, 255};
 
 // ---- Text ----
 constexpr ::ui::Color kTextTitle = {236, 246, 242, 255};
@@ -72,7 +83,7 @@ inline ::ui::StylePatch fill_patch(::ui::Color background) {
 }
 
 // Solid-fill surface with a uniform border (width feeds layout via
-// Style.border_width; the color is carried here on all four sides).
+// LayoutStyle.border_width; the color is carried here on all four sides).
 inline ::ui::StylePatch panel_patch(::ui::Color background, ::ui::Color border,
                                     float border_width = kBorderWidth) {
   return ::ui::patch()

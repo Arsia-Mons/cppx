@@ -2,7 +2,7 @@
 
 // AppButton: the one shared semantic button. Adapts ui::components::Button.
 // Public props read as product/UI intent (variant/size/label/on_press); host
-// details (id_offset/autofocus/Style/ActivationEvent) stay inside the impl.
+// details (id_offset/autofocus/LayoutStyle/ActivationEvent) stay inside the impl.
 
 #include "ui/components/common.h" // ::ui::UiChildren, ::ui::UiElement
 #include "client/ui/components/actions/app_button_variant.h"

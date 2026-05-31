@@ -10,7 +10,7 @@ using ::ui::components::Box;
 using ::ui::components::BoxProps;
 
 ::ui::UiElement LoadoutBody(const LoadoutBodyProps &props) {
-  return <Box key={props.key} style={{.direction = ::ui::FlexDirection::Row, .align_items = ::ui::AlignItems::Start, .gap = loadout::kBodyGap}}>
+  return <Box key={props.key} layout={{.direction = ::ui::FlexDirection::Row, .align_items = ::ui::AlignItems::Start, .gap = loadout::kBodyGap}}>
     {props.children}
   </Box>
 }

@@ -22,7 +22,7 @@ using ::ui::components::ButtonProps;
       on_select();
     };
   }
-  ::ui::Style style{
+  ::ui::LayoutStyle layout{
       .align_items = ::ui::AlignItems::Center,
       .justify_content = ::ui::JustifyContent::Center,
       .width = ::ui::Length::points(loadout::kTabWidth),
@@ -30,11 +30,11 @@ using ::ui::components::ButtonProps;
       .padding = {loadout::kTabPadX, loadout::kTabPadX, loadout::kTabPadY,
                   loadout::kTabPadY},
   };
-  return <Button key={props.key} id={props.control_id} accessibility={{.role = ::ui::SemanticRole::Tab}} label={props.label} onActivate={on_activate} style={style} />
+  return <Button key={props.key} id={props.control_id} accessibility={{.role = ::ui::SemanticRole::Tab}} label={props.label} onActivate={on_activate} layout={layout} />
 }
 
 ::ui::UiElement LoadoutTabs(const LoadoutTabsProps &props) {
-  return <Box key={props.key} style={{.direction = ::ui::FlexDirection::Row, .align_items = ::ui::AlignItems::Start, .gap = loadout::kTabsGap}}>
+  return <Box key={props.key} layout={{.direction = ::ui::FlexDirection::Row, .align_items = ::ui::AlignItems::Start, .gap = loadout::kTabsGap}}>
     {props.children}
   </Box>
 }

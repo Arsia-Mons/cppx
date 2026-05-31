@@ -378,7 +378,7 @@ ComputedEdgeSizes read_layout_edges(YGNodeRef node,
 
 void apply_style(YGNodeRef yoga_node, const NodeSnapshot &snapshot,
                  LayoutViewport viewport) {
-  const Style &style = snapshot.style;
+  const LayoutStyle &style = snapshot.style;
   YGNodeStyleSetDirection(yoga_node,
                           map_layout_direction(style.layout_direction));
   YGNodeStyleSetBoxSizing(yoga_node, map_box_sizing(style.box_sizing));

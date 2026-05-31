@@ -22,11 +22,11 @@ namespace shooter {
         components::TextProps{
             .key = key,
             .value = value,
-            .style =
+            .layout =
                 {
                     .height = ::ui::Length::points(22.0f),
                 },
-            .style_override = tokens::text_patch({224, 238, 236, 255}, 18),
+            .style = tokens::text_patch({224, 238, 236, 255}, 18),
         },
         components::Text);
   };
@@ -35,7 +35,7 @@ namespace shooter {
       "Box",
       components::BoxProps{
           .key = "band",
-          .style =
+          .layout =
               {
                   .direction = ::ui::FlexDirection::Row,
                   .align_items = ::ui::AlignItems::Center,
@@ -45,7 +45,7 @@ namespace shooter {
                   .gap = 18.0f,
                   .border_width = 1.0f,
               },
-          .style_override = tokens::panel_patch({18, 24, 28, 245}, {82, 106, 118, 255}),
+          .style = tokens::panel_patch({18, 24, 28, 245}, {82, 106, 118, 255}),
           .children = ::ui::children({
               hud_text("health", health),
               hud_text("armor", armor),

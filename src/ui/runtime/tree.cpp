@@ -52,7 +52,7 @@ void UiTree::begin_frame(float width, float height) {
   stack_count_ = 0;
   unmounted_count_ = 0;
 
-  Style root_style = {};
+  LayoutStyle root_style = {};
   root_style.width = Length::points(width);
   root_style.height = Length::points(height);
 
@@ -85,12 +85,12 @@ bool UiTree::end_frame() {
   return error_count_ == 0;
 }
 
-NodeId UiTree::begin_node(const char *type, const Style &style) {
+NodeId UiTree::begin_node(const char *type, const LayoutStyle &style) {
   return begin_keyed_node(type, nullptr, style);
 }
 
 NodeId UiTree::begin_keyed_node(const char *type, const char *key,
-                                const Style &style) {
+                                const LayoutStyle &style) {
   if (stack_count_ <= 0 || stack_count_ >= UI_RETAINED_MAX_DEPTH) {
     report_error();
     return 0;
@@ -426,7 +426,7 @@ const UiTree::Node *UiTree::find(NodeId id) const {
 }
 
 UiTree::Node *UiTree::ensure_node(NodeId id, NodeId parent_id, const char *type,
-                                  const char *key, const Style &style) {
+                                  const char *key, const LayoutStyle &style) {
   if (id == 0) {
     report_error();
     return nullptr;

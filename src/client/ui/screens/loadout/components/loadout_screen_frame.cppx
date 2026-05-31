@@ -10,14 +10,14 @@ using ::ui::components::Dialog;
 using ::ui::components::DialogProps;
 
 ::ui::UiElement LoadoutScreenFrame(const LoadoutScreenFrameProps &props) {
-  ::ui::Style style{
+  ::ui::LayoutStyle layout{
       .width = ::ui::Length::percent(100.0f),
       .height = ::ui::Length::percent(100.0f),
       .padding = {loadout::kFramePadding, loadout::kFramePadding,
                   loadout::kFramePadding, loadout::kFramePadding},
       .gap = loadout::kFrameGap,
   };
-  return <Dialog key={props.key} modal={!props.confirm_open} style={style} style_override={tokens::fill_patch(loadout::kRootBg)}>
+  return <Dialog key={props.key} modal={!props.confirm_open} layout={layout} style={tokens::fill_patch(loadout::kRootBg)}>
     {props.children}
   </Dialog>
 }
