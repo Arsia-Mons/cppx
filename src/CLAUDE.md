@@ -34,7 +34,7 @@ Allowed dependency direction: `client/ui/screens → client/ui → game → ui �
 
 - `ui/` must not know about game concepts.
 - `game/` must not include SDL or UI headers.
-- UI must queue mutations during the declaration pass via `client::ui::ClientUi::queue_deferred_mutation` (see `client/ui/client_ui.h`).
+- UI must queue mutations during the declaration pass via `client::ui::ClientUi::queue_deferred_mutation` (see `client/ui/app_shell/client_ui.h`).
 - Game-specific UI screens live under `client/ui/screens/<screen>/`, not in `game/`.
 
 ## Tests

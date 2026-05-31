@@ -1,14 +1,21 @@
 # src/client/ui/screens/loadout/
 
-The loadout screen — the only screen complex enough to need its own components dir + a screen-local React-style provider. Treat this as the reference template for screens that grow beyond a single `<screen>_screen.{h,cpp}` file.
+The loadout screen — the most complex screen, fully decomposed into semantic components + a screen-local React-style provider. Treat this as the reference template for a feature module: a thin screen entry point, a `_state` provider, public action hooks in `_actions`, and a `components/` dir with one semantic component per file.
 
 ## Files
 
-- `loadout_screen.{h,cpp}` — `LoadoutScreen` class (no member fields; the class is just the `UiScreen` entry point) + `LoadoutScreenView` body + `use_push_loadout_screen`.
+- `loadout_screen.{h,cpp}` — `LoadoutScreen` class (no member fields; just the `UiScreen` entry point) + `LoadoutScreenView` (declares the `use_state` slots + `LoadoutProvider` wrap, renders `LoadoutScreenBody`). Re-includes `loadout_actions.h` so consumers resolve the nav hook via this header.
+- `loadout_actions.{h,cpp}` — `use_push_loadout_screen()` (public navigation hook).
 - `loadout_state.{h,cpp}` — `LoadoutPendingAction` + `LoadoutContextValue` + the `LoadoutContext` provider (`use_loadout_context_value`, `loadout_provider_push/pop`) + hooks (`use_compare_enabled`, `use_set_compare_enabled`, `use_selected_weapon_tile`, `use_set_selected_weapon_tile`, `use_pending_loadout_action`, `use_set_pending_loadout_action`, `use_clear_pending_loadout_action`).
-- `components/weapon_tile.{h,cpp}` — `WeaponTile` + tab constants (`LOADOUT_TAB_WEAPONS`, `LOADOUT_TAB_GEAR`) + helpers.
-- `components/equipment_slot.{h,cpp}` — `EquipmentSlot`.
-- `components/confirm_dialog.{h,cpp}` — `LoadoutConfirmDialog` (no props; reads pending state from `LoadoutContext`).
+- `loadout_tokens.h` — `shooter::loadout` feature-local tokens (root dialog bg, tab/grid/details geometry); reuses the shared `shooter::tokens` builders.
+- `components/loadout_content.{h,cpp}` — `LoadoutScreenBody`: holds all loadout hook reads + the action closures (incl. the gear-tab 2-deferred-write contract), returns the hand-written `::ui::fragment(LoadoutConfirmDialog, LoadoutScreenFrame{...})`. Plain `.cpp` (a fragment body can't be JSX — the transpiler enters JSX only on a leading `<`).
+- `components/loadout_screen_frame.{hx,cppx}` — `LoadoutScreenFrame` (root `Dialog`, owns `modal=!confirm_open`).
+- `components/loadout_title.{hx,cppx}`, `loadout_tabs.{hx,cppx}` (`LoadoutTabs` + compound `LoadoutTabs::Tab`, role=Tab internal), `loadout_body.{hx,cppx}`, `loadout_weapon_grid.{hx,cppx}` (reproduces the per-tab grid rows), `loadout_details.{hx,cppx}` (`Panel` Sunken + the frozen ordered action/slot children).
+- `components/weapon_tile.{h,cpp}` — `WeaponTile` + tab constants (`LOADOUT_TAB_WEAPONS`, `LOADOUT_TAB_GEAR`, `WEAPON_TILE_CONTROL_ID`) + helpers; adapts `ui::components::Button` directly (bespoke tile geometry).
+- `components/equipment_slot.{h,cpp}` — `EquipmentSlot` (adapts `Button` directly).
+- `components/confirm_dialog.{h,cpp}` — `LoadoutConfirmDialog` (reads pending state from `LoadoutContext`).
+
+`weapon_tile`/`equipment_slot`/`confirm_dialog` stay plain `.h/.cpp`: they are already clean domain components (semantic props, adapt primitives directly, `tokens::` paint), so JSX conversion would be cosmetic.
 
 ## Conventions for screen-local state
 

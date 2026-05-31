@@ -2,8 +2,8 @@
 
 // Shared client-UI design tokens (the shadcn "design tokens" analogue for this
 // retained UI). One palette + the three generic visual builders that app-authored
-// surfaces and text paint resolve through. This replaces the per-screen
-// `shooter::theme` namespace that used to live in screen_chrome.hx.
+// surfaces and text paint resolve through. This is the single source of app paint,
+// replacing the former per-screen `shooter::theme` namespace.
 //
 // Tokens-only by design: no component exports, no recipe layer. Each semantic
 // component owns its variant->token switch locally. Colors are STRAIGHT alpha;
@@ -56,7 +56,7 @@ constexpr uint16_t kFontDetail = 12;
 constexpr float kBorderWidth = 1.0f;
 constexpr float kBorderWidthSelected = 2.0f;
 
-// ---- Visual builders (verbatim semantics from the former screen_chrome theme) ----
+// ---- Visual builders (verbatim semantics from the former per-screen theme) ----
 
 // Solid-fill surface (no border).
 inline ::ui::VisualStyle fill_visual(::ui::Color background) {
