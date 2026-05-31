@@ -208,11 +208,12 @@ add_executable(hello
   src/app/game_loop.cpp
   src/client/ui/app_shell/client_ui.cpp
   src/client/ui/app_theme.cpp
-  src/client/ui/components/hud_band.cpp
-  src/client/ui/hooks/shooter_hud.cpp
-  src/client/ui/hooks/shooter_weapons.cpp
-  src/client/ui/app_shell/app_shell_provider.cpp
-  src/client/ui/providers/shooter_provider.cpp
+  src/client/ui/screens/in_game/components/hud_band.cpp
+  src/client/ui/screens/in_game/hooks/use_hud.cpp
+  src/client/ui/screens/loadout/hooks/use_weapons.cpp
+  src/client/ui/providers/app_provider.cpp
+  src/client/ui/providers/navigation_provider.cpp
+  src/client/ui/providers/server_provider.cpp
   src/client/ui/app_shell/navigation/screen_stack.cpp
   src/client/ui/app_shell/ui_pipeline.cpp
   src/client/ui/screens/loadout/components/confirm_dialog.cpp
@@ -220,12 +221,7 @@ add_executable(hello
   src/client/ui/screens/loadout/components/weapon_tile.cpp
   src/client/ui/screens/loadout/loadout_screen.cpp
   src/client/ui/screens/loadout/loadout_state.cpp
-  src/client/ui/screens/loadout/loadout_actions.cpp
   src/client/ui/screens/loadout/components/loadout_content.cpp
-  src/client/ui/screens/main_menu/main_menu_actions.cpp
-  src/client/ui/screens/pause/pause_actions.cpp
-  src/client/ui/screens/options/options_actions.cpp
-  src/client/ui/screens/in_game/in_game_actions.cpp
   ${CLIENT_UI_GENERATED}
   src/platform/control_mailbox.cpp
   src/platform/sdl/input.cpp
@@ -593,6 +589,7 @@ add_executable(client_ui_tests
   tests/client_ui_tests.cpp
   src/react.cpp
   src/client/ui/app_shell/client_ui.cpp
+  src/client/ui/providers/navigation_provider.cpp
   src/client/ui/app_shell/navigation/screen_stack.cpp
   src/ui/runtime/draw_command.cpp
   src/ui/runtime/draw_command_builder.cpp
@@ -623,6 +620,7 @@ add_executable(ui_pipeline_tests
   tests/ui_pipeline_tests.cpp
   src/react.cpp
   src/client/ui/app_shell/client_ui.cpp
+  src/client/ui/providers/navigation_provider.cpp
   src/client/ui/app_shell/navigation/screen_stack.cpp
   src/client/ui/app_shell/ui_pipeline.cpp
   src/ui/runtime/draw_command.cpp
@@ -655,11 +653,12 @@ add_executable(shooter_ui_tests
   src/react.cpp
   src/client/ui/app_shell/client_ui.cpp
   src/client/ui/app_theme.cpp
-  src/client/ui/components/hud_band.cpp
-  src/client/ui/hooks/shooter_hud.cpp
-  src/client/ui/hooks/shooter_weapons.cpp
-  src/client/ui/app_shell/app_shell_provider.cpp
-  src/client/ui/providers/shooter_provider.cpp
+  src/client/ui/screens/in_game/components/hud_band.cpp
+  src/client/ui/screens/in_game/hooks/use_hud.cpp
+  src/client/ui/screens/loadout/hooks/use_weapons.cpp
+  src/client/ui/providers/app_provider.cpp
+  src/client/ui/providers/navigation_provider.cpp
+  src/client/ui/providers/server_provider.cpp
   src/client/ui/app_shell/navigation/screen_stack.cpp
   src/client/ui/app_shell/ui_pipeline.cpp
   src/client/ui/screens/loadout/components/confirm_dialog.cpp
@@ -667,12 +666,7 @@ add_executable(shooter_ui_tests
   src/client/ui/screens/loadout/components/weapon_tile.cpp
   src/client/ui/screens/loadout/loadout_screen.cpp
   src/client/ui/screens/loadout/loadout_state.cpp
-  src/client/ui/screens/loadout/loadout_actions.cpp
   src/client/ui/screens/loadout/components/loadout_content.cpp
-  src/client/ui/screens/main_menu/main_menu_actions.cpp
-  src/client/ui/screens/pause/pause_actions.cpp
-  src/client/ui/screens/options/options_actions.cpp
-  src/client/ui/screens/in_game/in_game_actions.cpp
   ${CLIENT_UI_GENERATED}
   src/game/inventory.cpp
   src/game/economy.cpp

@@ -1,15 +1,19 @@
 #include "main_menu_screen.h"
 
+#include <functional>
+#include <memory>
 #include <stdio.h>
 
-#include "client/ui/app_shell/client_ui.h"
+#include "client/ui/callback_deps.h"
 #include "client/ui/components/actions/actions.h"
 #include "client/ui/components/layout/layout.h"
 #include "client/ui/components/surfaces/surfaces.h"
 #include "client/ui/components/text/text.h"
-#include "client/ui/app_shell/app_shell_provider.h"
-#include "client/ui/screens/in_game/in_game_actions.h"
-#include "client/ui/screens/options/options_actions.h"
+#include "client/ui/hooks/use_app.h"
+#include "client/ui/hooks/use_navigation.h"
+#include "client/ui/hooks/use_server.h"
+#include "client/ui/screens/in_game/in_game_screen.h"
+#include "client/ui/screens/options/options_screen.h"
 #include "react.h"
 
 namespace shooter {
@@ -29,24 +33,55 @@ static const char *screen_entry_key(const char *prefix,
 
 static ::ui::UiElement MainMenuScreenView(const MainMenuScreenProps &props) {
   (void)props;
-  std::function<void()> start_match = use_start_match();
-  std::function<void()> open_options = use_push_options_screen();
-  std::function<void()> request_quit = client::ui::use_request_quit();
-  bool is_top = client::ui::use_screen_is_top();
+  client::ui::AppValue app = client::ui::use_app();
+  client::ui::Navigation navigation = client::ui::use_navigation();
+  ServerValue server = use_server();
+  std::function<void()> start_match = use_callback(
+      [navigation, server] {
+        if (server.actions.reset_match)
+          server.actions.reset_match();
+        if (navigation.reset_to)
+          navigation.reset_to(std::make_unique<ShooterGameScreen>());
+      },
+      client::ui::callback_deps(
+          navigation.current_entry_id,
+          client::ui::callback_deps_ptr(server.game)));
+  std::function<void()> open_options = use_callback(
+      [navigation] {
+        if (navigation.push)
+          navigation.push(std::make_unique<OptionsScreen>());
+      },
+      client::ui::callback_deps(navigation.current_entry_id));
 
   // Yield the frame when an overlay (Options) is pushed on top. Visible screens
   // build top-first, so a base screen that keeps rendering paints OVER the
   // overlay above it. Every other screen follows this same guard.
-  if (!is_top)
+  if (!navigation.is_top)
     return ::ui::empty();
 
   return <ScreenLayout key="root" variant={ScreenLayoutVariant::Menu}>
     <Panel key="panel" variant={PanelVariant::Hero}>
       <ScreenTitle key="title" variant={ScreenTitleVariant::Hero} value="Reference Shooter" />
       <ScreenSubtitle key="subtitle" value="SDL3 / retained UI flow" />
-      <AppButton key="start" controlId="StartMatchButton" label="Start Match" onPress={start_match} />
-      <AppButton key="options" controlId="OpenOptionsFromMainMenuButton" label="Options" onPress={open_options} />
-      <AppButton key="quit" controlId="QuitButton" disabled={!request_quit} label="Quit" onPress={request_quit} />
+      <AppButton
+        key="start"
+        controlId="StartMatchButton"
+        label="Start Match"
+        onPress={start_match}
+      />
+      <AppButton
+        key="options"
+        controlId="OpenOptionsFromMainMenuButton"
+        label="Options"
+        onPress={open_options}
+      />
+      <AppButton
+        key="quit"
+        controlId="QuitButton"
+        disabled={!app.can_quit}
+        label="Quit"
+        onPress={app.quit}
+      />
     </Panel>
   </ScreenLayout>
 }

@@ -1,22 +1,14 @@
 #include "client_ui.h"
 
-#include "deferred_ui_mutation.h"
+#include "client/ui/providers/navigation_provider.h"
 
 #include <stdio.h>
 
 namespace client::ui {
 
-struct ScreenContextValue {
-  ClientUi *client_ui = nullptr;
-  UiScreenEntryId current_entry_id = 0;
-  bool is_top = false;
-};
-
 struct LegacyScreenBuildProps {
   UiScreen *screen = nullptr;
 };
-
-static ReactContext ScreenContext = {};
 
 static const char *screen_provider_key(UiScreenEntryId entry_id) {
   char key[64] = {};
@@ -50,7 +42,7 @@ void ClientUi::build_visible_screens(const UiElementWrapper &wrap_root) {
     if (!screen)
       continue;
     auto build_screen = [&] {
-      ScreenContextValue context = {
+      NavigationProviderValue context = {
           .client_ui = this,
           .current_entry_id = screen->entry_id(),
           .is_top = i == visible.count - 1,
@@ -62,16 +54,8 @@ void ClientUi::build_visible_screens(const UiElementWrapper &wrap_root) {
             LegacyScreenBuild, screen_provider_key(screen->entry_id()));
       }
       {
-        const ScreenContextValue *stored_context = ::ui::copy_value(context);
-        if (!stored_context) {
-          react_report_error("client/ui: failed to store screen context %s\n",
-                             screen->debug_name());
-          return;
-        }
-        ::ui::UiElement provider = ::ui::provider(
-            "ScreenProvider", &ScreenContext,
-            const_cast<ScreenContextValue *>(stored_context),
-            ::ui::children({root}), screen_provider_key(screen->entry_id()));
+        ::ui::UiElement provider = NavigationProvider(
+            context, ::ui::children({root}), screen_provider_key(screen->entry_id()));
         // Publish last frame's interaction (one-frame lag, by design) as a
         // declarative provider so components resolve focus/hover/press.
         provider = ::ui::provider(
@@ -249,65 +233,5 @@ void ClientUi::clear_mutations() {
   }
   mutation_count_ = 0;
 }
-
-ScreenNavigator use_screen_navigator() {
-  ScreenContextValue *context =
-      static_cast<ScreenContextValue *>(use_context(&ScreenContext));
-  if (!context || !context->client_ui) {
-    react_report_error(
-        "client/ui: missing ScreenProvider for use_screen_navigator\n");
-    return {};
-  }
-
-  ClientUi *client_ui = context->client_ui;
-  UiScreenEntryId entry_id = context->current_entry_id;
-  return {
-      .current_entry_id = entry_id,
-      .push =
-          [client_ui](std::unique_ptr<UiScreen> screen) {
-            client_ui->queue_push_screen(std::move(screen));
-          },
-      .reset_to =
-          [client_ui](std::unique_ptr<UiScreen> screen) {
-            client_ui->queue_reset_to_screen(std::move(screen));
-          },
-      .pop_current = [client_ui,
-                      entry_id] { client_ui->queue_pop_current(entry_id); },
-      .pop_top = [client_ui] { client_ui->queue_pop_top(); },
-  };
-}
-
-bool use_screen_is_top() {
-  ScreenContextValue *context =
-      static_cast<ScreenContextValue *>(use_context(&ScreenContext));
-  if (!context) {
-    react_report_error(
-        "client/ui: missing ScreenProvider for use_screen_is_top\n");
-    return false;
-  }
-  return context->is_top;
-}
-
-namespace internal {
-
-bool DeferredUiMutationSink::submit(DeferredUiMutation mutation) const {
-  if (!client_ui || !mutation)
-    return false;
-  return client_ui->queue_deferred_mutation(std::move(mutation));
-}
-
-DeferredUiMutationSink use_deferred_ui_mutations() {
-  ScreenContextValue *context =
-      static_cast<ScreenContextValue *>(use_context(&ScreenContext));
-  if (!context || !context->client_ui) {
-    react_report_error(
-        "client/ui: missing ScreenProvider for use_deferred_ui_mutations\n");
-    return {};
-  }
-
-  return {.client_ui = context->client_ui};
-}
-
-} // namespace internal
 
 } // namespace client::ui

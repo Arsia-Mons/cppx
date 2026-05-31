@@ -3,8 +3,8 @@
 #include "game_loop.h"
 #include "../react.h"
 #include "../renderer/text_measure_impl.h"
-#include "../client/ui/app_shell/app_shell_provider.h"
-#include "../client/ui/providers/shooter_provider.h"
+#include "../client/ui/providers/app_provider.h"
+#include "../client/ui/providers/server_provider.h"
 #include "client/ui/app_theme.h"
 #include "client/ui/screens/main_menu/main_menu_screen.h"
 
@@ -98,13 +98,13 @@ bool App::initialize(const AppOptions &options) {
     react_init_runtime();
 
     ui_pipeline_.set_frame_provider([this](::ui::UiElement child) {
-        shooter::ShooterContextValue        game_ctx { .game = &shooter_game_ };
-        client::ui::AppShellContextValue    shell_ctx { .request_quit = [this] { running_ = false; } };
+        shooter::ServerProviderValue        server_ctx { .game = &shooter_game_ };
+        client::ui::AppProviderValue        app_ctx { .quit = [this] { running_ = false; } };
         return client::ui::ThemeProvider(::ui::children({
-            shooter::ShooterProvider(
-                game_ctx,
+            shooter::ServerProvider(
+                server_ctx,
                 ::ui::children({
-                    client::ui::AppShellProvider(shell_ctx, ::ui::children({child})),
+                    client::ui::AppProvider(app_ctx, ::ui::children({child})),
                 })),
         }));
     });

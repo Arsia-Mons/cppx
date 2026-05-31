@@ -4,9 +4,7 @@
 
 #include "react.h"
 #include "ui/components/common.h"
-#include "client/ui/app_shell/client_ui.h"
-#include "client/ui/hooks/shooter_weapons.h"
-#include "client/ui/providers/shooter_provider.h"
+#include "client/ui/hooks/use_navigation.h"
 #include "client/ui/screens/loadout/components/confirm_dialog.h"
 #include "client/ui/screens/loadout/components/loadout_body.h"
 #include "client/ui/screens/loadout/components/loadout_details.h"
@@ -15,15 +13,16 @@
 #include "client/ui/screens/loadout/components/loadout_title.h"
 #include "client/ui/screens/loadout/components/loadout_weapon_grid.h"
 #include "client/ui/screens/loadout/components/weapon_tile.h"
+#include "client/ui/screens/loadout/hooks/use_weapons.h"
 #include "client/ui/screens/loadout/loadout_state.h"
 
 namespace shooter {
 
 ::ui::UiElement LoadoutScreenBody(const LoadoutScreenBodyProps &props) {
   (void)props;
-  bool is_top = client::ui::use_screen_is_top();
-  client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
-  int weapon_count = use_shooter_weapon_count();
+  client::ui::Navigation navigation = client::ui::use_navigation();
+  WeaponsValue weapons = use_weapons();
+  int weapon_count = weapons.count();
   int selected_index_seed = use_selected_weapon_tile();
   int *active_tab = use_state<int>(LOADOUT_TAB_WEAPONS);
   if (!active_tab)
@@ -36,13 +35,9 @@ namespace shooter {
     selected_index_seed = first_weapon_for_tab(*active_tab);
   }
 
-  ShooterWeaponRead selected = use_weapon_read(selected_index_seed);
+  WeaponsValue::Weapon selected = weapons.get_weapon(selected_index_seed);
   bool can_buy = selected.valid && selected.can_buy;
   bool can_equip = selected.valid && selected.can_equip && !selected.equipped;
-  std::function<void()> select_weapons_tab_weapon =
-      use_select_weapon(first_weapon_for_tab(LOADOUT_TAB_WEAPONS));
-  std::function<void()> select_gear_tab_weapon =
-      use_select_weapon(first_weapon_for_tab(LOADOUT_TAB_GEAR));
   std::function<void(int)> set_selected_tile = use_set_selected_weapon_tile();
   std::function<void(LoadoutPendingAction)> set_pending =
       use_set_pending_loadout_action();
@@ -53,32 +48,30 @@ namespace shooter {
   bool compare_enabled = use_compare_enabled();
   std::function<void(bool)> set_compare_enabled = use_set_compare_enabled();
 
-  if (!is_top || !selected.valid)
+  if (!navigation.is_top || !selected.valid)
     return ::ui::empty();
 
   bool confirm_open = pending.action != LOADOUT_ACTION_NONE;
 
   // Tab on_select closures: write #1 (*active_tab) is synchronous local state;
-  // writes #2 (set_selected_tile) and #3 (select_*_tab_weapon) are the two
+  // writes #2 (set_selected_tile) and #3 (weapons.select) are the two
   // deferred writes the GearTab contract pins. All three live here so the gear
   // tab still queues exactly two deferred mutations.
   std::function<void()> weapons_on_select =
-      [active_tab, set_selected_tile, select_weapons_tab_weapon] {
+      [active_tab, set_selected_tile, weapons] {
         if (active_tab)
           *active_tab = LOADOUT_TAB_WEAPONS;
         if (set_selected_tile)
           set_selected_tile(first_weapon_for_tab(LOADOUT_TAB_WEAPONS));
-        if (select_weapons_tab_weapon)
-          select_weapons_tab_weapon();
+        weapons.select(first_weapon_for_tab(LOADOUT_TAB_WEAPONS));
       };
   std::function<void()> gear_on_select =
-      [active_tab, set_selected_tile, select_gear_tab_weapon] {
+      [active_tab, set_selected_tile, weapons] {
         if (active_tab)
           *active_tab = LOADOUT_TAB_GEAR;
         if (set_selected_tile)
           set_selected_tile(first_weapon_for_tab(LOADOUT_TAB_GEAR));
-        if (select_gear_tab_weapon)
-          select_gear_tab_weapon();
+        weapons.select(first_weapon_for_tab(LOADOUT_TAB_GEAR));
       };
 
   std::function<void()> on_buy = [set_pending, pending, selected_index_seed] {
@@ -99,7 +92,7 @@ namespace shooter {
       });
     }
   };
-  std::function<void()> on_back = [pop = nav.pop_current] {
+  std::function<void()> on_back = [pop = navigation.pop_current] {
     if (pop)
       pop();
   };

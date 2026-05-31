@@ -6,20 +6,19 @@
 #include "../../../../../react.h"
 #include "../../../../../ui/components/components.h"
 #include "client/ui/components/tokens.h"
-#include "../../../hooks/shooter_weapons.h"
-#include "../../../providers/shooter_provider.h"
+#include "client/ui/screens/loadout/hooks/use_weapons.h"
 #include "../loadout_state.h"
 
 namespace shooter {
 
 ::ui::UiElement EquipmentSlot(const EquipmentSlotProps &props) {
-  ShooterWeaponRead weapon = use_weapon_read(props.weapon_index);
+  WeaponsValue weapons = use_weapons();
+  WeaponsValue::Weapon weapon = weapons.get_weapon(props.weapon_index);
   if (!weapon.valid)
     return ::ui::empty();
 
   int selected_index = use_selected_weapon_tile();
   std::function<void(int)> set_selected = use_set_selected_weapon_tile();
-  std::function<void()> select = use_select_weapon(props.weapon_index);
   bool selected = selected_index == props.weapon_index;
   namespace components = ::ui::components;
 
@@ -45,11 +44,10 @@ namespace shooter {
           .label = slot_text,
           .on_activate =
               [set_selected, weapon_index = props.weapon_index,
-               select](const ::ui::ActivationEvent &) {
+               weapons](const ::ui::ActivationEvent &) {
                 if (set_selected)
                   set_selected(weapon_index);
-                if (select)
-                  select();
+                weapons.select(weapon_index);
               },
           .children = ::ui::children({
               ::ui::component(

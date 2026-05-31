@@ -6,8 +6,7 @@
 #include "../../../../../react.h"
 #include "../../../../../ui/components/components.h"
 #include "client/ui/components/tokens.h"
-#include "../../../hooks/shooter_weapons.h"
-#include "../../../providers/shooter_provider.h"
+#include "client/ui/screens/loadout/hooks/use_weapons.h"
 #include "../loadout_state.h"
 
 namespace shooter {
@@ -33,13 +32,13 @@ const char *weapon_tile_key(int index) {
 
 ::ui::UiElement WeaponTile(const WeaponTileProps &props) {
   int index = props.index;
-  ShooterWeaponRead weapon = use_weapon_read(index);
+  WeaponsValue weapons = use_weapons();
+  WeaponsValue::Weapon weapon = weapons.get_weapon(index);
   if (!weapon.valid)
     return ::ui::empty();
 
   int selected_index = use_selected_weapon_tile();
   std::function<void(int)> set_selected = use_set_selected_weapon_tile();
-  std::function<void()> select = use_select_weapon(index);
   bool selected = selected_index == index;
   bool disabled = weapon.disabled;
   namespace components = ::ui::components;
@@ -67,11 +66,11 @@ const char *weapon_tile_key(int index) {
                   set_selected(index);
               },
           .on_activate =
-              [set_selected, index, select](const ::ui::ActivationEvent &) {
+              [set_selected, index,
+               weapons](const ::ui::ActivationEvent &) {
                 if (set_selected)
                   set_selected(index);
-                if (select)
-                  select();
+                weapons.select(index);
               },
           .children =
               ::ui::children({

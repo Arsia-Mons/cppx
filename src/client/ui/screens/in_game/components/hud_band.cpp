@@ -1,15 +1,15 @@
 #include "hud_band.h"
 
-#include "../../../react.h"
-#include "../../../ui/components/components.h"
-#include "../hooks/shooter_hud.h"
 #include "client/ui/components/tokens.h"
+#include "client/ui/screens/in_game/hooks/use_hud.h"
+#include "react.h"
+#include "ui/components/components.h"
 
 namespace shooter {
 
 ::ui::UiElement HudBand(const HudBandProps &props) {
   (void)props;
-  ShooterHudRead hud = use_shooter_hud();
+  HudValue hud = use_hud();
   const char *health = use_text_storage("HP %d", hud.health);
   const char *armor = use_text_storage("ARMOR %d", hud.armor);
   const char *ammo = use_text_storage("AMMO %d", hud.ammo);

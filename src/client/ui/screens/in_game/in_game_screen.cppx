@@ -1,13 +1,16 @@
 #include "in_game_screen.h"
 
+#include <functional>
+#include <memory>
 #include <stdio.h>
 
-#include "client/ui/app_shell/client_ui.h"
+#include "client/ui/callback_deps.h"
 #include "client/ui/components/actions/actions.h"
-#include "client/ui/components/hud_band.h"
 #include "client/ui/components/layout/layout.h"
+#include "client/ui/hooks/use_navigation.h"
+#include "client/ui/screens/in_game/components/hud_band.h"
 #include "client/ui/screens/loadout/loadout_screen.h"
-#include "client/ui/screens/pause/pause_actions.h"
+#include "client/ui/screens/pause/pause_screen.h"
 #include "react.h"
 
 namespace shooter {
@@ -28,22 +31,27 @@ static const char *screen_entry_key(const char *prefix,
 static ::ui::UiElement
 ShooterGameScreenView(const ShooterGameScreenProps &props) {
   (void)props;
-  bool is_top = client::ui::use_screen_is_top();
-  std::function<void()> open_pause = use_push_pause_screen();
-  std::function<void()> open_loadout = use_push_loadout_screen();
+  client::ui::Navigation navigation = client::ui::use_navigation();
+  std::function<void()> open_pause = use_callback(
+      [navigation] {
+        if (navigation.push)
+          navigation.push(std::make_unique<PauseScreen>());
+      },
+      client::ui::callback_deps(navigation.current_entry_id));
+  std::function<void()> open_loadout = use_callback(
+      [navigation] {
+        if (navigation.push)
+          navigation.push(std::make_unique<LoadoutScreen>());
+      },
+      client::ui::callback_deps(navigation.current_entry_id));
 
-  if (!is_top)
+  if (!navigation.is_top)
     return ::ui::empty();
 
   return <ScreenLayout key="root" variant={ScreenLayoutVariant::Game}>
     <HudBand />
     <ActionRow key="actions">
-      <AppButton
-        key="pause"
-        controlId="OpenPauseButton"
-        label="Pause"
-        onPress={open_pause}
-      />
+      <AppButton key="pause" controlId="OpenPauseButton" label="Pause" onPress={open_pause} />
       <AppButton
         key="loadout"
         controlId="OpenLoadoutButton"

@@ -3,10 +3,10 @@
 #include <stdio.h>
 #include <string>
 
-#include "client/ui/app_shell/client_ui.h"
 #include "client/ui/components/actions/actions.h"
 #include "client/ui/components/layout/layout.h"
 #include "client/ui/components/text/text.h"
+#include "client/ui/hooks/use_navigation.h"
 #include "react.h"
 
 namespace shooter {
@@ -26,13 +26,12 @@ static const char *screen_entry_key(const char *prefix,
 
 static ::ui::UiElement OptionsScreenView(const OptionsScreenProps &props) {
   (void)props;
-  client::ui::ScreenNavigator nav = client::ui::use_screen_navigator();
-  bool is_top = client::ui::use_screen_is_top();
+  client::ui::Navigation navigation = client::ui::use_navigation();
   int *large_hud = use_state_int(0);
   int *reduced_motion = use_state_int(1);
   std::string *player_name = use_state<std::string>(std::string("Ace"));
 
-  if (!is_top || !player_name)
+  if (!navigation.is_top || !player_name)
     return ::ui::empty();
 
   return <ScreenLayout key="root" variant={ScreenLayoutVariant::Overlay}>
@@ -61,7 +60,7 @@ static ::ui::UiElement OptionsScreenView(const OptionsScreenProps &props) {
       key="back"
       controlId="BackFromOptionsButton"
       label="Back"
-      onPress={nav.pop_current}
+      onPress={navigation.pop_current}
     />
     <AppInput
       key="name"

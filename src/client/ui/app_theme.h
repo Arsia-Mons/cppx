@@ -16,7 +16,7 @@ namespace client::ui {
 const ::ui::Theme &app_theme();
 
 // Installs app_theme() into ui::ThemeContext for `children` (mirrors
-// ShooterProvider). Place OUTERMOST so the whole tree sees the slate palette.
+// ServerProvider). Place OUTERMOST so the whole tree sees the slate palette.
 ::ui::UiElement ThemeProvider(::ui::UiChildren children);
 
 } // namespace client::ui

@@ -14,6 +14,11 @@ this C++20 / SDL retained UI runtime:
 - variant props express design-system choices;
 - files aspire to one exported component or one tightly scoped public concept.
 
+`src/client/ui/CLAUDE.md` is the authoritative operational guidance for agents
+working in this tree. This document gives the longer-form design rationale; when
+there is tension, update this document to match the scoped guidance rather than
+preserving older migration-era patterns.
+
 ## Core Boundary
 
 `src/ui/*` is the primitive runtime layer. It may expose host details:
@@ -45,7 +50,7 @@ browser-era terminology. Prefer names that describe the app-level responsibility
 
 - `app_shell` for persistent around-content structure;
 - `screen_layout` for screen/page framing components;
-- `page_header`, `page_content`, `page_actions` for page structure;
+- `page_header`, `page_content`, `page_toolbar` for page structure;
 - `surface`, `panel`, `toolbar`, `tab_list`, `action_row` for reusable app
   building blocks;
 - `blocks` only for larger feature-composed chunks, not for primitive widgets.
@@ -71,7 +76,9 @@ src/client/ui/components/actions/menu_button.cppx
 
 Acceptable exceptions:
 
-- a file exporting a single provider plus its named hooks;
+- a provider implementation file may define its matching consumer hook so the
+  `ReactContext` stays private with the provider, but public headers should stay
+  role-shaped: provider headers in `providers/`, hook headers in `hooks/`;
 - a small `index` / umbrella header that only re-exports component headers;
 - a private implementation helper file with no public component API;
 - a tightly coupled compound component namespace where the exported public
@@ -197,21 +204,30 @@ src/client/ui/components/             # shared semantic app components
 
 src/client/ui/screens/<screen>/       # screen feature module
   <screen>_screen.*
-  <screen>_actions.*                  # navigation/action hooks when public
   <screen>_state.*                    # provider + hooks for screen-local state
   components/                         # one semantic component per file
+  hooks/                              # screen-local hooks, only when needed
+  providers/                          # screen-local providers, only when needed
+  lib/                                # feature-local helpers, only when needed
 ```
 
 This target is not dogma about the names above. It is a separation rule:
 
 - shared semantic app components do not live in screen files;
 - screen-local blocks do not masquerade as generic app components;
-- navigation/action hooks do not hide inside unrelated screen view files;
+- caller-specific navigation hooks do not live in destination screen modules;
+- navigation is composed at the calling screen with `use_navigation()`;
 - tokens/style recipes do not share a file with many unrelated component exports.
+
+Co-location wins by default. Bubble up only when there is a real second
+consumer: reusable components go to `client/ui/components/`, reusable hooks go
+to `client/ui/hooks/`, and reusable providers go to `client/ui/providers/`.
 
 ## Screen Code End State
 
-Screen declarations should be mostly semantic composition.
+Screen declarations should be mostly semantic composition. Treat screens as
+components: do not split `Screen` and `View` just to make the wrapper look thin.
+Add a separate view component only when it is reused or independently meaningful.
 
 Good:
 
@@ -251,17 +267,19 @@ For screen-local state:
 
 - the screen owns the provider;
 - descendants read through named hooks;
-- descendants write through named action hooks;
+- descendants write through named setter/capability hooks;
 - host-safe deferred mutation remains an implementation detail;
 - screen components do not receive or forward context bags.
 
-For navigation:
+For navigation and cross-cutting capabilities:
 
-- public navigation hooks should be easy to find;
-- a screen implementation file should not become an accidental route/action
-  registry;
-- hooks like `use_push_options_screen()` are semantic and useful, but they should
-  live behind a stable file/header convention.
+- app-shell capabilities are consumed through `use_app()`;
+- screen-stack capabilities are consumed through `use_navigation()`;
+- shooter/domain capabilities are consumed through `use_server()`;
+- destination screen modules export screens/components or factories, not
+  caller-specific hooks such as `use_push_options_screen()`;
+- avoid `*_actions.{h,cpp}` files; model reusable behavior as hooks, providers,
+  components, or private `lib/` helpers based on its role and scope.
 
 ## Review Standard
 

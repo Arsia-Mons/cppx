@@ -1,7 +1,9 @@
 #include "client/ui/app_shell/client_ui.h"
-#include "client/ui/app_shell/app_shell_provider.h"
 #include "client/ui/app_theme.h"
-#include "client/ui/providers/shooter_provider.h"
+#include "client/ui/hooks/use_app.h"
+#include "client/ui/hooks/use_server.h"
+#include "client/ui/providers/app_provider.h"
+#include "client/ui/providers/server_provider.h"
 #include "ui/style/theme.h"
 #include "ui/style/resolve.h"
 #include "client/ui/screens/in_game/in_game_screen.h"
@@ -32,7 +34,7 @@
 
 struct TestFrameProviders {
   shooter::ShooterGame *game = nullptr;
-  std::function<void()> request_quit = {};
+  std::function<void()> quit = {};
 };
 
 static void run_pipeline_frame(client::ui::UiPipeline &pipeline,
@@ -41,15 +43,13 @@ static void run_pipeline_frame(client::ui::UiPipeline &pipeline,
                                ::ui::Point pointer = {-1000.0f, -1000.0f},
                                const client::ui::RenderFrame &render = {}) {
   pipeline.set_frame_provider([&](::ui::UiElement child) {
-    shooter::ShooterContextValue game_ctx{.game = providers.game};
-    client::ui::AppShellContextValue shell_ctx{.request_quit =
-                                                   providers.request_quit};
+    shooter::ServerProviderValue server_ctx{.game = providers.game};
+    client::ui::AppProviderValue app_ctx{.quit = providers.quit};
     return client::ui::ThemeProvider(::ui::children({
-        shooter::ShooterProvider(
-            game_ctx,
+        shooter::ServerProvider(
+            server_ctx,
             ::ui::children({
-                client::ui::AppShellProvider(shell_ctx,
-                                             ::ui::children({child})),
+                client::ui::AppProvider(app_ctx, ::ui::children({child})),
             })),
     }));
   });
@@ -172,7 +172,7 @@ static bool main_menu_start_match_resets_game_and_stack(void) {
   bool quit_requested = false;
   TestFrameProviders providers{
       .game = &game,
-      .request_quit = [&quit_requested] { quit_requested = true; },
+      .quit = [&quit_requested] { quit_requested = true; },
   };
   client::ui::UiPipeline pipeline;
   client::ui::ClientUi &client_ui = pipeline.client_ui();
@@ -223,7 +223,7 @@ static bool main_menu_quit_callback_runs(void) {
   bool quit_requested = false;
   TestFrameProviders providers{
       .game = &game,
-      .request_quit = [&quit_requested] { quit_requested = true; },
+      .quit = [&quit_requested] { quit_requested = true; },
   };
   client::ui::UiPipeline pipeline;
   client::ui::ClientUi &client_ui = pipeline.client_ui();
@@ -474,11 +474,11 @@ static const char *screen_entry_key(const char *prefix,
 static ::ui::UiElement
 GameAndQuitConsumerView(const GameAndQuitConsumerProps &props) {
   if (props.observed_game) {
-    *props.observed_game = shooter::use_shooter_game();
+    *props.observed_game = shooter::use_server().game;
   }
   if (props.observed_quit_present) {
-    std::function<void()> quit = client::ui::use_request_quit();
-    *props.observed_quit_present = static_cast<bool>(quit);
+    client::ui::AppValue app = client::ui::use_app();
+    *props.observed_quit_present = app.can_quit;
   }
   return ::ui::empty();
 }
@@ -564,7 +564,7 @@ static bool root_level_providers_reach_screens_without_per_screen_wrap(void) {
   bool quit_invoked = false;
   TestFrameProviders providers{
       .game = &game,
-      .request_quit = [&quit_invoked] { quit_invoked = true; },
+      .quit = [&quit_invoked] { quit_invoked = true; },
   };
 
   shooter::ShooterGame *observed_game = nullptr;
@@ -680,7 +680,7 @@ static bool test_theme_provider_delivers_slate(void) {
   // silently failing to push the theme context.
   react_init_runtime();
   shooter::ShooterGame game;
-  TestFrameProviders providers{.game = &game, .request_quit = [] {}};
+  TestFrameProviders providers{.game = &game, .quit = [] {}};
   int observed_stops = -1;
   client::ui::UiPipeline pipeline;
   CHECK(pipeline.client_ui().push_screen(

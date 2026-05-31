@@ -1,4 +1,5 @@
 #include "client/ui/app_shell/client_ui.h"
+#include "client/ui/hooks/use_navigation.h"
 #include "react.h"
 #include "ui/components/components.h"
 #include "ui/runtime/yoga_flex_layout.h"
@@ -48,8 +49,8 @@ public:
     if (build_count_) {
       *build_count_ += 1;
     }
-    ScreenNavigator nav = use_screen_navigator();
-    nav.pop_current();
+    Navigation navigation = use_navigation();
+    navigation.pop_current();
   }
 
 private:
@@ -66,8 +67,8 @@ public:
     if (build_count_) {
       *build_count_ += 1;
     }
-    ScreenNavigator nav = use_screen_navigator();
-    nav.push(std::make_unique<RecordingScreen>("Pushed", false, nullptr));
+    Navigation navigation = use_navigation();
+    navigation.push(std::make_unique<RecordingScreen>("Pushed", false, nullptr));
   }
 
 private:
@@ -90,8 +91,8 @@ public:
     if (build_count_) {
       *build_count_ += 1;
     }
-    ScreenNavigator nav = use_screen_navigator();
-    nav.reset_to(
+    Navigation navigation = use_navigation();
+    navigation.reset_to(
         std::make_unique<RecordingScreen>("ResetRoot", false, nullptr));
   }
 

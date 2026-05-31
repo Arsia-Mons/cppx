@@ -22,14 +22,6 @@ constexpr int CLIENT_UI_MAX_QUEUED_MUTATIONS = 128;
 using DeferredUiMutation = std::function<void()>;
 using UiElementWrapper = std::function<::ui::UiElement(::ui::UiElement child)>;
 
-struct ScreenNavigator {
-  UiScreenEntryId current_entry_id = 0;
-  std::function<void(std::unique_ptr<UiScreen>)> push = {};
-  std::function<void(std::unique_ptr<UiScreen>)> reset_to = {};
-  std::function<void()> pop_current = {};
-  std::function<void()> pop_top = {};
-};
-
 class ClientUi {
 public:
   ClientUi();
@@ -98,8 +90,5 @@ private:
   int mutation_count_ = 0;
   bool wants_text_input_ = false;
 };
-
-ScreenNavigator use_screen_navigator();
-bool use_screen_is_top();
 
 } // namespace client::ui

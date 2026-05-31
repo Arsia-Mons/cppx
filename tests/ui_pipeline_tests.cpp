@@ -1,6 +1,7 @@
 #include "client/ui/app_shell/ui_pipeline.h"
 
 #include "client/ui/app_shell/navigation/ui_screen.h"
+#include "client/ui/hooks/use_navigation.h"
 #include "react.h"
 #include "ui/components/components.h"
 #include "ui/runtime/draw_command.h"
@@ -19,7 +20,7 @@
     }                                                                          \
   } while (0)
 
-using client::ui::ScreenNavigator;
+using client::ui::Navigation;
 using client::ui::UiPipeline;
 using client::ui::UiPipelineFrame;
 using client::ui::UiScreen;
@@ -96,7 +97,7 @@ RetainedProbeScreenView(const RetainedProbeScreenProps &props) {
 static ::ui::UiElement PopOnRetainedConfirmScreenView(
     const PopOnRetainedConfirmScreenProps &props) {
   (void)props;
-  ScreenNavigator nav = client::ui::use_screen_navigator();
+  Navigation nav = client::ui::use_navigation();
   return ::ui::components::elements::Button({
       .key = "pop",
       .id = "PipelineRetainedPopButton",

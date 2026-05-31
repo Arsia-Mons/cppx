@@ -7,8 +7,7 @@
 #include "../../../../../react.h"
 #include "../../../../../ui/components/components.h"
 #include "client/ui/components/tokens.h"
-#include "../../../hooks/shooter_weapons.h"
-#include "../../../providers/shooter_provider.h"
+#include "client/ui/screens/loadout/hooks/use_weapons.h"
 #include "../loadout_state.h"
 
 namespace shooter {
@@ -22,9 +21,8 @@ const char *confirm_body_key(uint32_t generation) {
 }
 
 ::ui::UiElement LoadoutConfirmDialogBody(const LoadoutPendingAction &pending) {
-  ShooterWeaponRead weapon = use_weapon_read(pending.weapon_index);
-  std::function<void()> buy = use_buy_weapon(pending.weapon_index);
-  std::function<void()> equip = use_equip_weapon(pending.weapon_index);
+  WeaponsValue weapons = use_weapons();
+  WeaponsValue::Weapon weapon = weapons.get_weapon(pending.weapon_index);
   std::function<void()> close = use_clear_pending_loadout_action();
   if (!weapon.valid)
     return ::ui::empty();
@@ -120,20 +118,23 @@ const char *confirm_body_key(uint32_t generation) {
                                                           .autofocus = true,
                                                           .label = "Confirm",
                                                           .on_activate =
-                                                              [action, buy,
-                                                               equip, close](
+                                                              [action, weapons,
+                                                               weapon_index =
+                                                                   pending
+                                                                       .weapon_index,
+                                                               close](
                                                                   const ::ui::
                                                                       ActivationEvent
                                                                           &) {
                                                                 if (action ==
                                                                     LOADOUT_ACTION_BUY) {
-                                                                  if (buy)
-                                                                    buy();
+                                                                  weapons.buy(
+                                                                      weapon_index);
                                                                 } else if (
                                                                     action ==
                                                                     LOADOUT_ACTION_EQUIP) {
-                                                                  if (equip)
-                                                                    equip();
+                                                                  weapons.equip(
+                                                                      weapon_index);
                                                                 }
                                                                 if (close)
                                                                   close();
