@@ -15,8 +15,6 @@ The app demonstrates:
 - Retained panels, text, buttons, toggles, selectables, generic focusable
   containers, and scroll containers.
 - Keyboard/gamepad/pointer focus navigation over retained layout boxes.
-- Deferred UI mutations so game and screen state are not changed during the
-  declaration pass.
 - Deterministic CLI control through the mailbox protocol used by smoke tests.
 - JSX-like `.cppx` / `.hx` generated C++ fixtures for retained components.
 
