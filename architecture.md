@@ -174,7 +174,12 @@ tagged-union IR. The design is documented in
   authoring inputs.)
 - `theme.h` / `default_theme.cpp` — `RoleStyle{base, hover, pressed, active, disabled,
   checked, focus_visible}`, a `Theme` of roles (button, input, checkbox, box, text,
-  dialog, focus_ring, …), `use_theme()`, and the authored dark `default_theme()`.
+  dialog, focus_ring, …), `use_theme()`, and a **neutral, unopinionated**
+  `default_theme()` fallback. Theme *values* are a client responsibility: the product
+  palette lives in `client/ui/app_theme.cpp` and is installed via `ThemeProvider`
+  (pushes `ThemeContext`) at the app-shell root; `use_theme()` hits the neutral
+  `default_theme()` only when no provider is installed. Every primitive also accepts a
+  per-instance `StylePatch style_override` prop, merged over its theme role by `resolve()`.
 - `resolve.{h,cpp}` — `resolve(role, variant, interaction) → VisualStyle` with a locked
   precedence: the interaction state selects the slot (disabled wins; active sits between
   checked and disabled), and `focus_visible` contributes the focus outline only when the

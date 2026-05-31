@@ -19,11 +19,12 @@ have multiple files, not preemptively.
 - Layout helpers (Box/Row/Column/Spacer/Divider) once we need them.
 - Visual primitives generic enough to drop into any retained UI app.
 - Focus and input routing in **UI coordinates**, never SDL coordinates.
-- Design tokens (colors, typography) — none yet; introduce a `design/` folder when needed.
+- The theme **mechanism** — `style/` (`Theme`/`RoleStyle` types, `ThemeContext`, `use_theme()`, `resolve()`, `StylePatch`, the `patch()` builder) and a **neutral** `default_theme()` fallback. Primitives accept a per-instance `StylePatch style_override`, merged over the theme role by `resolve()` (never a dense full-`VisualStyle` override).
 
 ## What does NOT belong here
 
 - Anything that names a shooter concept (weapon, loadout, HUD, round).
+- An authored *product* theme (a concrete palette/values). The theme mechanism lives here, but the values are a **client** concern, installed via a `ThemeProvider` over `ThemeContext`.
 - SDL types or `<SDL.h>` includes — `platform/` adapts those into UI-shaped input.
 - References to `client::ui` or `game::ui` — dependency flows the other way.
 - Screen-level layout. Screens live in `client/ui/` and game-specific dirs.

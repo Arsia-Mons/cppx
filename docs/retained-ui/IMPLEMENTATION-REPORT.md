@@ -50,7 +50,7 @@ The hard, novel part of the design is done in code: the entire new type system, 
 |---|---|---|
 | Paint types | `src/ui/style/visual_style.h` — `Color` (moved from `tree.h`), `Vec2`, `SideWidths/Colors`, `Border`, `Outline`, `Gradient`, `BackgroundImage`, `Shadow`, `TextVisual`, `VisualStyle`, `LineRun` | ✅ |
 | Optionality | `src/ui/style/style_patch.h` — `Opt<T>`, `opt()`, `StylePatch`, `apply()`, `merge()`, `patch()` builder. **No value-space sentinels.** | ✅ |
-| Theme | `src/ui/style/theme.h` (`RoleStyle`, `Theme`, `ThemeContext`, `TextStyleContext`, `TextStyleValue`, `use_theme()`), `default_theme.cpp` (focus ring wired via `focus_visible.outline`) | ✅ |
+| Theme | `src/ui/style/theme.h` (`RoleStyle`, `Theme`, `ThemeContext`, `use_theme()`), `default_theme.cpp` (focus ring wired via `focus_visible.outline`) — **now a neutral fallback**; product values moved to `client/ui/app_theme.cpp` + `ThemeProvider`, and `TextStyleContext`/`TextStyleValue` were removed in the theme-ownership convergence (2026-05-30) | ✅ |
 | Cascade | `src/ui/style/resolve.{h,cpp}` — `resolve(role, variant, interaction) -> VisualStyle`, locked precedence | ✅ |
 | Interaction | `src/ui/runtime/interaction_hooks.{h,cpp}` (`InteractionSnapshot`, `InteractionContext`, `use_focused/hovered/pressed/focus_visible`), `focus.{h,cpp}` (`hovered_id`, `focus_hovered_id`, `focus_pressed_id`, `focus_source_is_visible`), `react.{h,cpp}` (`react_current_fiber_id()`) | ✅ |
 | Text seam | `src/ui/style/text_measure.{h,cpp}` — `TextMetricsQuery/Result`, `MeasureTextFn`, `set_text_measurer` | ✅ (types/seam; renderer impl is P4) |
