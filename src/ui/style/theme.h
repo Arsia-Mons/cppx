@@ -41,20 +41,9 @@ struct Theme {
   Color selection{};
 };
 
-// Inheritable text defaults for a subtree (NOT a full TextVisual: align/wrap/
-// line_height are per-Text and never inherited). Optionality is Opt<T> — no
-// value-space sentinels.
-struct TextStyleValue {
-  Opt<Color> color{};
-  Opt<uint16_t> font_id{};
-  Opt<uint16_t> font_size{};
-};
-
-// One context carries the theme (current = const Theme*); one carries the
-// inheritable text default (current = const TextStyleValue*). Header-inline so
-// there is exactly one definition each.
+// One context carries the theme (current = const Theme*). Header-inline so
+// there is exactly one definition.
 inline ReactContext ThemeContext = {};
-inline ReactContext TextStyleContext = {};
 
 const Theme &default_theme(); // defined in default_theme.cpp
 

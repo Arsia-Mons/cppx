@@ -87,12 +87,13 @@ static bool test_default_theme() {
   CHECK(t.input.focus_visible.outline.set);
   CHECK(t.checkbox.focus_visible.outline.set);
   // Hover/press must produce a visible control response; otherwise the
-  // interaction hooks can be correct while the UI appears inert.
-  CHECK(t.button.hover.gradient.set);
+  // interaction hooks can be correct while the UI appears inert. The neutral
+  // fallback is FLAT (no gradients) so the response is carried by background.
+  CHECK(t.button.hover.background.set);
   CHECK(t.button.hover.border.set);
-  CHECK(t.button.pressed.gradient.set);
-  CHECK(t.input.hover.gradient.set);
-  CHECK(t.checkbox.hover.gradient.set);
+  CHECK(t.button.pressed.background.set);
+  CHECK(t.input.hover.background.set);
+  CHECK(t.checkbox.hover.background.set);
   // disabled dims controls:
   CHECK(t.button.disabled.background.set);
   // checkbox mark: invisible until checked.

@@ -287,7 +287,11 @@ static bool pipeline_applies_hover_visual_after_pointer_hit_test(void) {
 
   ::ui::NodeSnapshot base = {};
   CHECK(pipeline.client_ui().retained_tree().snapshot(button, &base));
-  CHECK(base.visual.gradient.stop_count == 2);
+  // No ThemeProvider is installed here, so the button resolves against ui/'s
+  // NEUTRAL fallback theme: a FLAT control (no gradient) whose interaction
+  // response is carried by background + border.
+  CHECK(base.visual.gradient.stop_count == 0);
+  CHECK(base.visual.background.a != 0);
 
   UiPipelineFrame hover_frame = test_frame();
   hover_frame.pointer = {
@@ -303,9 +307,10 @@ static bool pipeline_applies_hover_visual_after_pointer_hit_test(void) {
   pipeline.render_client_ui_frame(hover_frame, {});
   ::ui::NodeSnapshot hovered = {};
   CHECK(pipeline.client_ui().retained_tree().snapshot(button, &hovered));
-  CHECK(hovered.visual.gradient.stop_count == 2);
-  CHECK(!same_color(hovered.visual.gradient.stops[0].color,
-                    base.visual.gradient.stops[0].color));
+  // Flat fallback: hover stays gradient-free and shifts the background fill and
+  // the border color (the visible response).
+  CHECK(hovered.visual.gradient.stop_count == 0);
+  CHECK(!same_color(hovered.visual.background, base.visual.background));
   CHECK(!same_color(hovered.visual.border.color.top,
                     base.visual.border.color.top));
   return true;

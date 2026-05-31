@@ -207,6 +207,7 @@ add_executable(hello
   src/app/app.cpp
   src/app/game_loop.cpp
   src/client/ui/app_shell/client_ui.cpp
+  src/client/ui/app_theme.cpp
   src/client/ui/components/hud_band.cpp
   src/client/ui/hooks/shooter_hud.cpp
   src/client/ui/hooks/shooter_weapons.cpp
@@ -653,6 +654,7 @@ add_executable(shooter_ui_tests
   tests/shooter_ui_tests.cpp
   src/react.cpp
   src/client/ui/app_shell/client_ui.cpp
+  src/client/ui/app_theme.cpp
   src/client/ui/components/hud_band.cpp
   src/client/ui/hooks/shooter_hud.cpp
   src/client/ui/hooks/shooter_weapons.cpp

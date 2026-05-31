@@ -212,29 +212,25 @@ static bool button_emits_fill_and_border(void) {
   CHECK(same_color(title_text->payload.text.color, premul({235, 246, 242, 255})));
   CHECK(title_text->payload.text.font_size == 24);
 
-  // Button: the new theme paints controls with a subtle vertical gradient, so
-  // the fill is a Gradient command (not a flat Rect) carrying the 8px radius and
-  // the top/bottom slate stops (premultiplied into grad_arena). The button is
-  // NOT focused (the input is), so its border is the default control border at
-  // 1px and no outline.
-  const DrawCommand *button_grad =
-      find_command(list, button, DrawCommandKind::Gradient);
-  CHECK(button_grad != nullptr);
-  CHECK(button_grad->rect.w == 132.0f);
-  CHECK(button_grad->payload.gradient.corner_radius == 8.0f);
-  CHECK(button_grad->payload.gradient.stop_count == 2);
-  {
-    uint16_t off = button_grad->payload.gradient.stop_off;
-    CHECK(same_color(list.grad_arena[off].color, premul({40, 46, 58, 255})));
-    CHECK(same_color(list.grad_arena[off + 1].color, premul({28, 33, 43, 255})));
-  }
+  // Button: no ThemeProvider is installed in this ui/-layer test, so controls
+  // resolve against the NEUTRAL fallback theme — a FLAT fill (no gradient), so
+  // the body is a plain Rect carrying the 4px radius and the neutral control
+  // fill. The button is NOT focused (the input is), so its border is the neutral
+  // 1px control border and no outline.
+  const DrawCommand *button_rect =
+      find_command(list, button, DrawCommandKind::Rect);
+  CHECK(button_rect != nullptr);
+  CHECK(button_rect->rect.w == 132.0f);
+  CHECK(button_rect->payload.rect.corner_radius == 4.0f);
+  CHECK(same_color(button_rect->payload.rect.fill, premul({54, 56, 60, 255})));
+  CHECK(find_command(list, button, DrawCommandKind::Gradient) == nullptr);
   const DrawCommand *button_border =
       find_command(list, button, DrawCommandKind::Border);
   CHECK(button_border != nullptr);
   CHECK(same_color(button_border->payload.border.border.color.top,
-                   premul({70, 80, 98, 255})));
+                   premul({84, 88, 96, 255})));
   CHECK(button_border->payload.border.border.width.top == 1.0f);
-  CHECK(button_border->payload.border.corner_radius == 8.0f);
+  CHECK(button_border->payload.border.corner_radius == 4.0f);
   CHECK(button_border->payload.border.has_outline == false);
 
   const DrawCommand *button_text =
@@ -242,38 +238,38 @@ static bool button_emits_fill_and_border(void) {
   CHECK(button_text != nullptr);
   CHECK(arena_text_matches(list, button_text->payload.text, "Confirm"));
 
-  // Checked checkbox mark uses the accent checked fill (solid, no gradient).
+  // Checked checkbox mark uses the neutral fallback checked fill (solid, no
+  // gradient), with the fallback mark radius.
   const DrawCommand *checkbox_mark_rect =
       find_command(list, checkbox_mark, DrawCommandKind::Rect);
   CHECK(checkbox_mark_rect != nullptr);
   CHECK(checkbox_mark_rect->rect.w == 18.0f);
   CHECK(same_color(checkbox_mark_rect->payload.rect.fill,
-                   premul({96, 165, 250, 255})));
-  CHECK(checkbox_mark_rect->payload.rect.corner_radius == 4.0f);
+                   premul({200, 204, 210, 255})));
+  CHECK(checkbox_mark_rect->payload.rect.corner_radius == 2.0f);
 
   const DrawCommand *checkbox_text =
       find_command(list, checkbox_label, DrawCommandKind::Text);
   CHECK(checkbox_text != nullptr);
   CHECK(arena_text_matches(list, checkbox_text->payload.text, "Music"));
 
-  // Focused input: a gradient body fill + selection rect (ranged) + value text
-  // + caret rect. The Input is migrated, so its body fill is the resolved theme
-  // control gradient (the legacy kInputFill fallback only applies to not-yet-
-  // migrated nodes via control_fill()). The body fill being a Gradient means the
-  // only Rect commands on the input node are the selection (ordinal 0) and the
-  // caret (ordinal 1).
-  const DrawCommand *input_grad =
-      find_command(list, input, DrawCommandKind::Gradient);
-  const DrawCommand *selection_rect =
+  // Focused input: a FLAT body fill (neutral fallback, no gradient) + selection
+  // rect (ranged) + value text + caret rect. With a flat body the input node's
+  // Rect commands are, in emit order: the body fill (ordinal 0), the selection
+  // (ordinal 1), and the caret (ordinal 2).
+  const DrawCommand *input_body =
       find_command(list, input, DrawCommandKind::Rect, 0);
+  const DrawCommand *selection_rect =
+      find_command(list, input, DrawCommandKind::Rect, 1);
   const DrawCommand *input_text =
       find_command(list, input, DrawCommandKind::Text);
   const DrawCommand *caret_rect =
-      find_command(list, input, DrawCommandKind::Rect, 1);
-  CHECK(input_grad != nullptr);
-  CHECK(input_grad->rect.w == 220.0f);
-  CHECK(input_grad->payload.gradient.corner_radius == 8.0f);
-  CHECK(input_grad->payload.gradient.stop_count == 2);
+      find_command(list, input, DrawCommandKind::Rect, 2);
+  CHECK(find_command(list, input, DrawCommandKind::Gradient) == nullptr);
+  CHECK(input_body != nullptr);
+  CHECK(input_body->rect.w == 220.0f);
+  CHECK(input_body->payload.rect.corner_radius == 4.0f);
+  CHECK(same_color(input_body->payload.rect.fill, premul({54, 56, 60, 255})));
   CHECK(selection_rect != nullptr);
   CHECK(selection_rect->rect.w == 24.0f);
   // Selection fill is half-ish alpha (180): premultiplied rgb must be scaled.
@@ -288,6 +284,9 @@ static bool button_emits_fill_and_border(void) {
   CHECK(caret_rect->rect.w == 1.0f);
 
   // The focused input must carry an outline (focus ring) on its Border command.
+  // Interaction state (focus_visible) is not published in this single-pass
+  // reconcile, so the component's resolved outline is unset and the transcriber
+  // falls back to its legacy focus-ring injection (kFocusBorder accent).
   const DrawCommand *input_border =
       find_command(list, input, DrawCommandKind::Border);
   CHECK(input_border != nullptr);
@@ -343,8 +342,10 @@ static bool focused_button_emits_focus_ring_outline(void) {
   CHECK(build_draw_command_list(tree, &list, button));
   CHECK(list.error_count == 0);
 
-  // The focused control gets a Border with an outline (the focus ring) in the
-  // accent color, premultiplied.
+  // The focused control gets a Border with an outline (the focus ring).
+  // Interaction state (focus_visible) is not published in this single-pass
+  // reconcile, so the component's resolved outline is unset and the transcriber
+  // falls back to its legacy focus-ring injection (kFocusBorder accent).
   const DrawCommand *button_border =
       find_command(list, button, DrawCommandKind::Border);
   CHECK(button_border != nullptr);
@@ -353,16 +354,16 @@ static bool focused_button_emits_focus_ring_outline(void) {
                    premul({96, 165, 250, 255})));
   CHECK(button_border->payload.border.outline.width == 2.0f);
 
-  // Unfocused control: a Border with no outline, carrying the 8px radius and the
-  // refined control border color.
+  // Unfocused control: a Border with no outline, carrying the neutral fallback
+  // 4px radius and the neutral control border color.
   const DrawCommand *checkbox_border =
       find_command(list, checkbox, DrawCommandKind::Border);
   CHECK(checkbox_border != nullptr);
   CHECK(checkbox_border->payload.border.has_outline == false);
   CHECK(same_color(checkbox_border->payload.border.border.color.top,
-                   premul({70, 80, 98, 255})));
+                   premul({84, 88, 96, 255})));
   CHECK(checkbox_border->payload.border.border.width.top == 1.0f);
-  CHECK(checkbox_border->payload.border.corner_radius == 8.0f);
+  CHECK(checkbox_border->payload.border.corner_radius == 4.0f);
   return true;
 }
 
@@ -657,10 +658,12 @@ static bool input_caret_uses_measured_advance(void) {
   CHECK(tree.snapshot(input, &snap));
   float origin_x = snap.layout.x + kInsetX;
 
+  // The flat neutral fallback body fill is the input node's first Rect (ordinal
+  // 0); the selection (ordinal 1) and caret (ordinal 2) follow it.
   const DrawCommand *selection_rect =
-      find_command(list, input, DrawCommandKind::Rect, 0);
-  const DrawCommand *caret_rect =
       find_command(list, input, DrawCommandKind::Rect, 1);
+  const DrawCommand *caret_rect =
+      find_command(list, input, DrawCommandKind::Rect, 2);
   CHECK(selection_rect != nullptr);
   CHECK(caret_rect != nullptr);
   // 6 * 7px = 42 — proves measured advance, not char*8 (= 48).

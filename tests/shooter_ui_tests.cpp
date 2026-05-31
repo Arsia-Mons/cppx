@@ -1,6 +1,8 @@
 #include "client/ui/app_shell/client_ui.h"
 #include "client/ui/app_shell/app_shell_provider.h"
+#include "client/ui/app_theme.h"
 #include "client/ui/providers/shooter_provider.h"
+#include "ui/style/theme.h"
 #include "client/ui/screens/in_game/in_game_screen.h"
 #include "client/ui/screens/loadout/components/weapon_tile.h"
 #include "client/ui/screens/loadout/loadout_screen.h"
@@ -40,11 +42,14 @@ static void run_pipeline_frame(client::ui::UiPipeline &pipeline,
     shooter::ShooterContextValue game_ctx{.game = providers.game};
     client::ui::AppShellContextValue shell_ctx{.request_quit =
                                                    providers.request_quit};
-    return shooter::ShooterProvider(
-        game_ctx,
-        ::ui::children({
-            client::ui::AppShellProvider(shell_ctx, ::ui::children({child})),
-        }));
+    return client::ui::ThemeProvider(::ui::children({
+        shooter::ShooterProvider(
+            game_ctx,
+            ::ui::children({
+                client::ui::AppShellProvider(shell_ctx,
+                                             ::ui::children({child})),
+            })),
+    }));
   });
   pipeline.render_client_ui_frame(
       {
@@ -532,7 +537,20 @@ static bool root_level_providers_reach_screens_without_per_screen_wrap(void) {
   return true;
 }
 
+static bool test_theme_ownership(void) {
+  // The PRODUCT look (slate, control gradients) lives in client/ via
+  // app_theme(); ui/'s default_theme() is the NEUTRAL, FLAT fallback. base is a
+  // dense VisualStyle, so gradient presence is the value cue stop_count != 0.
+  CHECK(client::ui::app_theme().button.base.gradient.stop_count != 0); // slate has a gradient
+  CHECK(::ui::default_theme().button.base.gradient.stop_count == 0);   // neutral is flat
+  CHECK(client::ui::app_theme().button.focus_visible.outline.set);
+  CHECK(::ui::default_theme().button.focus_visible.outline.set);
+  return true;
+}
+
 int main(void) {
+  if (!test_theme_ownership())
+    return 1;
   if (!shooter_game_buy_and_equip_are_real_state_writes())
     return 1;
   if (!main_menu_start_match_resets_game_and_stack())

@@ -5,6 +5,7 @@
 #include "../renderer/text_measure_impl.h"
 #include "../client/ui/app_shell/app_shell_provider.h"
 #include "../client/ui/providers/shooter_provider.h"
+#include "client/ui/app_theme.h"
 #include "client/ui/screens/main_menu/main_menu_screen.h"
 
 #include <SDL3/SDL.h>
@@ -99,11 +100,13 @@ bool App::initialize(const AppOptions &options) {
     ui_pipeline_.set_frame_provider([this](::ui::UiElement child) {
         shooter::ShooterContextValue        game_ctx { .game = &shooter_game_ };
         client::ui::AppShellContextValue    shell_ctx { .request_quit = [this] { running_ = false; } };
-        return shooter::ShooterProvider(
-            game_ctx,
-            ::ui::children({
-                client::ui::AppShellProvider(shell_ctx, ::ui::children({child})),
-            }));
+        return client::ui::ThemeProvider(::ui::children({
+            shooter::ShooterProvider(
+                game_ctx,
+                ::ui::children({
+                    client::ui::AppShellProvider(shell_ctx, ::ui::children({child})),
+                })),
+        }));
     });
 
     ui_pipeline_.client_ui().push_screen(std::make_unique<shooter::MainMenuScreen>());
