@@ -1,7 +1,7 @@
 #include "app.h"
 
 #include "game_loop.h"
-#include "../react.h"
+#include "../ui/runtime/react.h"
 #include "../renderer/text_measure_impl.h"
 #include "../client/ui/providers/app_provider.h"
 #include "../client/ui/providers/server_provider.h"

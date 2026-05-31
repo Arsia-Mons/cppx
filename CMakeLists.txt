@@ -208,7 +208,7 @@ set_tests_properties(component_descriptor_guard PROPERTIES
 
 add_executable(hello
   src/main.cpp
-  src/react.cpp
+  src/ui/runtime/react.cpp
   src/app/app.cpp
   src/app/game_loop.cpp
   src/client/ui/app_shell/client_ui.cpp
@@ -275,7 +275,7 @@ endif()
 
 add_executable(react_runtime_tests
   tests/react_runtime_tests.cpp
-  src/react.cpp
+  src/ui/runtime/react.cpp
 )
 
 target_include_directories(react_runtime_tests PRIVATE
@@ -330,7 +330,7 @@ add_test(NAME retained_ui_yoga_tests COMMAND retained_ui_yoga_tests)
 
 add_executable(retained_ui_reconciler_tests
   tests/retained_ui_reconciler_tests.cpp
-  src/react.cpp
+  src/ui/runtime/react.cpp
   src/ui/runtime/element.cpp
   src/ui/runtime/tree.cpp
   src/ui/style/text_measure.cpp
@@ -348,7 +348,7 @@ add_test(NAME retained_ui_reconciler_tests COMMAND retained_ui_reconciler_tests)
 
 add_executable(ui_components_tests
   tests/ui_components_tests.cpp
-  src/react.cpp
+  src/ui/runtime/react.cpp
   src/ui/runtime/element.cpp
   ${UI_COMPONENT_SOURCES}
   src/ui/runtime/tree.cpp
@@ -367,7 +367,7 @@ add_test(NAME ui_components_tests COMMAND ui_components_tests)
 add_executable(retained_cppx_component_tests
   tests/retained_cppx_component_tests.cpp
   ${CPPX_RETAINED_COMPONENT_GENERATED}
-  src/react.cpp
+  src/ui/runtime/react.cpp
   src/ui/runtime/element.cpp
   ${UI_COMPONENT_SOURCES}
   src/ui/runtime/tree.cpp
@@ -393,7 +393,7 @@ add_test(NAME retained_cppx_component_tests COMMAND retained_cppx_component_test
 
 add_executable(retained_ui_primitives_tests
   tests/retained_ui_primitives_tests.cpp
-  src/react.cpp
+  src/ui/runtime/react.cpp
   src/ui/runtime/element.cpp
   ${UI_COMPONENT_SOURCES}
   src/ui/runtime/tree.cpp
@@ -418,7 +418,7 @@ add_test(NAME retained_ui_primitives_tests COMMAND retained_ui_primitives_tests)
 
 add_executable(retained_ui_draw_command_tests
   tests/retained_ui_draw_command_tests.cpp
-  src/react.cpp
+  src/ui/runtime/react.cpp
   src/ui/runtime/draw_command_builder.cpp
   src/ui/runtime/draw_command.cpp
   src/ui/runtime/element.cpp
@@ -497,7 +497,7 @@ add_test(NAME ui_geometry_tests COMMAND ui_geometry_tests)
 add_executable(ui_interaction_hooks_tests
   tests/ui_interaction_hooks_tests.cpp
   src/ui/runtime/interaction_hooks.cpp
-  src/react.cpp
+  src/ui/runtime/react.cpp
 )
 
 target_include_directories(ui_interaction_hooks_tests PRIVATE
@@ -560,7 +560,7 @@ set_tests_properties(renderer_golden_tests PROPERTIES
 
 add_executable(retained_ui_focus_tests
   tests/retained_ui_focus_tests.cpp
-  src/react.cpp
+  src/ui/runtime/react.cpp
   src/ui/runtime/element.cpp
   ${UI_COMPONENT_SOURCES}
   src/ui/runtime/focus.cpp
@@ -586,7 +586,7 @@ add_test(NAME retained_ui_focus_tests COMMAND retained_ui_focus_tests)
 
 add_executable(client_ui_tests
   tests/client_ui_tests.cpp
-  src/react.cpp
+  src/ui/runtime/react.cpp
   src/client/ui/app_shell/client_ui.cpp
   src/client/ui/providers/navigation_provider.cpp
   src/client/ui/app_shell/navigation/screen_stack.cpp
@@ -617,7 +617,7 @@ add_test(NAME client_ui_tests COMMAND client_ui_tests)
 
 add_executable(ui_pipeline_tests
   tests/ui_pipeline_tests.cpp
-  src/react.cpp
+  src/ui/runtime/react.cpp
   src/client/ui/app_shell/client_ui.cpp
   src/client/ui/providers/navigation_provider.cpp
   src/client/ui/app_shell/navigation/screen_stack.cpp
@@ -649,7 +649,7 @@ add_test(NAME ui_pipeline_tests COMMAND ui_pipeline_tests)
 
 add_executable(shooter_ui_tests
   tests/shooter_ui_tests.cpp
-  src/react.cpp
+  src/ui/runtime/react.cpp
   src/client/ui/app_shell/client_ui.cpp
   src/client/ui/app_theme.cpp
   src/client/ui/screens/in_game/hooks/use_hud.cpp

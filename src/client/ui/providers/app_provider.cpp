@@ -1,7 +1,7 @@
 #include "app_provider.h"
 
 #include "client/ui/hooks/use_app.h"
-#include "react.h"
+#include "ui/runtime/react.h"
 
 namespace client::ui {
 

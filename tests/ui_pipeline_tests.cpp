@@ -2,7 +2,7 @@
 
 #include "client/ui/app_shell/navigation/ui_screen.h"
 #include "client/ui/hooks/use_navigation.h"
-#include "react.h"
+#include "ui/runtime/react.h"
 #include "ui/components/components.h"
 #include "ui/runtime/draw_command.h"
 #include "ui/runtime/focus.h"

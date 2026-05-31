@@ -7,7 +7,7 @@
 #include "client/ui/components/layout/layout.h"
 #include "client/ui/components/text/text.h"
 #include "client/ui/hooks/use_navigation.h"
-#include "react.h"
+#include "ui/runtime/react.h"
 
 namespace shooter {
 

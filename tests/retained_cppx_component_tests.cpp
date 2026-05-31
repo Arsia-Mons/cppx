@@ -1,6 +1,6 @@
 #include "tests/fixtures/retained_cppx/retained_components.h"
 
-#include "react.h"
+#include "ui/runtime/react.h"
 #include "ui/runtime/element.h"
 #include "ui/runtime/flex_layout.h"
 #include "ui/runtime/yoga_flex_layout.h"

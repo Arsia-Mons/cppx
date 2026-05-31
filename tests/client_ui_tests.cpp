@@ -1,6 +1,6 @@
 #include "client/ui/app_shell/client_ui.h"
 #include "client/ui/hooks/use_navigation.h"
-#include "react.h"
+#include "ui/runtime/react.h"
 #include "ui/components/components.h"
 #include "ui/runtime/yoga_flex_layout.h"
 

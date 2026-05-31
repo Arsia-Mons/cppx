@@ -6,7 +6,7 @@
 // the theme; it is not queryable during the draw DFS (context unwinds before
 // build_draw_list). See design §4, §6.
 
-#include "../../react.h" // ReactContext, use_context
+#include "../runtime/react.h" // ReactContext, use_context
 #include "style_patch.h"
 #include "visual_style.h"
 

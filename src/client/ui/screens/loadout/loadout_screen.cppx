@@ -16,7 +16,7 @@
 #include "client/ui/screens/loadout/hooks/use_loadout.h"
 #include "client/ui/screens/loadout/hooks/use_weapons.h"
 #include "client/ui/screens/loadout/providers/loadout_provider.h"
-#include "react.h"
+#include "ui/runtime/react.h"
 
 namespace shooter {
 

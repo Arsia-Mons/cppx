@@ -10,7 +10,7 @@ description: Author idiomatic .cppx/.hx retained UI code in this C++20 SDL repo.
 Before structural edits, inspect the current local files:
 
 - `src/ui/CLAUDE.md` for generic UI boundaries.
-- `src/react.h` for the hook/runtime contract.
+- `src/ui/runtime/react.h` for the hook/runtime contract.
 - `src/ui/runtime/element.h` for `UiElement`, `UiChild`, `UiChildren`, and descriptor helpers.
 - `tools/cppx_transpile.py` only when syntax or lowering behavior is unclear.
 

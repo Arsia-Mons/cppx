@@ -40,11 +40,10 @@ and can run the full CTest suite. SDL3 and SDL3_ttf are fetched when needed.
 
 - `src/app`: process lifecycle and the per-frame loop.
 - `src/client/ui`: screen stack, providers, hooks, components, and screens.
-- `src/ui/runtime`: retained tree, focus, layout, and draw commands.
+- `src/ui/runtime`: hook runtime (`react.{h,cpp}`), retained tree, focus, layout, and draw commands.
 - `src/ui/components`: generic element-returning UI components.
 - `src/renderer`: SDL renderer and font ownership.
 - `src/platform`: SDL adapters and CLI control mailbox.
 - `src/game`: game rules and state.
-- `src/react.{h,cpp}`: hook runtime.
 
 See `architecture.md` for the implementation model and extension points.

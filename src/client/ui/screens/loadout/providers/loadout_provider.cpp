@@ -3,7 +3,7 @@
 #include "client/ui/app_shell/deferred_ui_mutation.h"
 #include "client/ui/callback_deps.h"
 #include "client/ui/screens/loadout/hooks/use_loadout.h"
-#include "react.h"
+#include "ui/runtime/react.h"
 
 namespace shooter {
 

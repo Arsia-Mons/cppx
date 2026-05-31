@@ -35,13 +35,13 @@ retained screens, post-layout writes, a deterministic headless CLI).
     DrawCommand IR, SDL-free geometry)
         │
         ▼
-   react.{h,cpp}   (React-style hook runtime over component trees)
+   ui/runtime/react.{h,cpp}   (React-style hook runtime; the innermost base of ui/)
 ```
 
 **Allowed dependency direction:**
 
 ```text
-client/ui/screens → client/ui → game → ui → react
+client/ui/screens → client/ui → game → ui → ui/runtime/react
 ```
 
 - `app/` composes everything. It is the only directory permitted to know about every
@@ -67,15 +67,15 @@ src/renderer/   draw_executor, font_registry, texture_registry, ui_surface,
 src/ui/         input.h, span.h
   ui/style/       visual_style.h, style_patch.h, theme.h, default_theme.cpp,
                   resolve.{h,cpp}, interaction.h, text_measure.{h,cpp}
-  ui/runtime/     tree, element (reconciler), flex_layout/yoga_flex_layout, focus,
-                  interaction_hooks, draw_command (IR), draw_command_builder
+  ui/runtime/     react.{h,cpp} (the hook runtime; full API in the react.h header
+                  comment), tree, element (reconciler), flex_layout/yoga_flex_layout,
+                  focus, interaction_hooks, draw_command (IR), draw_command_builder
                   (transcriber), geometry (SDL-free tessellation)
   ui/components/  generic element-returning widgets (box/button/checkbox/dialog/
                   input/text), authored in the .cppx/.hx dialect
 src/client/ui/  ClientUi shell, UiPipeline, screen stack, providers, hooks,
                 screens/* (the game's screens), screen-local components
 src/game/       player/weapons/economy/inventory rules + state
-src/react.{h,cpp}  the hook runtime (full API in the react.h header comment)
 third_party/    stb_image
 tests/          C++ unit-test binaries + python guards + CLI smoke tests
 tools/          cppx_transpile.py, ui_cli.py (headless control/capture driver)
@@ -86,7 +86,7 @@ tools/          cppx_transpile.py, ui_cli.py (headless control/capture driver)
 ## 2. The retained runtime + React-style hook model
 
 Components are authored as functions that *return element descriptions*, not as
-objects that imperatively mutate a tree. The hook runtime (`src/react.h`) is
+objects that imperatively mutate a tree. The hook runtime (`src/ui/runtime/react.h`) is
 intentionally React-shaped:
 
 - `REACT_COMPONENT_BEGIN` / `_KEY` open a component; slot callbacks supply children.

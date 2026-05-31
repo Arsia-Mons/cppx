@@ -7,7 +7,7 @@
 #include "client/ui/components/tokens.h"
 #include "client/ui/screens/loadout/hooks/use_loadout.h"
 #include "client/ui/screens/loadout/hooks/use_weapons.h"
-#include "react.h"
+#include "ui/runtime/react.h"
 #include "ui/components/components.h"
 
 namespace shooter {

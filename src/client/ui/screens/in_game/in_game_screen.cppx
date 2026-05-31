@@ -11,7 +11,7 @@
 #include "client/ui/screens/in_game/components/hud_band.h"
 #include "client/ui/screens/loadout/loadout_screen.h"
 #include "client/ui/screens/pause/pause_screen.h"
-#include "react.h"
+#include "ui/runtime/react.h"
 
 namespace shooter {
 

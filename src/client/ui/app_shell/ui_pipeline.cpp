@@ -1,6 +1,6 @@
 #include "ui_pipeline.h"
 
-#include "../../../react.h"
+#include "../../../ui/runtime/react.h"
 #include "../../../ui/runtime/yoga_flex_layout.h"
 
 namespace client::ui {

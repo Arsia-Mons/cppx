@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../react.h"
+#include "react.h"
 #include "tree.h"
 
 #include <array>

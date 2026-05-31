@@ -14,7 +14,7 @@
 #include "client/ui/hooks/use_server.h"
 #include "client/ui/screens/in_game/in_game_screen.h"
 #include "client/ui/screens/options/options_screen.h"
-#include "react.h"
+#include "ui/runtime/react.h"
 
 namespace shooter {
 

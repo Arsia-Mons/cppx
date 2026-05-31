@@ -6,16 +6,15 @@ Source tree. Boundaries here are deliberate — see `../architecture.md` for the
 
 ```text
 app/      process lifecycle and the per-frame loop
-ui/       generic UI toolkit/runtime (no game vocabulary)
+ui/       generic UI toolkit/runtime incl. the hook runtime at runtime/react.{h,cpp} (no game vocabulary)
 client/   client UI shell (screen stack, mutation queue, focus glue) + the game's screens
 game/     game rules and state (player, weapons, economy, inventory)
 platform/ OS/library adapters (SDL window/input, control mailbox)
 renderer/ font + UI→SDL render glue
-react.{h,cpp}  React-style hook runtime over retained component trees
 main.cpp  ~15-line entrypoint: builds AppOptions, hands off to app::App
 ```
 
-Allowed dependency direction: `client/ui/screens → client/ui → game → ui → react`. `app/` composes everything; `platform/` and `renderer/` are siblings consumed by `app/`. `game/` must not depend on SDL/UI.
+Allowed dependency direction: `client/ui/screens → client/ui → game → ui → ui/runtime/react`. `app/` composes everything; `platform/` and `renderer/` are siblings consumed by `app/`. `game/` must not depend on SDL/UI.
 
 ## Where new code goes
 

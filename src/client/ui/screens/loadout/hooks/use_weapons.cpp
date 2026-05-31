@@ -4,7 +4,7 @@
 #include "client/ui/callback_deps.h"
 #include "client/ui/hooks/use_server.h"
 #include "game/shooter_game.h"
-#include "react.h"
+#include "ui/runtime/react.h"
 
 #include <stdint.h>
 

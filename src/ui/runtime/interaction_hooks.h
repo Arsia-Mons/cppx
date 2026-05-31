@@ -9,7 +9,7 @@
 // "is THIS me?" without recomputing node-id hashes. One-frame lag is accepted.
 // See design §7.
 
-#include "../../react.h" // ReactContext, ReactFiberId, use_context, react_current_fiber_id
+#include "react.h" // ReactContext, ReactFiberId, use_context, react_current_fiber_id
 #include "focus.h"       // FocusSource, focus_source_is_visible
 
 namespace ui {

@@ -3,7 +3,7 @@
 #include "client/ui/app_shell/client_ui.h"
 #include "client/ui/app_shell/deferred_ui_mutation.h"
 #include "client/ui/hooks/use_navigation.h"
-#include "react.h"
+#include "ui/runtime/react.h"
 
 namespace client::ui {
 

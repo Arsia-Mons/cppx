@@ -15,7 +15,7 @@
 #include "client/ui/screens/pause/pause_screen.h"
 #include "client/ui/app_shell/ui_pipeline.h"
 #include "game/shooter_game.h"
-#include "react.h"
+#include "ui/runtime/react.h"
 
 #include <functional>
 
