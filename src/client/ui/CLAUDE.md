@@ -59,7 +59,7 @@ screens/<screen>/                Per-screen feature module: <screen>_screen.{hx,
                                  optional components/, hooks/, providers/, lib/.
 ```
 
-Client UI is layered as primitives (`src/ui/*`) → shared semantic components (`components/*`) → screen feature modules (`screens/*`). Screen code composes semantic components and passes **variants**; only a component's own implementation touches host/runtime `Style`/`VisualStyle`/events. See `docs/client-ui-component-architecture-goal.md`.
+Client UI is layered as primitives (`src/ui/*`) → shared semantic components (`components/*`) → screen feature modules (`screens/*`). Screen code composes semantic components and passes **variants**; only a component's own implementation touches host/runtime `Style`/`VisualStyle`/events.
 
 `use_navigation()` is the public navigation hook screens use without mutating the screen stack mid-build. Screens compose navigation directly with destination screen types; destination modules export screens/components, not caller-specific hooks. `use_navigation().is_top` reads the current `NavigationProvider` top-screen flag; retained overlay screens use it to avoid rendering/trapping input when a higher overlay covers them.
 Use `use_app()` for app-shell capabilities such as quit, and `use_server()` for shooter/domain state and mutations. Domain and screen-local setter hooks may use `internal::DeferredUiMutationSink`; ordinary screen components should expose named hooks instead of the sink itself.

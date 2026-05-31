@@ -36,7 +36,7 @@ Headless tests live in `tests/`. The Python smoke tests drive the binary through
 - C++20, no exceptions in UI/runtime code, no RTTI assumed. Warnings are errors-of-attention (`-Wall -Wextra`, see `CMakeLists.txt:76`).
 - React-style hooks are the composition primitive — read `src/ui/runtime/react.h` before writing a component. Use `REACT_COMPONENT_BEGIN` / `_KEY` and slot callbacks; never store `children` past the call.
 - Stable hook IDs come from the hook runtime's parent-hash + sibling index. Use keyed component/node identity when reordering keyed siblings.
-- Writes that mutate game state during layout must go through `client::ui::ClientUi::queue_deferred_write` — never mutate during the UI declaration pass.
+- Writes that mutate game state during layout must go through `client::ui::ClientUi::queue_deferred_mutation` — never mutate during the UI declaration pass.
 - Game-specific UI lives in `src/client/ui` (shell + screens) and game rules in `src/game/`. Keep `src/ui/` free of game vocabulary.
 
 ## More

@@ -28,9 +28,10 @@ hard differences:
 | Exhaustive API detail | `reference/hook-runtime.md`, `reference/styling-and-theming.md`, `reference/react-patterns-in-cpp.md` (this dir) |
 
 `src/client/ui/CLAUDE.md` is the authoritative convention doc — this skill operationalizes it.
-(Note: the root `CLAUDE.md` says `queue_deferred_write` and `src/client/ui/CLAUDE.md` references
-`docs/client-ui-component-architecture-goal.md`; **both are stale** — the real API is
-`queue_deferred_mutation` and that doc does not exist. Don't propagate either.)
+(The deferred-write API is `ClientUi::queue_deferred_mutation` — if you ever see the old
+`queue_deferred_write` name, it doesn't exist. There is likewise no
+`docs/client-ui-component-architecture-goal.md`; the layering it once described lives in
+`src/client/ui/CLAUDE.md`.)
 
 ## Where does new code go?
 
