@@ -14,6 +14,8 @@
 // kept on the API for forward-compat but is intentionally ignored here.
 
 #include "ui/components/common.h" // ::ui::Style, ::ui::StylePatch
+#include "ui/style/style_patch.h" // ::ui::patch()
+#include "client/ui/components/tokens.h" // shooter::tokens accent/danger
 
 namespace shooter {
 
@@ -45,11 +47,57 @@ inline ::ui::Style app_button_layout(AppButtonSize size, bool /*selected*/) {
   }
 }
 
-// Variant paint overlay. BASELINE: all four variants paint identically (the ui
-// Button resolves its full chrome from use_theme().button), so the patch is an
-// empty no-op today. This is the single place future per-variant polish edits.
-inline ::ui::StylePatch app_button_variant_patch(AppButtonVariant /*variant*/) {
-  return {};
+// Variant paint overlay over the theme's slate Button base. A StylePatch
+// overrides base/variant only; the theme's hover/pressed/disabled deltas still
+// layer on top (intended). Each fill sets a FLAT 2-stop gradient (top==bottom)
+// so the slate base gradient does not bleed through the new solid fill.
+//
+// Secondary returns {} on purpose: the empty patch IS the theme default slate
+// button, so a plain AppButton with no variant work needed paints unchanged.
+inline ::ui::StylePatch app_button_variant_patch(AppButtonVariant variant) {
+  switch (variant) {
+  case AppButtonVariant::Primary: {
+    const ::ui::Color fill = tokens::kAccent;
+    return ::ui::patch()
+        .background(fill)
+        .gradient(::ui::Gradient{
+            .angle_deg = 0.0f,
+            .stop_count = 2,
+            .stops = {{0.0f, fill}, {1.0f, fill}}})
+        .border(::ui::Border{
+            {1.0f, 1.0f, 1.0f, 1.0f},
+            {tokens::kAccentBorder, tokens::kAccentBorder,
+             tokens::kAccentBorder, tokens::kAccentBorder}});
+  }
+  case AppButtonVariant::Danger: {
+    const ::ui::Color fill = tokens::kDanger;
+    return ::ui::patch()
+        .background(fill)
+        .gradient(::ui::Gradient{
+            .angle_deg = 0.0f,
+            .stop_count = 2,
+            .stops = {{0.0f, fill}, {1.0f, fill}}})
+        .border(::ui::Border{
+            {1.0f, 1.0f, 1.0f, 1.0f},
+            {tokens::kDangerBorder, tokens::kDangerBorder,
+             tokens::kDangerBorder, tokens::kDangerBorder}});
+  }
+  case AppButtonVariant::Ghost: {
+    const ::ui::Color transparent = {0, 0, 0, 0};
+    return ::ui::patch()
+        .background(transparent)
+        .gradient(::ui::Gradient{
+            .angle_deg = 0.0f,
+            .stop_count = 2,
+            .stops = {{0.0f, transparent}, {1.0f, transparent}}})
+        .border(::ui::Border{
+            {0.0f, 0.0f, 0.0f, 0.0f},
+            {transparent, transparent, transparent, transparent}});
+  }
+  case AppButtonVariant::Secondary:
+  default:
+    return {};
+  }
 }
 
 } // namespace shooter

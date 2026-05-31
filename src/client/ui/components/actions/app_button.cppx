@@ -33,9 +33,6 @@ using ::ui::components::ButtonProps;
     };
   }
 
-  // variant -> paint overlay (baseline no-op; computed for forward-compat).
-  (void)app_button_variant_patch(props.variant);
-
   const char *a11y_label =
       props.accessibility_label ? props.accessibility_label : props.label;
 
@@ -56,6 +53,7 @@ using ::ui::components::ButtonProps;
               props.children.count > 0 ? nullptr : props.label,
           }),
           .style = app_button_layout(props.size, props.selected),
+          .style_override = app_button_variant_patch(props.variant),
       },
       Button);
 }

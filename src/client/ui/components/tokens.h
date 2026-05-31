@@ -29,6 +29,12 @@ constexpr ::ui::Color kBorderPanel = {78, 96, 108, 255};
 constexpr ::ui::Color kBorderHeroPanel = {83, 108, 118, 255};
 constexpr ::ui::Color kBorderHudBand = {82, 106, 118, 255};
 
+// ---- Accent / semantic action colors (AppButton variant fills) ----
+constexpr ::ui::Color kAccent = {96, 165, 250, 255};        // slate accent blue
+constexpr ::ui::Color kAccentBorder = {130, 188, 255, 255}; // brighter accent edge
+constexpr ::ui::Color kDanger = {220, 60, 60, 255};         // destructive red
+constexpr ::ui::Color kDangerBorder = {240, 110, 110, 255}; // brighter danger edge
+
 // ---- Text ----
 constexpr ::ui::Color kTextTitle = {236, 246, 242, 255};
 constexpr ::ui::Color kTextHeroTitle = {235, 246, 242, 255};

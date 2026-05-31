@@ -4,6 +4,7 @@
 #include "client/ui/providers/shooter_provider.h"
 #include "ui/style/theme.h"
 #include "client/ui/screens/in_game/in_game_screen.h"
+#include "client/ui/components/actions/app_button_variant.h"
 #include "client/ui/screens/loadout/components/weapon_tile.h"
 #include "client/ui/screens/loadout/loadout_screen.h"
 #include "client/ui/screens/main_menu/main_menu_screen.h"
@@ -548,8 +549,31 @@ static bool test_theme_ownership(void) {
   return true;
 }
 
+static bool test_app_button_variants_distinct(void) {
+  // The cva variant table must paint each non-default variant distinctly, and
+  // leave Secondary as the empty patch (== the theme's default slate button).
+  CHECK(shooter::app_button_variant_patch(shooter::AppButtonVariant::Danger)
+            .background.set);
+  CHECK(shooter::app_button_variant_patch(shooter::AppButtonVariant::Primary)
+            .background.set);
+  CHECK(shooter::app_button_variant_patch(shooter::AppButtonVariant::Primary)
+            .background.value !=
+        shooter::app_button_variant_patch(shooter::AppButtonVariant::Danger)
+            .background.value);
+  CHECK(shooter::app_button_variant_patch(shooter::AppButtonVariant::Ghost)
+                .background.set &&
+        shooter::app_button_variant_patch(shooter::AppButtonVariant::Ghost)
+                .background.value.a == 0);
+  // Secondary is the theme default (empty patch):
+  CHECK(!shooter::app_button_variant_patch(shooter::AppButtonVariant::Secondary)
+             .background.set);
+  return true;
+}
+
 int main(void) {
   if (!test_theme_ownership())
+    return 1;
+  if (!test_app_button_variants_distinct())
     return 1;
   if (!shooter_game_buy_and_equip_are_real_state_writes())
     return 1;
