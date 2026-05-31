@@ -1,8 +1,13 @@
-# SDL3 Retained UI Reference
+# CPPX
 
-Reference implementation for a retained game UI inside a C++20 / SDL3 game
-shell. The UI uses a small React-style hook runtime, a retained tree, Yoga for
-flex layout, retained focus/event routing, and SDL render-command output.
+TL;DR:
+- Write UI using JSX and React-style hooks (useState, effects, providers) to **cleanly** cross the ui/game data barrier.
+- Game-dev style screen stack (pop/push, i.e. accept & cancel/go back)
+- Automatic interaction/focusable state management of components - allowing for state-specific visual styling (think css psuedoclasses like `:hover` )
+- **Implicit (and explicit) gamepad/keyboard traversal of focusable components!**
+- Flexbox layout with Yoga
+- Retained mode
+- Emit render commands to your renderer of choice, similar to Flutter/Clay
 
 The app demonstrates:
 
