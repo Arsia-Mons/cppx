@@ -6,8 +6,8 @@
 #include "../../../../../react.h"
 #include "../../../../../ui/components/components.h"
 #include "client/ui/components/tokens.h"
+#include "client/ui/screens/loadout/hooks/use_loadout.h"
 #include "client/ui/screens/loadout/hooks/use_weapons.h"
-#include "../loadout_state.h"
 
 namespace shooter {
 
@@ -17,8 +17,9 @@ namespace shooter {
   if (!weapon.valid)
     return ::ui::empty();
 
-  int selected_index = use_selected_weapon_tile();
-  std::function<void(int)> set_selected = use_set_selected_weapon_tile();
+  LoadoutValue loadout = use_loadout();
+  int selected_index = loadout.selected_weapon_tile;
+  std::function<void(int)> set_selected = loadout.set_selected_weapon_tile;
   bool selected = selected_index == props.weapon_index;
   namespace components = ::ui::components;
 

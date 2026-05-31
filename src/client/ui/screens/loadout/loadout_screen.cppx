@@ -1,0 +1,183 @@
+#include "client/ui/screens/loadout/loadout_screen.h"
+
+#include <functional>
+#include <stdint.h>
+#include <stdio.h>
+
+#include "client/ui/hooks/use_navigation.h"
+#include "client/ui/screens/loadout/components/confirm_dialog.h"
+#include "client/ui/screens/loadout/components/loadout_body.h"
+#include "client/ui/screens/loadout/components/loadout_details.h"
+#include "client/ui/screens/loadout/components/loadout_screen_frame.h"
+#include "client/ui/screens/loadout/components/loadout_tabs.h"
+#include "client/ui/screens/loadout/components/loadout_title.h"
+#include "client/ui/screens/loadout/components/loadout_weapon_grid.h"
+#include "client/ui/screens/loadout/components/weapon_tile.h"
+#include "client/ui/screens/loadout/hooks/use_loadout.h"
+#include "client/ui/screens/loadout/hooks/use_weapons.h"
+#include "client/ui/screens/loadout/providers/loadout_provider.h"
+#include "react.h"
+
+namespace shooter {
+
+using ::ui::children;
+
+namespace {
+
+struct LoadoutScreenProps {
+  uint32_t unused = 0;
+};
+
+struct LoadoutScreenStackProps {
+  ::ui::UiChildren children = {};
+};
+
+struct LoadoutScreenContentProps {
+  const char *key = nullptr;
+};
+
+const char *screen_entry_key(const char *prefix,
+                             client::ui::UiScreenEntryId entry_id) {
+  char key[64] = {};
+  snprintf(key, sizeof(key), "%s-%u", prefix, entry_id);
+  return ::ui::copy_string(key);
+}
+
+::ui::UiElement LoadoutScreenStack(const LoadoutScreenStackProps &props) {
+  return ::ui::fragment(props.children);
+}
+
+::ui::UiElement LoadoutScreenContent(const LoadoutScreenContentProps &props) {
+  (void)props;
+  client::ui::Navigation navigation = client::ui::use_navigation();
+  LoadoutValue loadout = use_loadout();
+  WeaponsValue weapons = use_weapons();
+  int weapon_count = weapons.count();
+  int selected_index_seed = loadout.selected_weapon_tile;
+  int *active_tab = use_state<int>(LOADOUT_TAB_WEAPONS);
+  if (!active_tab)
+    return ::ui::empty();
+
+  if (selected_index_seed < 0 || selected_index_seed >= weapon_count) {
+    selected_index_seed = 0;
+  }
+  if (!weapon_in_tab(selected_index_seed, *active_tab)) {
+    selected_index_seed = first_weapon_for_tab(*active_tab);
+  }
+
+  WeaponsValue::Weapon selected = weapons.get_weapon(selected_index_seed);
+  bool can_buy = selected.valid && selected.can_buy;
+  bool can_equip = selected.valid && selected.can_equip && !selected.equipped;
+  std::function<void(int)> set_selected_tile = loadout.set_selected_weapon_tile;
+  std::function<void(LoadoutValue::PendingAction)> set_pending =
+      loadout.set_pending_action;
+  LoadoutValue::PendingAction pending = loadout.pending;
+  const char *details =
+      use_text_storage("%s: %s, cost %d, ammo %d", selected.name, selected.role,
+                       selected.cost, selected.ammo);
+  bool compare_enabled = loadout.compare_enabled;
+  std::function<void(bool)> set_compare_enabled = loadout.set_compare_enabled;
+
+  if (!navigation.is_top || !selected.valid)
+    return ::ui::empty();
+
+  bool confirm_open = pending.action != LoadoutValue::Action::None;
+
+  // Tab on_select closures: write #1 (*active_tab) is synchronous local state;
+  // writes #2 (set_selected_tile) and #3 (weapons.select) are the two
+  // deferred writes the GearTab contract pins. All three live here so the gear
+  // tab still queues exactly two deferred mutations.
+  std::function<void()> weapons_on_select =
+      [active_tab, set_selected_tile, weapons] {
+        if (active_tab)
+          *active_tab = LOADOUT_TAB_WEAPONS;
+        if (set_selected_tile)
+          set_selected_tile(first_weapon_for_tab(LOADOUT_TAB_WEAPONS));
+        weapons.select(first_weapon_for_tab(LOADOUT_TAB_WEAPONS));
+      };
+  std::function<void()> gear_on_select =
+      [active_tab, set_selected_tile, weapons] {
+        if (active_tab)
+          *active_tab = LOADOUT_TAB_GEAR;
+        if (set_selected_tile)
+          set_selected_tile(first_weapon_for_tab(LOADOUT_TAB_GEAR));
+        weapons.select(first_weapon_for_tab(LOADOUT_TAB_GEAR));
+      };
+
+  std::function<void()> on_buy = [set_pending, pending, selected_index_seed] {
+    if (set_pending) {
+      set_pending({
+          .action = LoadoutValue::Action::Buy,
+          .weapon_index = selected_index_seed,
+          .generation = pending.generation + 1,
+      });
+    }
+  };
+  std::function<void()> on_equip = [set_pending, pending, selected_index_seed] {
+    if (set_pending) {
+      set_pending({
+          .action = LoadoutValue::Action::Equip,
+          .weapon_index = selected_index_seed,
+          .generation = pending.generation + 1,
+      });
+    }
+  };
+  std::function<void()> on_back = [pop = navigation.pop_current] {
+    if (pop)
+      pop();
+  };
+
+  return <LoadoutScreenStack>
+    <LoadoutConfirmDialog />
+    <LoadoutScreenFrame key="root" confirmOpen={confirm_open}>
+      <LoadoutTitle key="title" value="Loadout" />
+      <LoadoutTabs key="tabs">
+        <LoadoutTabs.Tab
+          key="weapons"
+          controlId="WeaponsTab"
+          label="Weapons"
+          onSelect={weapons_on_select}
+        />
+        <LoadoutTabs.Tab key="gear" controlId="GearTab" label="Gear" onSelect={gear_on_select} />
+      </LoadoutTabs>
+      <LoadoutBody key="body">
+        <LoadoutWeaponGrid key="weapon-grid" activeTab={*active_tab} />
+        <LoadoutDetails
+          key="details"
+          summary={details}
+          canBuy={can_buy}
+          canEquip={can_equip}
+          compareEnabled={compare_enabled}
+          onCompareChange={set_compare_enabled}
+          onBuy={on_buy}
+          onEquip={on_equip}
+          onBack={on_back}
+        />
+      </LoadoutBody>
+    </LoadoutScreenFrame>
+  </LoadoutScreenStack>
+}
+
+::ui::UiElement LoadoutScreenView(const LoadoutScreenProps &props) {
+  (void)props;
+
+  return <LoadoutProvider key="provider">
+    <LoadoutScreenContent key="content" />
+  </LoadoutProvider>
+}
+
+} // namespace
+
+bool LoadoutScreen::build_element(::ui::UiElementFrame &frame,
+                                  ::ui::UiElement *out) {
+  if (!out)
+    return false;
+  *out = ::ui::component("LoadoutScreen", LoadoutScreenProps{},
+                         LoadoutScreenView,
+                         screen_entry_key("loadout", entry_id()));
+  return true;
+}
+
+void LoadoutScreen::build_ui() {}
+
+} // namespace shooter

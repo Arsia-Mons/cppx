@@ -106,6 +106,7 @@ cppx_transpile(CLIENT_UI_GENERATED
   src/client/ui/screens/options/options_screen.hx
   src/client/ui/screens/pause/pause_screen.cppx
   src/client/ui/screens/pause/pause_screen.hx
+  src/client/ui/screens/loadout/loadout_screen.cppx
   src/client/ui/screens/loadout/components/loadout_screen_frame.cppx
   src/client/ui/screens/loadout/components/loadout_screen_frame.hx
   src/client/ui/screens/loadout/components/loadout_title.cppx
@@ -219,9 +220,7 @@ add_executable(hello
   src/client/ui/screens/loadout/components/confirm_dialog.cpp
   src/client/ui/screens/loadout/components/equipment_slot.cpp
   src/client/ui/screens/loadout/components/weapon_tile.cpp
-  src/client/ui/screens/loadout/loadout_screen.cpp
-  src/client/ui/screens/loadout/loadout_state.cpp
-  src/client/ui/screens/loadout/components/loadout_content.cpp
+  src/client/ui/screens/loadout/providers/loadout_provider.cpp
   ${CLIENT_UI_GENERATED}
   src/platform/control_mailbox.cpp
   src/platform/sdl/input.cpp
@@ -664,9 +663,7 @@ add_executable(shooter_ui_tests
   src/client/ui/screens/loadout/components/confirm_dialog.cpp
   src/client/ui/screens/loadout/components/equipment_slot.cpp
   src/client/ui/screens/loadout/components/weapon_tile.cpp
-  src/client/ui/screens/loadout/loadout_screen.cpp
-  src/client/ui/screens/loadout/loadout_state.cpp
-  src/client/ui/screens/loadout/components/loadout_content.cpp
+  src/client/ui/screens/loadout/providers/loadout_provider.cpp
   ${CLIENT_UI_GENERATED}
   src/game/inventory.cpp
   src/game/economy.cpp

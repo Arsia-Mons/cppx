@@ -1,13 +1,13 @@
 # src/client/ui/screens/loadout/
 
-The loadout screen — the most complex screen, fully decomposed into semantic components + a screen-local React-style provider. Treat this as the reference template for a feature module: a screen component, a `_state` provider, and a `components/` dir with one semantic component per file. Add screen-local `hooks/`, `providers/`, or `lib/` folders only when a concept needs that boundary inside the feature.
+The loadout screen — the most complex screen, fully decomposed into semantic components + a screen-local React-style provider. Treat this as the reference template for a feature module: a screen component, a private provider, public hooks, and a `components/` dir with one semantic component per file. Add screen-local `hooks/`, `providers/`, or `lib/` folders only when a concept needs that boundary inside the feature.
 
 ## Files
 
-- `loadout_screen.{h,cpp}` — the screen entry point and screen component. Keep the class wrapper free of member UI state; the component declares the `use_state` slots, wraps descendants in `LoadoutProvider`, and renders `LoadoutScreenBody`.
-- `loadout_state.{h,cpp}` — `LoadoutPendingAction` + `LoadoutContextValue` + the `LoadoutContext` provider (`use_loadout_context_value`, `loadout_provider_push/pop`) + hooks (`use_compare_enabled`, `use_set_compare_enabled`, `use_selected_weapon_tile`, `use_set_selected_weapon_tile`, `use_pending_loadout_action`, `use_set_pending_loadout_action`, `use_clear_pending_loadout_action`).
+- `loadout_screen.{h,cppx}` — the screen entry point and screen component. Keep the class wrapper free of member UI state; the component wraps descendants in `LoadoutProvider` and keeps the provider-child content component local to the screen file.
+- `providers/loadout_provider.{h,cpp}` — `LoadoutProvider`, its private `LoadoutContext`, the `use_state` slots, and setter implementations. The context value struct stays private to this file.
+- `hooks/use_loadout.h` — the `use_loadout()` consumer hook. It returns a `LoadoutValue` object with read fields (`compare_enabled`, `selected_weapon_tile`, `pending`) plus setter callbacks.
 - `loadout_tokens.h` — `shooter::loadout` feature-local tokens (root dialog bg, tab/grid/details geometry); reuses the shared `shooter::tokens` builders.
-- `components/loadout_content.{h,cpp}` — `LoadoutScreenBody`: holds all loadout hook reads + the action closures (incl. the gear-tab 2-deferred-write contract), returns the hand-written `::ui::fragment(LoadoutConfirmDialog, LoadoutScreenFrame{...})`. Plain `.cpp` (a fragment body can't be JSX — the transpiler enters JSX only on a leading `<`).
 - `components/loadout_screen_frame.{hx,cppx}` — `LoadoutScreenFrame` (root `Dialog`, owns `modal=!confirm_open`).
 - `components/loadout_title.{hx,cppx}`, `loadout_tabs.{hx,cppx}` (`LoadoutTabs` + compound `LoadoutTabs::Tab`, role=Tab internal), `loadout_body.{hx,cppx}`, `loadout_weapon_grid.{hx,cppx}` (reproduces the per-tab grid rows), `loadout_details.{hx,cppx}` (`Panel` Sunken + the frozen ordered action/slot children).
 - `components/weapon_tile.{h,cpp}` — `WeaponTile` + tab constants (`LOADOUT_TAB_WEAPONS`, `LOADOUT_TAB_GEAR`, `WEAPON_TILE_CONTROL_ID`) + helpers; adapts `ui::components::Button` directly (bespoke tile geometry).
@@ -19,10 +19,10 @@ The loadout screen — the most complex screen, fully decomposed into semantic c
 
 ## Conventions for screen-local state
 
-- **Don't** store screen-local UI state as a member on the screen class. Hold it inside `build_ui()` with `use_state<T>` and expose it through a provider.
-- The pattern: the screen component declares `use_state<bool>(...)` / `use_state<int>(...)` / `use_state<LoadoutPendingAction>({})` slots, builds a context value with `use_loadout_context_value(...)`, wraps the body with `loadout_provider_push(&ctx)` / `loadout_provider_pop()`, then renders `LoadoutScreenBody`.
-- Descendant components consume state via the typed hooks (`use_compare_enabled()`, `use_selected_weapon_tile()`, `use_pending_loadout_action()`) and mutate it via the setter hooks. Don't add a back-channel that reaches into the screen class.
-- Setters returned from `use_set_*` hooks already schedule deferred UI mutations — so they're safe to call from retained control callbacks (`on_activate`, `on_focus`, etc.). Keep the low-level mutation sink inside `loadout_state.cpp`.
+- **Don't** store screen-local UI state as a member on the screen class. Hold it inside the provider component with `use_state<T>` and expose it through hooks.
+- The pattern: the screen component renders `LoadoutProvider`, and `LoadoutProvider` declares the `use_state<bool>(...)` / `use_state<int>(...)` / `use_state<LoadoutValue::PendingAction>({})` slots before returning the private `LoadoutContext` provider.
+- Descendant components consume state via `use_loadout()` and mutate through the setter callbacks on the returned `LoadoutValue`. Don't add a back-channel that reaches into the screen class.
+- Setters returned from `use_loadout()` already schedule deferred UI mutations — so they're safe to call from retained control callbacks (`on_activate`, `on_focus`, etc.). Keep the low-level mutation sink inside `providers/loadout_provider.cpp`.
 - Focus handlers (`on_focus`) must only mutate UI state. Game-state mutations (e.g. `select_weapon`, `buy_weapon`, `equip_weapon`) belong on confirm flows, not on focus traversal.
 
 ## When to graduate a component to the parent dir

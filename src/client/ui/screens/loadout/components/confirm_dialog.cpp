@@ -7,8 +7,8 @@
 #include "../../../../../react.h"
 #include "../../../../../ui/components/components.h"
 #include "client/ui/components/tokens.h"
+#include "client/ui/screens/loadout/hooks/use_loadout.h"
 #include "client/ui/screens/loadout/hooks/use_weapons.h"
-#include "../loadout_state.h"
 
 namespace shooter {
 
@@ -20,22 +20,25 @@ const char *confirm_body_key(uint32_t generation) {
   return ::ui::copy_string(key);
 }
 
-::ui::UiElement LoadoutConfirmDialogBody(const LoadoutPendingAction &pending) {
+::ui::UiElement
+LoadoutConfirmDialogBody(const LoadoutValue::PendingAction &pending) {
   WeaponsValue weapons = use_weapons();
   WeaponsValue::Weapon weapon = weapons.get_weapon(pending.weapon_index);
-  std::function<void()> close = use_clear_pending_loadout_action();
+  LoadoutValue loadout = use_loadout();
+  std::function<void()> close = loadout.clear_pending_action;
   if (!weapon.valid)
     return ::ui::empty();
 
   namespace components = ::ui::components;
   const char *title = use_text_storage(
       "%s",
-      pending.action == LOADOUT_ACTION_BUY ? "Confirm Buy" : "Confirm Equip");
+      pending.action == LoadoutValue::Action::Buy ? "Confirm Buy"
+                                                  : "Confirm Equip");
   const char *message =
-      pending.action == LOADOUT_ACTION_BUY
+      pending.action == LoadoutValue::Action::Buy
           ? use_text_storage("Buy %s for %d credits?", weapon.name, weapon.cost)
           : use_text_storage("Equip %s as active weapon?", weapon.name);
-  int action = pending.action;
+  LoadoutValue::Action action = pending.action;
 
   return ::ui::component(
       "Dialog",
@@ -127,12 +130,12 @@ const char *confirm_body_key(uint32_t generation) {
                                                                       ActivationEvent
                                                                           &) {
                                                                 if (action ==
-                                                                    LOADOUT_ACTION_BUY) {
+                                                                    LoadoutValue::Action::Buy) {
                                                                   weapons.buy(
                                                                       weapon_index);
                                                                 } else if (
                                                                     action ==
-                                                                    LOADOUT_ACTION_EQUIP) {
+                                                                    LoadoutValue::Action::Equip) {
                                                                   weapons.equip(
                                                                       weapon_index);
                                                                 }
@@ -173,8 +176,8 @@ const char *confirm_body_key(uint32_t generation) {
 
 ::ui::UiElement LoadoutConfirmDialog(const LoadoutConfirmDialogProps &props) {
   (void)props;
-  LoadoutPendingAction pending = use_pending_loadout_action();
-  if (pending.action == LOADOUT_ACTION_NONE)
+  LoadoutValue::PendingAction pending = use_loadout().pending;
+  if (pending.action == LoadoutValue::Action::None)
     return ::ui::empty();
 
   return ::ui::component("LoadoutConfirmDialogBody", pending,

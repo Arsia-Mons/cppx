@@ -18,8 +18,8 @@ struct WeaponTileProps {
 };
 
 // Renders one weapon tile. Reads/writes the loadout's UI selection through
-// `LoadoutContext` — does NOT mutate game state. The Equip flow goes through
-// the confirm dialog, not through focus.
+// loadout state hooks; the Equip flow goes through the confirm dialog, not
+// through focus.
 ::ui::UiElement WeaponTile(const WeaponTileProps &props);
 
 } // namespace shooter

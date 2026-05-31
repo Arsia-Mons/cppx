@@ -15,7 +15,7 @@
 namespace shooter::loadout {
 
 // ---- Surfaces (loadout-only) ----
-// Root Dialog background (loadout_screen.cpp root Dialog .visual).
+// Root Dialog background (loadout_screen.cppx root Dialog .visual).
 constexpr ::ui::Color kRootBg = {12, 20, 24, 245};
 // "details" column background (the Sunken details panel fill).
 constexpr ::ui::Color kDetailsBg = {22, 30, 36, 255};

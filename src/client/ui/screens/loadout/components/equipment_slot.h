@@ -12,8 +12,8 @@ struct EquipmentSlotProps {
 };
 
 // Renders an equipment-slot button. Updates the loadout's UI selection on
-// focus/confirm via `LoadoutContext`; the player's equipped weapon changes
-// through the confirm dialog's Equip flow.
+// focus/confirm via the loadout state hooks; the player's equipped weapon
+// changes through the confirm dialog's Equip flow.
 ::ui::UiElement EquipmentSlot(const EquipmentSlotProps &props);
 
 } // namespace shooter
