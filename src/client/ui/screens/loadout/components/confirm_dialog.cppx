@@ -1,0 +1,119 @@
+#include "client/ui/screens/loadout/components/confirm_dialog.h"
+
+#include <functional>
+#include <stdint.h>
+#include <stdio.h>
+
+#include "client/ui/components/tokens.h"
+#include "client/ui/screens/loadout/hooks/use_loadout.h"
+#include "client/ui/screens/loadout/hooks/use_weapons.h"
+#include "react.h"
+#include "ui/components/components.h"
+
+namespace shooter {
+
+using ::ui::children;
+using ::ui::components::Box;
+using ::ui::components::BoxProps;
+using ::ui::components::Button;
+using ::ui::components::ButtonProps;
+using ::ui::components::Dialog;
+using ::ui::components::DialogProps;
+using ::ui::components::Text;
+using ::ui::components::TextProps;
+
+namespace {
+
+const char *confirm_body_key(uint32_t generation) {
+  char key[64] = {};
+  snprintf(key, sizeof(key), "confirm-%u", generation);
+  return ::ui::copy_string(key);
+}
+
+struct LoadoutConfirmDialogBodyProps {
+  const char *key = nullptr;
+  LoadoutValue::PendingAction pending = {};
+};
+
+::ui::UiElement
+LoadoutConfirmDialogBody(const LoadoutConfirmDialogBodyProps &props) {
+  const LoadoutValue::PendingAction &pending = props.pending;
+  WeaponsValue weapons = use_weapons();
+  WeaponsValue::Weapon weapon = weapons.get_weapon(pending.weapon_index);
+  LoadoutValue loadout = use_loadout();
+  std::function<void()> close = loadout.clear_pending_action;
+  if (!weapon.valid)
+    return ::ui::empty();
+
+  const char *title = use_text_storage(
+      "%s",
+      pending.action == LoadoutValue::Action::Buy ? "Confirm Buy"
+                                                  : "Confirm Equip");
+  const char *message =
+      pending.action == LoadoutValue::Action::Buy
+          ? use_text_storage("Buy %s for %d credits?", weapon.name, weapon.cost)
+          : use_text_storage("Equip %s as active weapon?", weapon.name);
+  LoadoutValue::Action action = pending.action;
+  int weapon_index = pending.weapon_index;
+
+  std::function<void(const ::ui::ActivationEvent &)> on_confirm =
+      [action, weapons, weapon_index, close](const ::ui::ActivationEvent &) {
+        if (action == LoadoutValue::Action::Buy) {
+          weapons.buy(weapon_index);
+        } else if (action == LoadoutValue::Action::Equip) {
+          weapons.equip(weapon_index);
+        }
+        if (close)
+          close();
+      };
+  std::function<void(const ::ui::ActivationEvent &)> on_cancel =
+      [close](const ::ui::ActivationEvent &) {
+        if (close)
+          close();
+      };
+
+  ::ui::LayoutStyle scrim_layout{
+      .align_items = ::ui::AlignItems::Center,
+      .justify_content = ::ui::JustifyContent::Center,
+      .width = ::ui::Length::percent(100.0f),
+      .height = ::ui::Length::percent(100.0f),
+  };
+  ::ui::LayoutStyle panel_layout{
+      .width = ::ui::Length::points(360.0f),
+      .padding = {18.0f, 18.0f, 18.0f, 18.0f},
+      .gap = 12.0f,
+      .border_width = 1.0f,
+  };
+  ::ui::LayoutStyle actions_layout{
+      .direction = ::ui::FlexDirection::Row,
+      .gap = 10.0f,
+  };
+  auto scrim_style = tokens::fill_patch({0, 0, 0, 160});
+  auto panel_style = tokens::panel_patch({18, 26, 32, 255}, {92, 116, 126, 255});
+  auto title_style = tokens::text_patch({240, 248, 244, 255}, 22);
+  auto message_style = tokens::text_patch({202, 218, 216, 255}, 15);
+
+  return <Dialog key="scrim" layout={scrim_layout} style={scrim_style}>
+    <Box key="panel" layout={panel_layout} style={panel_style}>
+      <Text key="title" value={title} layout={{.height = ::ui::Length::points(24.0f)}} style={title_style} />
+      <Text key="message" value={message} layout={{.height = ::ui::Length::points(18.0f)}} style={message_style} />
+      <Box key="actions" layout={actions_layout}>
+        <Button key="confirm" id="ConfirmLoadoutActionButton" autofocus={true} label="Confirm" onActivate={on_confirm} />
+        <Button key="cancel" id="CancelLoadoutActionButton" label="Cancel" onActivate={on_cancel} />
+      </Box>
+    </Box>
+  </Dialog>
+}
+
+} // namespace
+
+::ui::UiElement LoadoutConfirmDialog(const LoadoutConfirmDialogProps &props) {
+  (void)props;
+  LoadoutValue::PendingAction pending = use_loadout().pending;
+  if (pending.action == LoadoutValue::Action::None)
+    return ::ui::empty();
+
+  return <LoadoutConfirmDialogBody key={confirm_body_key(pending.generation)} pending={pending} />
+}
+
+} // namespace shooter

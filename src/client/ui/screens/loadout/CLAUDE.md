@@ -10,12 +10,12 @@ The loadout screen — the most complex screen, fully decomposed into semantic c
 - `loadout_tokens.h` — `shooter::loadout` feature-local tokens (root dialog bg, tab/grid/details geometry); reuses the shared `shooter::tokens` builders.
 - `components/loadout_screen_frame.{hx,cppx}` — `LoadoutScreenFrame` (root `Dialog`, owns `modal=!confirm_open`).
 - `components/loadout_title.{hx,cppx}`, `loadout_tabs.{hx,cppx}` (`LoadoutTabs` + compound `LoadoutTabs::Tab`, role=Tab internal), `loadout_body.{hx,cppx}`, `loadout_weapon_grid.{hx,cppx}` (reproduces the per-tab grid rows), `loadout_details.{hx,cppx}` (`Panel` Sunken + the frozen ordered action/slot children).
-- `components/weapon_tile.{h,cpp}` — `WeaponTile` + tab constants (`LOADOUT_TAB_WEAPONS`, `LOADOUT_TAB_GEAR`, `WEAPON_TILE_CONTROL_ID`) + helpers; adapts `ui::components::Button` directly (bespoke tile geometry).
-- `components/equipment_slot.{h,cpp}` — `EquipmentSlot` (adapts `Button` directly).
-- `components/confirm_dialog.{h,cpp}` — `LoadoutConfirmDialog` (reads pending state from `LoadoutContext`).
+- `components/weapon_tile.{h,cppx}` — `WeaponTile` + tab constants (`LOADOUT_TAB_WEAPONS`, `LOADOUT_TAB_GEAR`, `WEAPON_TILE_CONTROL_ID`) + helpers; returns a JSX `Button` with two `Text` children (bespoke tile geometry). Plain helper fns (`weapon_tile_key`, `weapon_in_tab`, `first_weapon_for_tab`) live alongside the component in the `.cppx`.
+- `components/equipment_slot.{h,cppx}` — `EquipmentSlot` (JSX `Button` + one `Text` child).
+- `components/confirm_dialog.{h,cppx}` — `LoadoutConfirmDialog` (reads pending state from `LoadoutContext`) + the keyed `LoadoutConfirmDialogBody` (JSX `Dialog` tree).
 - `hooks/use_weapons.{h,cpp}` — loadout-local aggregate weapon hook over `ShooterGame`; returns count, indexed read fields, and deferred `select`/`buy`/`equip` actions.
 
-`weapon_tile`/`equipment_slot`/`confirm_dialog` stay plain `.h/.cpp`: they are already clean domain components (semantic props, adapt primitives directly, `tokens::` paint), so JSX conversion would be cosmetic.
+All renderable components in this folder are authored as `.cppx` returning JSX. Their `.h` headers stay plain hand-written declaration files (same split as `loadout_screen.{h,cppx}`); only the `.cppx` is transpiled. `weapon_tile`/`equipment_slot` root on `Button`, which is JSX-able because `ui::components::ButtonProps` declares `children` **last** (after `layout`/`style`, matching `Box`/`Dialog`), so JSX child-tag lowering — which always appends `.children` last — satisfies `-Werror=reorder-init-list`. Keep that field last if you ever edit `ButtonProps`.
 
 ## Conventions for screen-local state
 

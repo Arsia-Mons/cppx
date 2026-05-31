@@ -7,16 +7,10 @@
 
 namespace shooter {
 
+using ::ui::children;
 using ::ui::components::Button;
 using ::ui::components::ButtonProps;
 
-// Authored as plain C++ (not JSX): ui::components::ButtonProps declares
-// `children` BEFORE `layout`/`style`, but the JSX lowering always appends
-// `.children` last, which would emit `.layout`/`.style` before `.children` and
-// trip -Werror=reorder-init-list. Hand-assembling ButtonProps lets us keep the
-// designated initializers in declaration order. Children are plain expressions
-// (props.children + the label fallback, mirroring screen_chrome's MenuButton),
-// so there are no JSX child tags and no spurious comma-text nodes.
 ::ui::UiElement AppButton(const AppButtonProps &props) {
   // Wrap the no-arg semantic callbacks into the event-taking ui callbacks; the
   // host events are intentionally ignored (the semantic API is event-free).
@@ -35,27 +29,16 @@ using ::ui::components::ButtonProps;
 
   const char *a11y_label =
       props.accessibility_label ? props.accessibility_label : props.label;
+  ::ui::LayoutStyle layout = app_button_layout(props.size, props.selected);
+  auto style = app_button_variant_patch(props.variant);
 
-  return ::ui::component(
-      "Button",
-      ButtonProps{
-          .key = props.key,
-          .id = props.control_id,
-          .id_offset = props.control_offset,
-          .disabled = props.disabled,
-          .autofocus = props.default_focused,
-          .accessibility = {.label = a11y_label},
-          .on_focus = on_focus,
-          .label = props.label,
-          .on_activate = on_activate,
-          .children = ::ui::children({
-              props.children,
-              props.children.count > 0 ? nullptr : props.label,
-          }),
-          .layout = app_button_layout(props.size, props.selected),
-          .style = app_button_variant_patch(props.variant),
-      },
-      Button);
+  // Children are plain expressions: props.children, plus a label fallback used
+  // only when no children were provided. The two {expr} children lower into the
+  // appended `.children = children({...})` (last, after layout/style).
+  return <Button key={props.key} id={props.control_id} idOffset={props.control_offset} disabled={props.disabled} autofocus={props.default_focused} accessibility={{.label = a11y_label}} onFocus={on_focus} label={props.label} onActivate={on_activate} layout={layout} style={style}>
+    {props.children}
+    {props.children.count > 0 ? nullptr : props.label}
+  </Button>
 }
 
 } // namespace shooter

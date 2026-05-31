@@ -19,7 +19,6 @@ struct ButtonProps {
   std::function<void(const ::ui::TextEditingEvent &)> on_text_editing = {};
   const char *label = nullptr;
   std::function<void(const ::ui::ActivationEvent &)> on_activate = {};
-  ::ui::UiChildren children = {};
   ::ui::LayoutStyle layout = {
       .align_items = ::ui::AlignItems::Center,
       .justify_content = ::ui::JustifyContent::Center,
@@ -28,6 +27,10 @@ struct ButtonProps {
       .padding = {14.0f, 14.0f, 8.0f, 8.0f},
   };
   ::ui::StyleStatePatch style = {}; // per-state paint overlay over theme.button
+  // `children` is declared LAST (after layout/style), matching BoxProps and
+  // DialogProps, so JSX child lowering (which always appends `.children` last)
+  // satisfies -Werror=reorder-init-list. Keep it last when adding fields.
+  ::ui::UiChildren children = {};
 };
 
 ::ui::UiElement Button(const ButtonProps &props);

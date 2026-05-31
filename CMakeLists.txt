@@ -100,6 +100,7 @@ cppx_transpile(CLIENT_UI_GENERATED
   src/client/ui/components/text/body_text.hx
   src/client/ui/screens/in_game/in_game_screen.cppx
   src/client/ui/screens/in_game/in_game_screen.hx
+  src/client/ui/screens/in_game/components/hud_band.cppx
   src/client/ui/screens/main_menu/main_menu_screen.cppx
   src/client/ui/screens/main_menu/main_menu_screen.hx
   src/client/ui/screens/options/options_screen.cppx
@@ -119,6 +120,9 @@ cppx_transpile(CLIENT_UI_GENERATED
   src/client/ui/screens/loadout/components/loadout_weapon_grid.hx
   src/client/ui/screens/loadout/components/loadout_details.cppx
   src/client/ui/screens/loadout/components/loadout_details.hx
+  src/client/ui/screens/loadout/components/confirm_dialog.cppx
+  src/client/ui/screens/loadout/components/equipment_slot.cppx
+  src/client/ui/screens/loadout/components/weapon_tile.cppx
 )
 add_custom_target(cppx_generated_client_ui DEPENDS ${CLIENT_UI_GENERATED})
 
@@ -209,7 +213,6 @@ add_executable(hello
   src/app/game_loop.cpp
   src/client/ui/app_shell/client_ui.cpp
   src/client/ui/app_theme.cpp
-  src/client/ui/screens/in_game/components/hud_band.cpp
   src/client/ui/screens/in_game/hooks/use_hud.cpp
   src/client/ui/screens/loadout/hooks/use_weapons.cpp
   src/client/ui/providers/app_provider.cpp
@@ -217,9 +220,6 @@ add_executable(hello
   src/client/ui/providers/server_provider.cpp
   src/client/ui/app_shell/navigation/screen_stack.cpp
   src/client/ui/app_shell/ui_pipeline.cpp
-  src/client/ui/screens/loadout/components/confirm_dialog.cpp
-  src/client/ui/screens/loadout/components/equipment_slot.cpp
-  src/client/ui/screens/loadout/components/weapon_tile.cpp
   src/client/ui/screens/loadout/providers/loadout_provider.cpp
   ${CLIENT_UI_GENERATED}
   src/platform/control_mailbox.cpp
@@ -652,7 +652,6 @@ add_executable(shooter_ui_tests
   src/react.cpp
   src/client/ui/app_shell/client_ui.cpp
   src/client/ui/app_theme.cpp
-  src/client/ui/screens/in_game/components/hud_band.cpp
   src/client/ui/screens/in_game/hooks/use_hud.cpp
   src/client/ui/screens/loadout/hooks/use_weapons.cpp
   src/client/ui/providers/app_provider.cpp
@@ -660,9 +659,6 @@ add_executable(shooter_ui_tests
   src/client/ui/providers/server_provider.cpp
   src/client/ui/app_shell/navigation/screen_stack.cpp
   src/client/ui/app_shell/ui_pipeline.cpp
-  src/client/ui/screens/loadout/components/confirm_dialog.cpp
-  src/client/ui/screens/loadout/components/equipment_slot.cpp
-  src/client/ui/screens/loadout/components/weapon_tile.cpp
   src/client/ui/screens/loadout/providers/loadout_provider.cpp
   ${CLIENT_UI_GENERATED}
   src/game/inventory.cpp

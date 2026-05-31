@@ -1,0 +1,52 @@
+#include "client/ui/screens/in_game/components/hud_band.h"
+
+#include "client/ui/components/tokens.h"
+#include "client/ui/screens/in_game/hooks/use_hud.h"
+#include "react.h"
+#include "ui/components/components.h"
+
+namespace shooter {
+
+using ::ui::children;
+using ::ui::components::Box;
+using ::ui::components::BoxProps;
+using ::ui::components::Text;
+using ::ui::components::TextProps;
+
+namespace {
+
+::ui::UiElement hud_text(const char *key, const char *value) {
+  return <Text key={key} value={value} layout={{.height = ::ui::Length::points(22.0f)}} style={tokens::text_patch({224, 238, 236, 255}, 18)} />
+}
+
+} // namespace
+
+::ui::UiElement HudBand(const HudBandProps &props) {
+  (void)props;
+  HudValue hud = use_hud();
+  const char *health = use_text_storage("HP %d", hud.health);
+  const char *armor = use_text_storage("ARMOR %d", hud.armor);
+  const char *ammo = use_text_storage("AMMO %d", hud.ammo);
+  const char *credits = use_text_storage("CREDITS %d", hud.credits);
+
+  ::ui::LayoutStyle layout{
+      .direction = ::ui::FlexDirection::Row,
+      .align_items = ::ui::AlignItems::Center,
+      .width = ::ui::Length::percent(100.0f),
+      .height = ::ui::Length::points(44.0f),
+      .padding = {16.0f, 16.0f, 10.0f, 10.0f},
+      .gap = 18.0f,
+      .border_width = 1.0f,
+  };
+  auto style = tokens::panel_patch({18, 24, 28, 245}, {82, 106, 118, 255});
+
+  return <Box key="band" layout={layout} style={style}>
+    {hud_text("health", health)}
+    {hud_text("armor", armor)}
+    {hud_text("ammo", ammo)}
+    {hud_text("credits", credits)}
+    {hud_text("weapon", hud.weapon)}
+  </Box>
+}
+
+} // namespace shooter
